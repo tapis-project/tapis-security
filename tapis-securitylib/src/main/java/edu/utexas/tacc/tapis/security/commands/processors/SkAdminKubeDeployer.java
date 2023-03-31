@@ -223,7 +223,7 @@ public final class SkAdminKubeDeployer
         // Kubernetes seems to do some asynchronous processing when deleting secrets.
         // The pause here seems avoid http 409 (conflict) errors that seems to be
         // timing related.
-        try {Thread.sleep(1000);} catch (Exception e) {}
+        try {Thread.sleep(10000);} catch (Exception e) {}
     }
     
     /* ---------------------------------------------------------------------- */
