@@ -8,6 +8,10 @@ https://tapis.readthedocs.io/en/latest/technical/security.html
 You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
+-----------------------
+## 1.3.1 - 2023-04-03
+
+Increase SkAdmin secrets timeout from 1 to 10 seconds in Kubernetes.
 
 -----------------------
 ## 1.3.0 - 2023-03-03
