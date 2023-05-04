@@ -148,7 +148,7 @@ public class SecurityApplication
             System.out.println(s);
             
             System.out.println("\nLocal site: " + parms.getSiteId());
-            System.out.println("Primary site: " + TenantManager.getInstance().getPrimarySite());
+            System.out.println("Primary site: " + TenantManager.getInstance().getPrimarySiteId());
         } else
         	System.out.println("**** FAILURE TO INITIALIZE: tapis-securityapi TenantManager - No Tenants ****");
         
