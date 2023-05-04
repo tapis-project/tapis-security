@@ -9,6 +9,11 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 -----------------------
+## 1.3.2 - 2023-05-04
+
+Automatically assign tenant_definition_update role to tokens service at primary site.
+
+-----------------------
 ## 1.3.1 - 2023-04-03
 
 Increase SkAdmin secrets timeout from 1 to 10 seconds in Kubernetes.

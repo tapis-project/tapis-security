@@ -146,6 +146,9 @@ public class SecurityApplication
             String s = "Tenants:\n";
             for (String tenant : tenantMap.keySet()) s += "  " + tenant + "\n";
             System.out.println(s);
+            
+            System.out.println("\nLocal site: " + parms.getSiteId());
+            System.out.println("Primary site: " + TenantManager.getInstance().getPrimarySite());
         } else
         	System.out.println("**** FAILURE TO INITIALIZE: tapis-securityapi TenantManager - No Tenants ****");
         
