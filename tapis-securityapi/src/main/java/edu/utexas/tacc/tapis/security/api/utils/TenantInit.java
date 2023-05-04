@@ -4,9 +4,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.security.authz.impl.RoleImpl;
 import edu.utexas.tacc.tapis.security.authz.impl.UserImpl;
 import edu.utexas.tacc.tapis.security.config.RuntimeParameters;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
@@ -31,6 +33,10 @@ public final class TenantInit
     
     // The user representing SK.
     private static final String SK_USER = UserImpl.SK_USER;
+    
+    // The role assigned to the tokens service allowing it to update tenant definitions.
+    private static final String SK_TENANT_UPDATER_ROLE = UserImpl.SK_TENANT_UPDATER_ROLE;
+    private static final String SK_TENANT_UPDATER_DESC = "Allow tenant updates via Tenants API.";
 
     /* ********************************************************************** */
     /*                                Fields                                  */
@@ -80,6 +86,7 @@ public final class TenantInit
         // Get the site-admin tenant id.
         final String site = RuntimeParameters.getInstance().getSiteId();
         final String siteAdminTenant = TenantManager.getInstance().getSiteAdminTenantId(site);
+        final boolean isPrimarySite = TenantManager.getInstance().isPrimarySite(site);
         
         // One time initialization for tenants service at primary site.
         initializeTenantServiceRole(siteAdminTenant);
@@ -102,6 +109,10 @@ public final class TenantInit
         	// to request user tokens from the Tokens service.  The roles conform
         	// to the format <tenant>_token_generator.
         	initializeAuthenticators(tenantId, siteAdminTenant, tenant.getTokenGenServices());
+        	
+        	// Assign the tenant_definition_updater role to the tokens service
+        	// at primary site only.
+        	if (isPrimarySite) initializeTenantUpdater(siteAdminTenant);
         }
     }
     
@@ -258,5 +269,49 @@ public final class TenantInit
                                          s, roleName, e.getMessage());
             _log.error(msg, e);
         }
+    }
+    
+    /* ---------------------------------------------------------------------- */
+    /* initializeTenantUpdater:                                               */
+    /* ---------------------------------------------------------------------- */
+    /** Assign the tenant_definition_updater to tokens in the primary site
+     * admin tenant.
+     * 
+     * @param siteAdminTenant primary site admin tenant ("admin")
+     */
+    private void initializeTenantUpdater(String siteAdminTenant)
+    {
+    	// Make sure the tokens service is a tenant updater.
+    	final String tokenSvc = "tokens";
+    	
+    	// We just log and return any error.
+    	try {
+        	// Query for the assignment of tenant_definition_updater to tokens.
+        	List<Pair<Integer,String>> roleRecs = null;
+			roleRecs = UserImpl.getInstance().getUserRoleIdsAndNames(siteAdminTenant, tokenSvc);
+    	
+			// Determine if the tokens service is already assigned the updater role.
+			// If the role is already assigned directly to tokens, there's no work to do.
+			for (var rec: roleRecs) 
+				if (SK_TENANT_UPDATER_ROLE.equals(rec.getRight())) {
+					_log.info(MsgUtils.getMsg("SK_TENANT_UPDATER_FOUND", siteAdminTenant,
+							                  tokenSvc, SK_TENANT_UPDATER_ROLE));
+					return; // role already assigned
+				}
+    	
+			// Create the role if it doesn't already exist.  It will be owned by tenants@admin
+			// and assigned to tokens@admin.
+			final boolean strict = false;
+			int rows = 0;
+			rows = UserImpl.getInstance().createAndAssignRole(SK_TENANT_UPDATER_ROLE, siteAdminTenant,
+					SK_TENANT_UPDATER_DESC, "tokens", siteAdminTenant, "tenants", siteAdminTenant, strict);
+			_log.info(MsgUtils.getMsg("SK_TENANT_UPDATER_ASSIGNED", siteAdminTenant,
+	                                  tokenSvc, SK_TENANT_UPDATER_ROLE, rows));
+		} catch (Exception e) {
+            // Log the error and continue on.
+            String msg = MsgUtils.getMsg("SK_TENANT_UPDATER_ERROR", siteAdminTenant, 
+            		                     tokenSvc, SK_TENANT_UPDATER_ROLE, e.getMessage());
+            _log.error(msg, e);
+		}
     }
 }

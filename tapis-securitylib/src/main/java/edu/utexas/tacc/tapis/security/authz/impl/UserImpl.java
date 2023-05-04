@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +74,35 @@ public final class UserImpl
             }
         }
         return _instance;
+    }
+    
+    /* ---------------------------------------------------------------------------- */
+    /* createAndAssignRole:                                                         */
+    /* ---------------------------------------------------------------------------- */
+    public int createAndAssignRole(String roleName, String roleTenant, String description,
+                                    String grantee, String granteeTenant,
+                                    String grantor, String grantorTenant, boolean strict) 
+     throws TapisImplException
+    {
+        // Get the dao.
+        SkUserRoleDao userDao = null;
+        try {userDao = getSkUserRoleDao();}
+            catch (Exception e) {
+                String msg = MsgUtils.getMsg("DB_DAO_ERROR", "userRoles");
+                _log.error(msg, e);
+                throw new TapisImplException(e.getMessage(), e, Condition.INTERNAL_SERVER_ERROR); 
+            }
+
+        // Create and assign the role.
+        int rows = 0;
+        try {rows = userDao.createAndAssignRole(roleName, roleTenant, description, 
+        		                                grantee, granteeTenant, 
+        		                                grantor, grantorTenant, strict);}
+            catch (Exception e) {
+                // Interpret all errors as client request problems.
+                throw new TapisImplException(e.getMessage(), Condition.BAD_REQUEST);
+            }
+        return rows;
     }
     
     /* ---------------------------------------------------------------------- */
@@ -250,6 +280,7 @@ public final class UserImpl
         // default role exists and has already been assigned to the user.
         // If the first attempt fails, we try one more time after creating
         // and assigning the user's default role.
+        final boolean strict = true;
         int rows = 0;
         for (int i = 0; i < 2; i++) {
             try {
@@ -268,7 +299,7 @@ public final class UserImpl
             	String desc = "Default role for user " + grantee;
                 rows = createAndAssignRole(roleName, granteeTenant, desc, 
                 		                   grantee, granteeTenant,
-                		                   grantor, grantorTenant);
+                		                   grantor, grantorTenant, strict);
             }
         }
         
@@ -384,6 +415,41 @@ public final class UserImpl
                 throw new TapisImplException(msg, e, Condition.BAD_REQUEST);            }
         
         return roles;
+    }
+    
+    /* ---------------------------------------------------------------------- */
+    /* getUserRoleIdsAndNames:                                                */
+    /* ---------------------------------------------------------------------- */
+    /** Get the role id and name for all roles directly assigned to a user.
+     * This method does not perform transitive role process--only the roles
+     * immediately assigned to the user are returned.
+     * 
+     * @param tenant user's tenant
+     * @param user user id
+     * @return pairs of <roleId, roleName> for each role directly assigned to user
+     * @throws TapisImplException
+     */
+    public List<Pair<Integer,String>> getUserRoleIdsAndNames(String tenant, String user) 
+     throws TapisImplException
+    {
+        // Get the dao.
+        SkUserRoleDao dao = null;
+        try {dao = getSkUserRoleDao();}
+            catch (Exception e) {
+                String msg = MsgUtils.getMsg("DB_DAO_ERROR", "userRoles");
+                _log.error(msg, e);
+                throw new TapisImplException(e.getMessage(), e, Condition.INTERNAL_SERVER_ERROR);             }
+
+        // Get the user's role names including those assigned transitively.
+        List<Pair<Integer,String>> pairs = null;
+        try {pairs = dao.getUserRoleIdsAndNames(tenant, user);}
+            catch (Exception e) {
+                String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
+                                             tenant, user, e.getMessage());
+                _log.error(msg, e);
+                throw new TapisImplException(msg, e, Condition.BAD_REQUEST);            }
+        
+        return pairs;
     }
     
     /* ---------------------------------------------------------------------- */
@@ -807,36 +873,6 @@ public final class UserImpl
         
         // No match if we get here.
         return false;
-    }
-    
-    /* ---------------------------------------------------------------------------- */
-    /* createAndAssignRole:                                                         */
-    /* ---------------------------------------------------------------------------- */
-    private int createAndAssignRole(String roleName, String roleTenant, String description,
-                                    String grantee, String granteeTenant,
-                                    String grantor, String grantorTenant) 
-     throws TapisImplException
-    {
-        // Get the dao.
-        SkUserRoleDao userDao = null;
-        try {userDao = getSkUserRoleDao();}
-            catch (Exception e) {
-                String msg = MsgUtils.getMsg("DB_DAO_ERROR", "userRoles");
-                _log.error(msg, e);
-                throw new TapisImplException(e.getMessage(), e, Condition.INTERNAL_SERVER_ERROR); 
-            }
-
-        // Create and assign the role.
-        boolean strict = true;
-        int rows = 0;
-        try {rows = userDao.createAndAssignRole(roleName, roleTenant, description, 
-        		                                grantee, granteeTenant, 
-        		                                grantor, grantorTenant, strict);}
-            catch (Exception e) {
-                // Interpret all errors as client request problems.
-                throw new TapisImplException(e.getMessage(), Condition.BAD_REQUEST);
-            }
-        return rows;
     }
     
     /* ---------------------------------------------------------------------------- */
