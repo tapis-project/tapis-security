@@ -89,7 +89,14 @@ public final class TenantInit
         final boolean isPrimarySite = TenantManager.getInstance().isPrimarySite(site);
         
         // One time initialization for tenants service at primary site.
-        initializeTenantServiceRole(siteAdminTenant);
+        if (isPrimarySite) {
+        	// Assign tenant_creator role.
+        	initializeTenantServiceRole(siteAdminTenant);
+    	
+        	// Assign the tenant_definition_updater role ONLY to the 
+        	// tokens service at primary site.
+        	initializeTenantUpdater(siteAdminTenant);
+        }
         
         // Inspect each tenant.
         for (var entry : _tenantMap.entrySet()) 
@@ -109,10 +116,6 @@ public final class TenantInit
         	// to request user tokens from the Tokens service.  The roles conform
         	// to the format <tenant>_token_generator.
         	initializeAuthenticators(tenantId, siteAdminTenant, tenant.getTokenGenServices());
-        	
-        	// Assign the tenant_definition_updater role to the tokens service
-        	// at primary site only.
-        	if (isPrimarySite) initializeTenantUpdater(siteAdminTenant);
         }
     }
     
