@@ -1528,6 +1528,10 @@ public final class VaultResource
          // slashes.  This is typically handled in SecretPathMapperParms. 
          if (secretName != null) secretName = secretName.replace('+', '/');
          
+         // Log payload info.
+         if (_log.isDebugEnabled()) 
+        	 _log.debug(MsgUtils.getMsg("SK_VALIDATING_PASSWORD", tenant, user, secretName));
+         
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
