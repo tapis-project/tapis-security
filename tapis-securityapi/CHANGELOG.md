@@ -9,6 +9,12 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 -----------------------
+## 1.6.0 - 2024-01-24
+
+### New Features:
+1. Increment release number.
+
+-----------------------
 ## 1.5.10 - 2023-11-20
 
 ### Bug fixes:
