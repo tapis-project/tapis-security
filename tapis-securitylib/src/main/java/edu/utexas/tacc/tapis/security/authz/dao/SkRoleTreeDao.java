@@ -181,6 +181,9 @@ public final class SkRoleTreeDao
           // Make sure adding this parent/child relationship will not cause a cycle.
           detectCycle(conn, tenant, user, parentRoleName, parentRoleId, childRoleName);
           
+          // Get the parent's current hasChildren indicator and lock parent record.
+          boolean hadChildren = getParentHasChildren(conn, tenant, parentRoleId);
+          
           // Set the sql command.
           String sql = SqlStatements.ROLE_ADD_CHILD_ROLE_BY_ID;
 
@@ -197,9 +200,12 @@ public final class SkRoleTreeDao
           // Issue the call. 0 rows will be returned when a duplicate
           // key conflict occurs--this is not considered an error.
           rows = pstmt.executeUpdate();
+          pstmt.close();
+          
+          // Set the parent's hasChildren indicator if it's not already set.
+          if (!hadChildren) updateParentHasChildren(conn, tenant, parentRoleId, true);
 
           // Commit the transaction.
-          pstmt.close();
           conn.commit();
       }
       catch (Exception e)
@@ -319,6 +325,9 @@ public final class SkRoleTreeDao
           // Get a database connection.
           conn = getConnection();
 
+          // Get the parent's current hasChildren indicator and lock parent record.
+          boolean hadChildren = getParentHasChildren(conn, tenant, parentRoleId);
+          
           // Set the sql command.
           String sql = SqlStatements.ROLE_REMOVE_CHILD_ROLE_BY_ID;
 
@@ -331,9 +340,13 @@ public final class SkRoleTreeDao
           // Issue the call. 0 rows will be returned when a duplicate
           // key conflict occurs--this is not considered an error.
           rows = pstmt.executeUpdate();
-
-          // Commit the transaction.
           pstmt.close();
+          
+          // Update the parent's hasChildren flag if (1) it was previously set
+          // and (2) at least one row was changed as a result of child removal.
+          if (hadChildren && rows > 0) updateAfterChildRemoval(conn, tenant, parentRoleId);
+          
+          // Commit the transaction.
           conn.commit();
       }
       catch (Exception e)
@@ -548,4 +561,165 @@ public final class SkRoleTreeDao
       return roleId;
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* getParentHasChildren:                                                  */
+  /* ---------------------------------------------------------------------- */
+  /** Get the children indicator for a parent role using a SELECT FOR UPDATE
+   * query to lock the record.  The caller will choose whether or not to 
+   * update the has_children field after this call returns.  
+   *
+   * The caller acquires the database connection and this method runs in the
+   * already established transaction.  The caller is always responsible for 
+   * connection commit/rollback/close. 
+   * 
+   * @param conn an existing connection
+   * @param tenant the tenant user's tenant
+   * @param parentRoleId the parent role id
+   * @return the parent's current has_children value
+   * @throws TapisException on error
+   */
+  private boolean getParentHasChildren(Connection conn, String tenant, int parentRoleId)
+   throws TapisException
+  {
+	  Boolean hasChildren = null;
+      try
+      {
+          // Get the select command.
+          String sql = SqlStatements.ROLE_GET_HASCHILDREN_FOR_UPDATE;
+          
+          // Prepare the statement and fill in the placeholders.
+          PreparedStatement pstmt = conn.prepareStatement(sql);
+          pstmt.setString(1, tenant);
+          pstmt.setInt(2, parentRoleId);
+                      
+          // Issue the call for the 1 row result set.
+          ResultSet rs = pstmt.executeQuery();
+          if (rs.next()) hasChildren = rs.getBoolean(1);
+          
+          // Close the result and statement.
+          rs.close();
+          pstmt.close();
+      }
+      catch (Exception e)
+      {
+          String msg = MsgUtils.getMsg("SK_ROLE_GET_HASCHILDREN_ERROR", tenant, parentRoleId, e.getMessage());
+          _log.error(msg, e);
+          throw new TapisException(msg, e);
+      }
+      
+      // Make sure we found the child indicator.
+      if (hasChildren == null) {
+          String msg = MsgUtils.getMsg("SK_ROLE_GET_HASCHILDREN_ERROR", tenant, parentRoleId, "NO CHILD INDICATOR");
+          _log.error(msg);
+          throw new TapisException(msg);
+      }
+
+	  return hasChildren;
+  }
+  
+  /* ---------------------------------------------------------------------- */
+  /* updateParentHasChildren:                                               */
+  /* ---------------------------------------------------------------------- */
+  /** Set the children indicator for a parent role.  This method assumes the
+   * transaction has already locked the parent role record, for example, by
+   * calling getParentHasChildren().
+   *
+   * The caller acquires the database connection and this method runs in the
+   * already established transaction.  The caller is always responsible for 
+   * connection commit/rollback/close. 
+   * 
+   * @param conn an existing connection
+   * @param tenant the tenant user's tenant
+   * @param parentRoleId the parent role id
+   * @return the parent's current has_children value
+   * @throws TapisException on error
+   */
+  private void updateParentHasChildren(Connection conn, String tenant, int parentRoleId, 
+		                               boolean newValue)
+   throws TapisException
+  {
+      try
+      {
+          // Get the select command.
+          String sql = SqlStatements.ROLE_UPDATE_HASCHILDREN;
+          
+          // Prepare the statement and fill in the placeholders.
+          PreparedStatement pstmt = conn.prepareStatement(sql);
+          pstmt.setBoolean(1, newValue);
+          pstmt.setString(2, tenant);
+          pstmt.setInt(3, parentRoleId);
+                      
+          // Issue the call and close the statement.
+          pstmt.executeUpdate();
+          pstmt.close();
+      }
+      catch (Exception e)
+      {
+          String msg = MsgUtils.getMsg("SK_ROLE_GET_HASCHILDREN_ERROR", tenant, parentRoleId, e.getMessage());
+          _log.error(msg, e);
+          throw new TapisException(msg, e);
+      }
+  }
+  
+  /* ---------------------------------------------------------------------- */
+  /* updateAfterChildRemoval:                                               */
+  /* ---------------------------------------------------------------------- */
+  /** This method assumes that the parent role has_children flag is currently
+   * set to true.  It also assumes the transaction has already locked the
+   * parent role record, for example, by calling getParentHasChildren().
+   * Both of these assumptions should hold before calling this method.
+   * 
+   * This method determines if the parent role still has any children and, if
+   * not, changes the has_children flag to false.
+   * 
+   * The caller acquires the database connection and this method runs in the
+   * already established transaction.  The caller is always responsible for 
+   * connection commit/rollback/close. 
+   * 
+   * @param conn an existing connection
+   * @param tenant the tenant user's tenant
+   * @param parentRoleId the parent role id
+   * @throws TapisException on error
+   */
+  private void updateAfterChildRemoval(Connection conn, String tenant, int parentRoleId)
+   throws TapisException
+  {
+	 // Determine if the parent role has any more children.
+	 int numChildren = -1;
+     try
+     {
+         // Get the select command.
+         String sql = SqlStatements.ROLE_GET_CHILD_COUNT;
+         
+         // Prepare the statement and fill in the placeholders.
+         PreparedStatement pstmt = conn.prepareStatement(sql);
+         pstmt.setString(1, tenant);
+         pstmt.setInt(2, parentRoleId);
+                     
+         // Issue the call and close the statement.
+         ResultSet rs = pstmt.executeQuery();
+         if (rs.next()) numChildren = rs.getInt(1);
+         
+         // Close the result and statement.
+         rs.close();
+         pstmt.close();
+     }
+     catch (Exception e)
+     {
+         String msg = MsgUtils.getMsg("SK_ROLE_GET_CHILD_COUNT_ERROR", tenant, parentRoleId, e.getMessage());
+         _log.error(msg, e);
+         throw new TapisException(msg, e);
+     }
+     
+     // Make sure we found the child indicator.
+     if (numChildren < 0) {
+         String msg = MsgUtils.getMsg("SK_ROLE_GET_CHILD_COUNT_ERROR", tenant, parentRoleId, "NO COUNT RETURNED");
+         _log.error(msg);
+         throw new TapisException(msg);
+     }
+     
+     // Determine if we need to update the has_children flag in the parent role,
+     // which is only necessary when transitioning has_children from true to false.
+     if (numChildren == 0) updateParentHasChildren(conn, tenant, parentRoleId, false);
+  }
 }

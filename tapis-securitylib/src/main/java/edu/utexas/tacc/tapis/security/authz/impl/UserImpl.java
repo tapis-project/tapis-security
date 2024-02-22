@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -429,7 +430,7 @@ public final class UserImpl
      * @return pairs of <roleId, roleName> for each role directly assigned to user
      * @throws TapisImplException
      */
-    public List<Pair<Integer,String>> getUserRoleIdsAndNames(String tenant, String user) 
+    public List<Triple<Integer,String,Boolean>> getUserRoleIdsAndNames(String tenant, String user) 
      throws TapisImplException
     {
         // Get the dao.
@@ -441,15 +442,15 @@ public final class UserImpl
                 throw new TapisImplException(e.getMessage(), e, Condition.INTERNAL_SERVER_ERROR);             }
 
         // Get the user's role names including those assigned transitively.
-        List<Pair<Integer,String>> pairs = null;
-        try {pairs = dao.getUserRoleIdsAndNames(tenant, user);}
+        List<Triple<Integer,String,Boolean>> triples = null;
+        try {triples = dao.getUserRoleIdsAndNames(tenant, user);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                              tenant, user, e.getMessage());
                 _log.error(msg, e);
                 throw new TapisImplException(msg, e, Condition.BAD_REQUEST);            }
         
-        return pairs;
+        return triples;
     }
     
     /* ---------------------------------------------------------------------- */

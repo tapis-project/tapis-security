@@ -30,7 +30,8 @@ public final class SkRole
     private String  createdbyTenant;
     private Instant updated;
     private String  updatedby;
-    private String  updatedbyTenant;    
+    private String  updatedbyTenant;
+    private boolean hasChildren;
 
     @Override
     public String toString() {return TapisUtils.toString(this);}
@@ -326,5 +327,13 @@ public final class SkRole
 
 	public void setUpdatedbyTenant(String updatedbyTenant) {
 		this.updatedbyTenant = updatedbyTenant;
+	}
+
+	public boolean isHasChildren() {
+		return hasChildren;
+	}
+
+	public void setHasChildren(boolean hasChildren) {
+		this.hasChildren = hasChildren;
 	}
 }

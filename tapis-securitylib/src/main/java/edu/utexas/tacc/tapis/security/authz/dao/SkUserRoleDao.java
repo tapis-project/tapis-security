@@ -9,7 +9,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -405,9 +405,9 @@ public final class SkUserRoleDao
    */
   public List<String> getUserRoleNames(String tenant, String user) throws TapisException
   {
-      // Get the <role id, role name> tuples directly assigned to this user.
+      // Get the <role id, role name, has_children> tuples directly assigned to this user.
       // Input checking done here.
-      List<Pair<Integer, String>> roleRecs = getUserRoleIdsAndNames(tenant, user);
+      List<Triple<Integer,String,Boolean>> roleRecs = getUserRoleIdsAndNames(tenant, user);
       
       // Final result list.
       ArrayList<String> roleNames = new ArrayList<>();
@@ -420,9 +420,10 @@ public final class SkUserRoleDao
       // ignore duplicates.
       TreeSet<String> roleSet = new TreeSet<String>();
       SkRoleDao dao = new SkRoleDao();
-      for (Pair<Integer, String> pair : roleRecs) {
-          roleSet.add(pair.getRight());  // save parent role name
-          List<String> list = dao.getDescendantRoleNames(pair.getLeft());
+      for (var triple : roleRecs) {
+          roleSet.add(triple.getMiddle());  // save parent role name
+          if (!triple.getRight()) continue; // role has no children
+          List<String> list = dao.getDescendantRoleNames(triple.getLeft());
           if (!list.isEmpty()) roleSet.addAll(list);
       }
       
@@ -474,14 +475,14 @@ public final class SkUserRoleDao
   /* ---------------------------------------------------------------------- */
   /** Get the id and names of all roles directly assigned to this user.  The
    * result DOES NOT include roles assigned transitively.  The result is a 
-   * list of tuples <role id, role name> assigned to the user.
+   * list of tuples <role id, role name, has_children> assigned to the user.
    * 
    * @param tenant the user's tenant
    * @param user the user name
    * @return a non-null list of all roles ids and names assigned directly to user
    * @throws TapisException on error
    */
-  public List<Pair<Integer,String>> getUserRoleIdsAndNames(String tenant, String user) 
+  public List<Triple<Integer,String,Boolean>> getUserRoleIdsAndNames(String tenant, String user) 
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -498,7 +499,7 @@ public final class SkUserRoleDao
       }
       
       // Initialize intermediate result.
-      ArrayList<Pair<Integer,String>> roleRecs = new ArrayList<>();
+      ArrayList<Triple<Integer,String,Boolean>> roleRecs = new ArrayList<>();
 
       // ------------------------- Call SQL ----------------------------
       Connection conn = null;
@@ -518,8 +519,9 @@ public final class SkUserRoleDao
           // Issue the call the result set.
           ResultSet rs = pstmt.executeQuery();
           while (rs.next()) {
-              Pair<Integer,String> pair = Pair.of(rs.getInt(1), rs.getString(2));
-              roleRecs.add(pair);
+              Triple<Integer,String,Boolean> triple = 
+                  Triple.of(rs.getInt(1), rs.getString(2), rs.getBoolean(3));
+              roleRecs.add(triple);
           }
           
           // Close the result and statement.

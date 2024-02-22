@@ -4,11 +4,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.utexas.tacc.tapis.security.authz.impl.RoleImpl;
 import edu.utexas.tacc.tapis.security.authz.impl.UserImpl;
 import edu.utexas.tacc.tapis.security.config.RuntimeParameters;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
@@ -290,13 +289,13 @@ public final class TenantInit
     	// We just log and return any error.
     	try {
         	// Query for the assignment of tenant_definition_updater to tokens.
-        	List<Pair<Integer,String>> roleRecs = null;
+        	List<Triple<Integer,String,Boolean>> roleRecs = null;
 			roleRecs = UserImpl.getInstance().getUserRoleIdsAndNames(siteAdminTenant, tokenSvc);
     	
 			// Determine if the tokens service is already assigned the updater role.
 			// If the role is already assigned directly to tokens, there's no work to do.
 			for (var rec: roleRecs) 
-				if (SK_TENANT_UPDATER_ROLE.equals(rec.getRight())) {
+				if (SK_TENANT_UPDATER_ROLE.equals(rec.getMiddle())) {
 					_log.info(MsgUtils.getMsg("SK_TENANT_UPDATER_FOUND", siteAdminTenant,
 							                  tokenSvc, SK_TENANT_UPDATER_ROLE));
 					return; // role already assigned

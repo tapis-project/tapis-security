@@ -21,14 +21,14 @@ public class SqlStatements
   // Get all rows.
   public static final String SELECT_SKROLE =
 	  "SELECT id, tenant, name, description, owner, owner_tenant, created, createdby, createdby_tenant, "
-	  + "updated, updatedby, updatedby_tenant FROM sk_role ORDER BY id";
+	  + "updated, updatedby, updatedby_tenant, has_children FROM sk_role ORDER BY tenant,name";
   
   // Role statements.
   public static final String ROLE_SELECT_BY_NAME = 
       "SELECT id, tenant, name, description FROM sk_role where tenant = ? AND name = ?";
   public static final String ROLE_SELECT_EXTENDED_BY_NAME = 
       "SELECT id, tenant, name, description, owner, owner_tenant, created, createdby, createdby_tenant, "
-      + "updated, updatedby, updatedby_tenant FROM sk_role where tenant = ? AND name = ?";
+      + "updated, updatedby, updatedby_tenant, has_children FROM sk_role where tenant = ? AND name = ?";
   public static final String ROLE_SELECT_NAMES = 
       "SELECT name FROM sk_role where tenant = ? ORDER BY name";
   public static final String ROLE_SELECT_ID_BY_NAME =
@@ -53,6 +53,12 @@ public class SqlStatements
   public static final String ROLE_INSERT_STRICT = 
 	  "INSERT INTO sk_role (tenant, name, description, owner, owner_tenant, createdby, createdby_tenant, updatedby, updatedby_tenant) "
 	  + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  
+  public static final String ROLE_GET_HASCHILDREN_FOR_UPDATE =
+      "SELECT has_children FROM sk_role where tenant = ? AND id = ? FOR UPDATE";	  
+
+  public static final String ROLE_UPDATE_HASCHILDREN = 
+      "UPDATE sk_role SET has_children = ? where tenant = ? AND id = ?";
   
   /* ---------------------------------------------------------------------- */
   /* sk_role_permission:                                                    */
@@ -111,7 +117,8 @@ public class SqlStatements
   public static final String SELECT_SKROLETREE =
       "SELECT id, tenant, parent_role_id, child_role_id, created, createdby, createdby_tenant, "
       + "updated, updatedby, updatedby_tenant "
-      + "FROM sk_role_tree";
+      + "FROM sk_role_tree "
+      + "ORDER BY tenant, parent_role_id, child_role_id";
   
   // The following select statement only grabs the tenant and child role id from the 
   // sk_role table, but uses the parent role id, createdby and updatedby constants 
@@ -141,6 +148,10 @@ public class SqlStatements
       "SELECT r.name from sk_role r, sk_role_tree rt " +
       "where r.tenant = ? and r.id = rt.parent_role_id and rt.child_role_id = ? " +
       "order by r.name";
+  
+  // Get the number of child roles a parent role has.
+  public static final String ROLE_GET_CHILD_COUNT =
+	  "SELECT count(*) FROM sk_role_tree WHERE tenant = ? AND parent_role_id = ?";
   
   // This recursive query retrieves all the roles names that are descendants
   // of the specified role (the role whose id parameter is passed in).  The
@@ -227,7 +238,7 @@ public class SqlStatements
     		                    "createdby, createdby_tenant, updatedby, updatedby_tenant) " +
       "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-  // Strict versions of above commands that are not idempotent.
+  // Strict versions of above commands that are idempotent.
   public static final String USER_ADD_ROLE_BY_ID_NOT_STRICT =
 	  "INSERT INTO sk_user_role (tenant, user_name, role_id, " +
 	                            "createdby, createdby_tenant, updatedby, updatedby_tenant) " +
@@ -243,7 +254,7 @@ public class SqlStatements
   
   // Get the role ids and the role names directly (non-transitively) assigned to user.
   public static final String USER_SELECT_ROLE_IDS_AND_NAMES =
-      "SELECT ur.role_id, r.name FROM sk_user_role ur, sk_role r " +
+      "SELECT ur.role_id, r.name, r.has_children FROM sk_user_role ur, sk_role r " +
       "WHERE ur.role_id = r.id and ur.tenant = ? and ur.user_name = ?";
   
   // Get all users assigned a list of role names which are expected

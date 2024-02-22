@@ -1260,6 +1260,7 @@ public final class SkRoleDao
         obj.setUpdated(rs.getTimestamp(10).toInstant());
         obj.setUpdatedby(rs.getString(11));
         obj.setUpdatedbyTenant(rs.getString(12));
+        obj.setHasChildren(rs.getBoolean(13));
     } 
     catch (Exception e) {
       String msg = MsgUtils.getMsg("DB_TYPE_CAST_ERROR", e.getMessage());
