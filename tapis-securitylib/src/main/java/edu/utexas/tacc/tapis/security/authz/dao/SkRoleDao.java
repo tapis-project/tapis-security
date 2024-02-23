@@ -1011,7 +1011,7 @@ public final class SkRoleDao
    * @return a non-null, ordered list of permissions
    * @throws TapisException on error
    */
-  public List<String> getImmediatePermissions(String tenantId, int roleId) 
+  public List<String> getImmediatePermissions(String tenantId, int roleId, boolean ordered) 
     throws TapisException
   {
       // Initialize result list.
@@ -1025,7 +1025,9 @@ public final class SkRoleDao
           conn = getConnection();
           
           // Get the select command.
-          String sql = SqlStatements.ROLE_GET_IMMEDIATE_PERMISSIONS;
+          String sql;
+          if (ordered) sql = SqlStatements.ROLE_GET_IMMEDIATE_PERMISSIONS;
+            else sql = SqlStatements.ROLE_GET_IMMEDIATE_PERMISSIONS_UNORDERED;
           
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);

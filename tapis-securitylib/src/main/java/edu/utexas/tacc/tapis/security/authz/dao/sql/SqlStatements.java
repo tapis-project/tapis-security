@@ -67,7 +67,8 @@ public class SqlStatements
   public static final String SELECT_ALL_PERMISSIONS =
       "SELECT id, tenant, role_id, permission, created, createdby, createdby_tenant, " 
       + "updated, updatedby, updatedby_tenant "
-      + "FROM sk_role_permission";
+      + "FROM sk_role_permission "
+      + "ORDER BY tenant, permission";
   
   // The following select statement grabs the role id from the sk_role table after 
   // guaranteeing that the role's tenant is the expected one.    
@@ -104,11 +105,18 @@ public class SqlStatements
   public static final String UPDATE_PERMISSION_BY_ID = 
       "UPDATE sk_role_permission SET permission = ? WHERE tenant = ? and id = ?";
   
+  // Get the permission assigned directly to a role (non-transitive) in order.
   public static final String ROLE_GET_IMMEDIATE_PERMISSIONS =
       "SELECT permission "
       + "FROM sk_role_permission "
       + "WHERE tenant = ? AND role_id = ? "
       + "ORDER BY permission";
+
+  // Get the permission assigned directly to a role (non-transitive) unordered.
+  public static final String ROLE_GET_IMMEDIATE_PERMISSIONS_UNORDERED =
+      "SELECT permission "
+      + "FROM sk_role_permission "
+      + "WHERE tenant = ? AND role_id = ? ";
 
   /* ---------------------------------------------------------------------- */
   /* sk_role_tree:                                                          */
@@ -250,7 +258,8 @@ public class SqlStatements
 
   // Get the role ids directly (non-transitively) assigned to user.
   public static final String USER_SELECT_ROLE_IDS =
-      "SELECT role_id FROM sk_user_role WHERE tenant = ? and user_name = ?";
+      "SELECT ur.role_id, r.has_children FROM sk_user_role ur, sk_role r " +
+      "WHERE ur.role_id = r.id and tenant = ? and user_name = ?";
   
   // Get the role ids and the role names directly (non-transitively) assigned to user.
   public static final String USER_SELECT_ROLE_IDS_AND_NAMES =

@@ -229,7 +229,7 @@ public final class RoleImpl
         
         // Get requested set of permission.
         List<String> perms = null;
-        if (immediate) 
+        if (immediate || !role.hasChildren()) 
             try {perms = role.getImmediatePermissions();}
             catch (Exception e) {
                 throw new TapisImplException(e.getMessage(), e, Condition.INTERNAL_SERVER_ERROR);

@@ -9,6 +9,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -445,9 +446,9 @@ public final class SkUserRoleDao
    */
   public List<String> getUserPermissions(String tenant, String user) throws TapisException
   {
-      // Get the role ids of roles explicitly assigned to the user.
-      // Input checking done here.
-      List<Integer> roleIds = getUserRoleIds(tenant, user);
+      // Get the role ids of roles explicitly assigned to the user, along
+	  // with their has_children flags.  Input checking done here.
+      List<Pair<Integer,Boolean>> roleIds = getUserRoleIds(tenant, user);
 
       // Final result list.
       ArrayList<String>  permSpecs = new ArrayList<>();
@@ -460,9 +461,15 @@ public final class SkUserRoleDao
       // to ignore duplicates.
       TreeSet<String> roleSet = new TreeSet<String>();
       SkRoleDao dao = new SkRoleDao();
-      for (int roleId : roleIds) {
-          List<String> list = dao.getTransitivePermissions(roleId);
-          if (!list.isEmpty()) roleSet.addAll(list);
+      final boolean ordered = false; // the treeset does the ordering
+      for (var pair : roleIds) {
+    	  // For efficiency, only call the transitive permission retrieval
+    	  // method if the role has children.  Otherwise, call the simple,
+    	  // non-recursive retrieval method.
+    	  List<String> list;
+    	  if (pair.getRight()) list = dao.getTransitivePermissions(pair.getLeft());
+    	    else list = dao.getImmediatePermissions(tenant, pair.getLeft(), ordered);
+    	  if (!list.isEmpty()) roleSet.addAll(list);
       }
       
       // Populate the list from the ordered set.
@@ -559,15 +566,16 @@ public final class SkUserRoleDao
   /* ---------------------------------------------------------------------- */
   /* getUserRoleIds:                                                        */
   /* ---------------------------------------------------------------------- */
-  /** Get the role ids directly assigned to this user.  The result DOES NOT
-   * including roles assigned transitively.
+  /** Get the role ids and their has_children flag that are directly assigned 
+   * to this user.  The result DOES NOT including roles assigned transitively.
    * 
    * @param tenant the user's tenant
    * @param user the user name
-   * @return a non-null list of all roles assigned directly to user
+   * @return a non-null list of all roles with has_children flage assigned directly to user
    * @throws TapisException on error
    */
-  public List<Integer> getUserRoleIds(String tenant, String user) throws TapisException
+  public List<Pair<Integer,Boolean>> getUserRoleIds(String tenant, String user) 
+   throws TapisException
   {
       // ------------------------- Check Input -------------------------
       // Exceptions can be throw from here.
@@ -583,7 +591,7 @@ public final class SkUserRoleDao
       }
       
       // Initialize intermediate result.
-      ArrayList<Integer> roleIds = new ArrayList<>();
+      ArrayList<Pair<Integer,Boolean>> roleIds = new ArrayList<>();
 
       // ------------------------- Call SQL ----------------------------
       Connection conn = null;
@@ -602,7 +610,9 @@ public final class SkUserRoleDao
                       
           // Issue the call the result set.
           ResultSet rs = pstmt.executeQuery();
-          while (rs.next()) roleIds.add(rs.getInt(1));
+          while (rs.next()) {
+        	  roleIds.add(Pair.of(rs.getInt(1), rs.getBoolean(2)));
+          }
           
           // Close the result and statement.
           rs.close();

@@ -220,7 +220,8 @@ public final class SkRole
         List<String> list = null;
         try {
             SkRoleDao dao = new SkRoleDao();
-            list = dao.getImmediatePermissions(tenant, id);
+            final boolean ordered = true;
+            list = dao.getImmediatePermissions(tenant, id, ordered);
         } catch (Exception e) {
             _log.error(e.getMessage()); // details already logged
             throw e;
@@ -329,7 +330,7 @@ public final class SkRole
 		this.updatedbyTenant = updatedbyTenant;
 	}
 
-	public boolean isHasChildren() {
+	public boolean hasChildren() {
 		return hasChildren;
 	}
 
