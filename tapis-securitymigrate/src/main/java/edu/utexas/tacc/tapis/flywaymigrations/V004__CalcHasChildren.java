@@ -41,6 +41,6 @@ final public class V004__CalcHasChildren
         conn.commit();
         
         // Result message.
-        System.out.println("V004__CalcHasChildren: " + rows + " updated.");
+        System.out.println("V004__CalcHasChildren: " + rows + " roles updated.");
 	}
 }

@@ -45,7 +45,7 @@ public final class TapisSecurityJDBCMigrateParms
  {
   // Override field default values set in superclass after 
   // construction but before we process user input.
-  cmdDirectory = "edu/utexas/tacc/tapis/securitymigrate/sql,classpath:edu/utexas/tacc/tapis/securitymigrate/scripts";
+  cmdDirectory = "edu/utexas/tacc/tapis/securitymigrate/sql,classpath:edu/utexas/tacc/tapis/flywaymigrations";
   schema = HikariDSGenerator.TAPIS_SEC_SCHEMA_NAME;
 
   // Get a command line parser to verify input.
