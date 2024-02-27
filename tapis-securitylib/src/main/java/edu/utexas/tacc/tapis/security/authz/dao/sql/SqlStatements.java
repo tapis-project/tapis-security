@@ -158,8 +158,8 @@ public class SqlStatements
       "order by r.name";
   
   // Get the number of child roles a parent role has.
-  public static final String ROLE_GET_CHILD_COUNT =
-	  "SELECT count(*) FROM sk_role_tree WHERE tenant = ? AND parent_role_id = ?";
+  public static final String ROLE_GET_CHILD_INDICATOR =
+	  "SELECT 1 FROM sk_role_tree WHERE tenant = ? AND parent_role_id = ? LIMIT 1";
   
   // This recursive query retrieves all the roles names that are descendants
   // of the specified role (the role whose id parameter is passed in).  The

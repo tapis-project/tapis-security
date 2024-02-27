@@ -689,7 +689,7 @@ public final class SkRoleTreeDao
      try
      {
          // Get the select command.
-         String sql = SqlStatements.ROLE_GET_CHILD_COUNT;
+         String sql = SqlStatements.ROLE_GET_CHILD_INDICATOR;
          
          // Prepare the statement and fill in the placeholders.
          PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -711,15 +711,8 @@ public final class SkRoleTreeDao
          throw new TapisException(msg, e);
      }
      
-     // Make sure we found the child indicator.
-     if (numChildren < 0) {
-         String msg = MsgUtils.getMsg("SK_ROLE_GET_CHILD_COUNT_ERROR", tenant, parentRoleId, "NO COUNT RETURNED");
-         _log.error(msg);
-         throw new TapisException(msg);
-     }
-     
      // Determine if we need to update the has_children flag in the parent role,
      // which is only necessary when transitioning has_children from true to false.
-     if (numChildren == 0) updateParentHasChildren(conn, tenant, parentRoleId, false);
+     if (numChildren < 1) updateParentHasChildren(conn, tenant, parentRoleId, false);
   }
 }
