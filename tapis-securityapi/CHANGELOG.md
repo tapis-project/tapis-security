@@ -9,6 +9,12 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 -----------------------
+## 1.6.1 - 2024-02-28
+
+### New Features:
+1. Recursive query optimization using new sk_roles.has_children column. 
+
+-----------------------
 ## 1.6.0 - 2024-01-24
 
 ### New Features:
