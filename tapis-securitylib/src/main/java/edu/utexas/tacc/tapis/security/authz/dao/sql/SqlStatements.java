@@ -259,7 +259,7 @@ public class SqlStatements
   // Get the role ids directly (non-transitively) assigned to user.
   public static final String USER_SELECT_ROLE_IDS =
       "SELECT ur.role_id, r.has_children FROM sk_user_role ur, sk_role r " +
-      "WHERE ur.role_id = r.id and tenant = ? and user_name = ?";
+      "WHERE ur.role_id = r.id and ur.tenant = ? and ur.user_name = ?";
   
   // Get the role ids and the role names directly (non-transitively) assigned to user.
   public static final String USER_SELECT_ROLE_IDS_AND_NAMES =
