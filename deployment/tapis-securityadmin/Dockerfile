@@ -20,6 +20,9 @@ ARG BUILD_TIME
 
 MAINTAINER CIC Support <cicsupport@tacc.utexas.edu>
 
+# Install less. Add user tapis
+RUN apt update && apt install -y less vim-tiny && useradd -m tapis
+
 # Set commit info
 LABEL "GIT_COMMIT"=$GIT_COMMIT
 LABEL "VERSION"=$VER
@@ -27,6 +30,11 @@ LABEL "BUILD_TIME"=$BUILD_TIME
 
 # add
 COPY shaded-securitylib.jar /usr/local/bin/shaded-securitylib.jar
+
+# Change to non-root user after installation is complete.
+# Create a private work directory subsequent commands.
+USER tapis
+WORKDIR /home/tapis/work
 
 # Java module commands that are always needed.
 ENV JAVA_MODULE_OPTS --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED
