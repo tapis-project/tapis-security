@@ -21,6 +21,22 @@ public class SKApiUtils
     // a leading $ character is reserved for SK generated names and must be rejected.
     private static final Pattern _namePattern = Pattern.compile("^\\p{Alpha}(\\p{Alnum}|_)*");
     
+    // Restricted service role name validator.  All such roles must begin with "$#" 
+    // followed by at least one letter and zero or more alphanumerics and underscores.
+    private static final Pattern _restrictedRolePattern = Pattern.compile("^\\$#\\p{Alpha}(\\p{Alnum}|_)*");
+    
+    // Restricted service permissions format validator. The minimum number of colon
+    // separated segments is 4 and the maximum is 6. The first 3 segment values are 
+    // each assigned from their own hardcoded set. The tenant variant expects only
+    // 4 segments; the user and service variants expect 5; and the action variant  
+    // expects 6 segments.  This regex doesn't enforce those cardinality constraints
+    // so we use the next regex for validating the number of segments.
+    private static final Pattern _permPattern = 
+        Pattern.compile("^service:(allow|deny):(tenant|user|action|service):(\\p{Alnum}|_)+(:(\\p{Alnum}|_)+)?(:(\\p{Alnum}|_)+)?$");
+
+    // Split a string into colon separated segments.
+    private static final Pattern _colonSeparated = Pattern.compile(":");
+    
     /* **************************************************************************** */
     /*                                Public Methods                                */
     /* **************************************************************************** */
@@ -46,6 +62,50 @@ public class SKApiUtils
     {
         if (name == null) return false;
         return _namePattern.matcher(name).matches();
+    }
+    
+    /* ---------------------------------------------------------------------------- */
+    /* isValidRestrictedServiceRoleName:                                            */
+    /* ---------------------------------------------------------------------------- */
+    /** Check a candidate name against the restricted role name regex.
+     * 
+     * @param name the name to validate
+     * @return true if matches regex, false otherwise
+     */
+    public static boolean isValidRestrictedServiceRoleName(String name)
+    {
+    	if (name == null) return false;
+    	return _restrictedRolePattern.matcher(name).matches();
+    }
+    
+    /* ---------------------------------------------------------------------------- */
+    /* isValidRestrictedServicePermission:                                          */
+    /* ---------------------------------------------------------------------------- */
+    /** Check a candidate permission against the defined permission formats for 
+     * restricted role names. The first regex rules out invalid characters and 
+     * impossible number of colon separated segments.  The second regex guarantees
+     * that the appropriate number of segments are supplied for each permission
+     * format.
+     * 
+     * @param perm the permission to validate
+     * @return true if perm has a valid format, false otherwise
+     */
+    public static boolean isValidRestrictedServicePermission(String perm)
+    {
+    	// Check the basic format of the permission string.
+    	if (perm == null) return false;
+    	if (!_permPattern.matcher(perm).matches()) return false;
+
+    	// Further check the number of colon separated segments required
+    	// by each permission category.
+    	var segments = _colonSeparated.split(perm);
+    	if (segments[2].equals("tenant") && segments.length == 4) return true;
+    	else if (segments[2].equals("user") && segments.length == 5) return true;
+    	else if (segments[2].equals("service") && segments.length == 5) return true;
+    	else if (segments[2].equals("action") && segments.length == 6) return true;
+    	
+    	// The perm format is ok but the number of required segments is wrong.
+    	return false;
     }
     
     /* ---------------------------------------------------------------------------- */

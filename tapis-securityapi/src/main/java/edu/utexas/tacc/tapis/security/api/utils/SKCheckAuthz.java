@@ -64,6 +64,7 @@ public final class SKCheckAuthz
     private String  _preventAdminRoleName;
     private boolean _preventInvalidOwnerAssignment;
     private String  _preventInvalidOwner;
+    private boolean _preventDifferentJwtAndReqTenants;
 
     /* **************************************************************************** */
     /*                                Constructors                                  */
@@ -135,6 +136,9 @@ public final class SKCheckAuthz
     	_preventInvalidOwner = newTenant;
     	return this;
     }
+    
+    public SKCheckAuthz setPreventDifferentJwtAndReqTenants()
+    {_preventDifferentJwtAndReqTenants = true; return this;}
     
     /* **************************************************************************** */
     /*                                Public Methods                                */
@@ -223,7 +227,7 @@ public final class SKCheckAuthz
     /* ---------------------------------------------------------------------------- */
     /* preventMsg:                                                                  */
     /* ---------------------------------------------------------------------------- */
-    /** Run the enabled prevention routines.  All enabled prevention constraints muse
+    /** Run the enabled prevention routines.  All enabled prevention constraints must
      * pass--a failure of any one of them causes the request to be aborted.
      * 
      * @return null if there are no problems, otherwise return an error message.
@@ -245,6 +249,11 @@ public final class SKCheckAuthz
     	// Make sure role owner reassignments are valid.
     	if (_preventInvalidOwnerAssignment) {
     		String errorMsg = preventInvalidOwnerAssignment();
+    		if (errorMsg != null) return errorMsg;
+    	}
+    	
+    	if (_preventDifferentJwtAndReqTenants) {
+    		String errorMsg = preventDifferentJwtAndReqTenants();
     		if (errorMsg != null) return errorMsg;
     	}
     	
@@ -752,6 +761,24 @@ public final class SKCheckAuthz
             _failedChecks.add("preventInvalidOwnerAssignment"); // triggers unauthorized code
             return msg;
         }
+    	
+    	// Success.
+    	return null;
+    }
+
+    /* ---------------------------------------------------------------------------- */
+    /* preventDifferentJwtAndReqTenants:                                            */
+    /* ---------------------------------------------------------------------------- */
+    private String preventDifferentJwtAndReqTenants()
+    {
+    	// The tenant specified in the request and the JWT's tenant must be the same.
+    	if (!_jwtTenant.equals(_reqTenant)) {
+            String msg = MsgUtils.getMsg("TAPIS_SECURITY_TENANT_NOT_ALLOWED", 
+                    _jwtUser, _jwtTenant, _preventInvalidOwner);
+            _log.error(msg);
+            _failedChecks.add("preventDifferentJwtAndReqTenants"); // triggers unauthorized code
+            return msg;
+    	}
     	
     	// Success.
     	return null;
