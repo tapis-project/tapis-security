@@ -23,7 +23,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +51,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
-/** This class implements the restricted service API. The API restrict what a service can 
+/** This class implements the restricted service API. The API restricts what a service can 
  * do by limiting its runtime access to these resources:
  *
  *  tenant - what tenants the new service can access
@@ -63,6 +62,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
  *
  *  action - what actions can the new service take
  *
+ * Services are designated as restricted at a site by having their name included in the 
+ * restricted_services array of the site record.  Each such service has a role of the format
+ * $#service_<service_name>.  This role contains well-defined permissions strings that
+ * limit what the service can do.  See addServiceRolePermission for details on the types
+ * of permissions that can be defined.
  * 
  * @author rcardone
  */
