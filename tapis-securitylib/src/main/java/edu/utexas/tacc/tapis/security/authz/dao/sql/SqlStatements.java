@@ -31,6 +31,8 @@ public class SqlStatements
       + "updated, updatedby, updatedby_tenant, has_children FROM sk_role where tenant = ? AND name = ?";
   public static final String ROLE_SELECT_NAMES = 
       "SELECT name FROM sk_role where tenant = ? ORDER BY name";
+  public static final String ROLE_SELECT_RESTRICTED_SVC_NAMES = 
+	  "SELECT name FROM sk_role where tenant = ? AND name LIKE '!#service_%' ORDER BY name";
   public static final String ROLE_SELECT_ID_BY_NAME =
       "SELECT id FROM sk_role where tenant = ? AND name = ?";
   public static final String ROLE_INSERT = 

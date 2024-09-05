@@ -128,6 +128,33 @@ public final class RoleImpl
     }
     
     /* ---------------------------------------------------------------------- */
+    /* getRestrictedSvcRoleNames:                                             */
+    /* ---------------------------------------------------------------------- */
+    public List<String> getRestrictedSvcRoleNames(String tenant) throws TapisImplException
+    {
+        // Get the dao.
+        SkRoleDao dao = null;
+        try {dao = getSkRoleDao();}
+            catch (Exception e) {
+                String msg = MsgUtils.getMsg("DB_DAO_ERROR", "roles");
+                _log.error(msg, e);
+                throw new TapisImplException(msg, e, Condition.INTERNAL_SERVER_ERROR); 
+            }
+        
+        // Create the role.
+        List<String> list = null;
+        try {list = dao.getRestrictedSvcRoleNames(tenant);} 
+            catch (Exception e) {
+                String msg = MsgUtils.getMsg("SK_ROLE_GET_NAMES_ERROR", 
+                                             tenant, "<unknown>");
+                _log.error(msg, e);
+                throw new TapisImplException(msg, e, Condition.BAD_REQUEST);     
+            }
+        
+        return list;
+    }
+
+    /* ---------------------------------------------------------------------- */
     /* createRole:                                                            */
     /* ---------------------------------------------------------------------- */
     public int createRole(String roleName, String roleTenant, String description,

@@ -19,10 +19,10 @@ extends ReqAddServiceRolePermission
    public String validate() 
    {
        // Final checks.
-       if (StringUtils.isBlank(roleTenant)) 
-           return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "RemoveServiceRolePermission", "roleTenant");
-       if (!SKApiUtils.isValidRestrictedServiceRoleName(roleName))
-           return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "RemoveServiceRolePermission", "roleName", roleName);
+       if (StringUtils.isBlank(adminTenant)) 
+           return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "RemoveServiceRolePermission", "adminTenant");
+       if (!SKApiUtils.isValidName(serviceName))
+           return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "RemoveServiceRolePermission", "serviceName", serviceName);
        if (!SKApiUtils.isValidRestrictedServicePermission(permSpec))
            return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "RemoveServiceRolePermission", "permSpec");
        

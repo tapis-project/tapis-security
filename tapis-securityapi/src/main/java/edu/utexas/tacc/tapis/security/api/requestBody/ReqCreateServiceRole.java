@@ -12,8 +12,8 @@ import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 public final class ReqCreateServiceRole 
 implements IReqBody
 {
-   public String roleTenant;
-   public String roleName;
+   public String adminTenant;
+   public String serviceName;
    public String description;
    
    /** Return a user-appropriate error message on failed validation
@@ -23,12 +23,12 @@ implements IReqBody
    public String validate() 
    {
        // Final checks.
-       if (StringUtils.isBlank(roleTenant)) 
-           return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "createServiceRole", "roleTenant");
+       if (StringUtils.isBlank(adminTenant)) 
+           return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "createServiceRole", "adminTenant");
        if (StringUtils.isBlank(description))
            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "createServiceRole", "description");
-       if (!SKApiUtils.isValidRestrictedServiceRoleName(roleName))
-           return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "createServiceRole", "roleName", roleName);
+       if (!SKApiUtils.isValidName(serviceName))
+           return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "createServiceRole", "roleName", serviceName);
        
        // Success.
        return null;

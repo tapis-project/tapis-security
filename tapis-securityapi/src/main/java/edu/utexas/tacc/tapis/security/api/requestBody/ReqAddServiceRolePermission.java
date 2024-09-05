@@ -12,8 +12,8 @@ import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 public class ReqAddServiceRolePermission 
 implements IReqBody
 {
-   public String roleTenant;
-   public String roleName;
+   public String adminTenant;
+   public String serviceName;
    public String permSpec;
 
    /** Return a user-appropriate error message on failed validation
@@ -23,10 +23,10 @@ implements IReqBody
    public String validate() 
    {
        // Final checks.
-       if (StringUtils.isBlank(roleTenant)) 
-           return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "AddServiceRolePermission", "roleTenant");
-       if (!SKApiUtils.isValidRestrictedServiceRoleName(roleName))
-           return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "AddServiceRolePermission", "roleName", roleName);
+       if (StringUtils.isBlank(adminTenant)) 
+           return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "AddServiceRolePermission", "adminTenant");
+       if (!SKApiUtils.isValidName(serviceName))
+           return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "AddServiceRolePermission", "serviceName", serviceName);
        if (!SKApiUtils.isValidRestrictedServicePermission(permSpec))
            return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "AddServiceRolePermission", "permSpec");
        

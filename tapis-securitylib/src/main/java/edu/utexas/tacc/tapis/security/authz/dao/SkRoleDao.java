@@ -186,6 +186,77 @@ public final class SkRoleDao
   }
 
   /* ---------------------------------------------------------------------- */
+  /* getRestrictedSvcRoleNames:                                             */
+  /* ---------------------------------------------------------------------- */
+  /** Get all restricted service role names in a tenant in alphabetic order.
+   * 
+   * @param tenant the tenant id
+   * @return the a non-null but possibly empty list of role names
+   * @throws TapisException on error
+   */
+  public List<String> getRestrictedSvcRoleNames(String tenant) 
+    throws TapisException
+  {
+      // ------------------------- Check Input -------------------------
+      // Exceptions can be throw from here.
+      if (StringUtils.isBlank(tenant)) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getRestrictedSvcRoleNames", "tenant");
+          _log.error(msg);
+          throw new TapisException(msg);
+      }
+      
+      // ------------------------- Call SQL ----------------------------
+      Connection conn = null;
+      ArrayList<String> names = new ArrayList<>(); // result
+      try
+      {
+          // Get a database connection.
+          conn = getConnection();
+          
+          // Get the select command.
+          String sql = SqlStatements.ROLE_SELECT_RESTRICTED_SVC_NAMES;
+          
+          // Prepare the statement and fill in the placeholders.
+          PreparedStatement pstmt = conn.prepareStatement(sql);
+          pstmt.setString(1, tenant);
+                      
+          // Issue the call for the N row result set.
+          ResultSet rs = pstmt.executeQuery();
+          while (rs.next()) names.add(rs.getString(1));
+          
+          // Close the result and statement.
+          rs.close();
+          pstmt.close();
+    
+          // Commit the transaction.
+          conn.commit();
+      }
+      catch (Exception e)
+      {
+          // Rollback transaction.
+          try {if (conn != null) conn.rollback();}
+              catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
+          
+          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "tenant", tenant, e.getMessage());
+          _log.error(msg, e);
+          throw new TapisException(msg, e);
+      }
+      finally {
+          // Always return the connection back to the connection pool.
+          try {if (conn != null) conn.close();}
+            catch (Exception e) 
+            {
+              // If commit worked, we can swallow the exception.  
+              // If not, the commit exception will be thrown.
+              String msg = MsgUtils.getMsg("DB_FAILED_CONNECTION_CLOSE");
+              _log.error(msg, e);
+            }
+      }
+      
+      return names;
+  }
+
+  /* ---------------------------------------------------------------------- */
   /* getRole:                                                               */
   /* ---------------------------------------------------------------------- */
   /** Get a role by tenant and name.

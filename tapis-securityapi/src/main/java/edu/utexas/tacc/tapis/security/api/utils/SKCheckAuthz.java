@@ -17,6 +17,7 @@ import edu.utexas.tacc.tapis.security.secrets.SecretPathMapper.SecretPathMapperP
 import edu.utexas.tacc.tapis.security.secrets.SecretType;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext.AccountType;
 import edu.utexas.tacc.tapis.shared.utils.SkConstants;
@@ -65,6 +66,7 @@ public final class SKCheckAuthz
     private boolean _preventInvalidOwnerAssignment;
     private String  _preventInvalidOwner;
     private boolean _preventDifferentJwtAndReqTenants;
+    private boolean _preventNonSiteAdminTenant;
 
     /* **************************************************************************** */
     /*                                Constructors                                  */
@@ -139,6 +141,9 @@ public final class SKCheckAuthz
     
     public SKCheckAuthz setPreventDifferentJwtAndReqTenants()
     {_preventDifferentJwtAndReqTenants = true; return this;}
+    
+    public SKCheckAuthz setPreventNonSiteAdminTenant()
+    {_preventNonSiteAdminTenant = true; return this;}
     
     /* **************************************************************************** */
     /*                                Public Methods                                */
@@ -254,6 +259,11 @@ public final class SKCheckAuthz
     	
     	if (_preventDifferentJwtAndReqTenants) {
     		String errorMsg = preventDifferentJwtAndReqTenants();
+    		if (errorMsg != null) return errorMsg;
+    	}
+    	
+    	if (_preventNonSiteAdminTenant) {
+    		String errorMsg = preventNonSiteAdminTenant();
     		if (errorMsg != null) return errorMsg;
     	}
     	
@@ -771,10 +781,19 @@ public final class SKCheckAuthz
     /* ---------------------------------------------------------------------------- */
     private String preventDifferentJwtAndReqTenants()
     {
+        // We require _reqTenant to be assigned.
+        if (_reqTenant == null) {
+            String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", 
+                                         "preventNonSiteAdminTenant", "_reqTenant");
+            _log.error(msg);
+            _failedChecks.add("preventDifferentJwtAndReqTenants"); // triggers unauthorized code
+            return msg;
+        }
+        
     	// The tenant specified in the request and the JWT's tenant must be the same.
     	if (!_jwtTenant.equals(_reqTenant)) {
             String msg = MsgUtils.getMsg("TAPIS_SECURITY_TENANT_NOT_ALLOWED", 
-                    _jwtUser, _jwtTenant, _preventInvalidOwner);
+                                         _jwtUser, _jwtTenant, _reqTenant);
             _log.error(msg);
             _failedChecks.add("preventDifferentJwtAndReqTenants"); // triggers unauthorized code
             return msg;
@@ -782,6 +801,36 @@ public final class SKCheckAuthz
     	
     	// Success.
     	return null;
+    }
+    
+    /* ---------------------------------------------------------------------------- */
+    /* preventNonSiteAdminTenant:                                                   */
+    /* ---------------------------------------------------------------------------- */
+    private String preventNonSiteAdminTenant() throws RuntimeException
+    {
+     // We require _reqTenant to be assigned.
+     if (_reqTenant == null) {
+         String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", 
+                                      "preventNonSiteAdminTenant", "_reqTenant");
+         _log.error(msg);
+         _failedChecks.add("preventNonSiteAdminTenant"); // triggers unauthorized code
+         return msg;
+     }
+    	
+   	 // Determine if the request tenant is a site-admin tenant in some site.
+   	 var sites = TenantManager.getInstance().getSites();
+   		 for (var entry : sites.entrySet()) {
+   			 if (_reqTenant.equals(entry.getValue().getSiteAdminTenantId()))
+   				 return null;
+   			 
+        }
+   	 
+     // Not a site-admin tenant.
+     String msg = MsgUtils.getMsg("TAPIS_SECURITY_TENANT_NOT_ALLOWED", 
+                                  _jwtUser, _jwtTenant, _reqTenant);
+     _log.error(msg);
+     _failedChecks.add("preventNonSiteAdminTenant"); // triggers unauthorized code
+     return msg;
     }
     
     /* ---------------------------------------------------------------------------- */

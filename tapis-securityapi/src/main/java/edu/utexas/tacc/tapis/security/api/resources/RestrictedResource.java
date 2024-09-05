@@ -84,6 +84,9 @@ public final class RestrictedResource
     private static final String FILE_SK_REMOVE_ROLE_PERM_REQUEST = 
             "/edu/utexas/tacc/tapis/security/api/jsonschema/RemoveRolePermissionRequest.json";
 
+    // The prefix that identifies all restricted service role names.
+    private static final String RESTRICTED_SVC_ROLENAME_PREFIX = "$#service_";
+    
     /* **************************************************************************** */
     /*                                    Fields                                    */
     /* **************************************************************************** */
@@ -135,14 +138,16 @@ public final class RestrictedResource
      /* getServiceRoleNames:                                                         */
      /* ---------------------------------------------------------------------------- */
      @GET
+     @Path("/{adminTenant}")
      @Produces(MediaType.APPLICATION_JSON)
      @Operation(
-             description = "Get the names of all roles in the tenant in alphabetic order.  "
-                     + "Future enhancements will include search filtering.\n\n"
+             description = "Get the names of all restricted service roles in a site-admin "
+             		 + "tenant in alphabetic order.  Restricted service role names have "
+             		 + "the format !#service_<service> and are only defined in site-admin "
+             		 + "tenants.  The tenant is a required path parameter and must be a "
+             		 + "site-admin tenant.\n\n"
                      + ""
-                     + "A valid tenant must be specified as a query parameter.  "
-                     + "This request is authorized if the requestor is a user that has "
-                     + "access to the specified tenant or if the requestor is a service."
+                     + "The requestor must be an authenticated user in the tenant or a service."
                      + "",
              tags = "restricted",
              security = {@SecurityRequirement(name = "TapisJWT")},
@@ -160,7 +165,7 @@ public final class RestrictedResource
                      content = @Content(schema = @Schema(
                          implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
          )
-     public Response getServiceRoleNames(@QueryParam("tenant") String tenant,
+     public Response getServiceRoleNames(@PathParam("adminTenant") String tenant,
                                          @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
      {
          // Trace this request.
@@ -171,23 +176,25 @@ public final class RestrictedResource
          }
          
          // ------------------------- Input Processing -------------------------
-         if (StringUtils.isBlank(tenant)) {
-             String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
+         if (!SKApiUtils.isValidName(tenant)) {
+        	 String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "getServiceRoleNames", "tenant", tenant);
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+            		 entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
          }
-
+         
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null)
+        		 					 .setPreventNonSiteAdminTenant()
+        		 					 .check(prettyPrint);
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
-         // Create the role.
+         // Get the rolename list.
          List<String> list = null;
          try {
-             list = getRoleImpl().getRoleNames(tenant);
+             list = getRoleImpl().getRestrictedSvcRoleNames(tenant);
          } catch (Exception e) {
              String msg = MsgUtils.getMsg("SK_ROLE_GET_NAMES_ERROR", tenant, 
                                           TapisThreadLocal.tapisThreadContext.get().getJwtUser());
@@ -207,18 +214,18 @@ public final class RestrictedResource
      }
 
      /* ---------------------------------------------------------------------------- */
-     /* getServiceRoleByName:                                                        */
+     /* getServiceRole:                                                              */
      /* ---------------------------------------------------------------------------- */
      @GET
-     @Path("/{roleName}")
+     @Path("/{adminTenant}/{serviceName}")
      @Produces(MediaType.APPLICATION_JSON)
      @Operation(
-         description = "Get the named role's definition.  A valid tenant must be "
-                       + "specified as a query parameter.  This request is authorized "
-                       + "if the requestor is a user that has access to the specified "
-                       + "tenant or if the requestor is a service.\n\n"
+         description = "Get a restricted service's role given the site-admin tenant in "
+         			   + "which the role is defined and the service name.  Restricted "
+         			   + "service role names have the format !#service_<service> and are "
+         			   + "only defined in site-admin tenants.\n\n"
                        + ""
-                       + "URL encoding in rolenames and permissions: $ -> %24, # -> %23, : -> %3A"
+                       + "The requestor must be an authenticated user in the tenant or a service."
                        + "",
          tags = "restricted",
          security = {@SecurityRequirement(name = "TapisJWT")},
@@ -239,28 +246,28 @@ public final class RestrictedResource
                 content = @Content(schema = @Schema(
                    implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
      )
-     public Response getServiceRoleByName(@PathParam("roleName") String roleName,
-                                   @QueryParam("tenant") String tenant,
-                                   @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+     public Response getServiceRole(@PathParam("adminTenant") String tenant,
+    		                        @PathParam("serviceName") String serviceName,
+                                    @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
              String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(), 
-                                          "getServiceRoleByName", _request.getRequestURL());
+                                          "getServiceRole", _request.getRequestURL());
              _log.trace(msg);
          }
          
          // ------------------------- Input Processing -------------------------
-         if (StringUtils.isBlank(tenant)) {
-             String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
+         if (!SKApiUtils.isValidName(tenant)) {
+        	 String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "getServiceRole", "tenant", tenant);
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+            		 entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
          }
 
          // Make sure the restricted service role name conforms to the required format.
-         if (!SKApiUtils.isValidName(roleName)) {
-             String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "getServiceRoleByName", "roleName", roleName);
+         if (!SKApiUtils.isValidName(serviceName)) {
+             String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "getServiceRole", "roleName", serviceName);
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
                      entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
@@ -268,10 +275,15 @@ public final class RestrictedResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null)
+        		 					 .setPreventNonSiteAdminTenant()
+        		 					 .check(prettyPrint);
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
+         // Construct the restricted service role name using the service name.
+         var roleName = RESTRICTED_SVC_ROLENAME_PREFIX + serviceName;
+         
          // Get the role.
          SkRole role = null;
          try {
@@ -300,23 +312,117 @@ public final class RestrictedResource
      }
 
      /* ---------------------------------------------------------------------------- */
+     /* getServiceRolePermissions:                                                   */
+     /* ---------------------------------------------------------------------------- */
+     @GET
+     @Path("/{adminTenant}/{serviceName}/perms")
+     @Produces(MediaType.APPLICATION_JSON)
+     @Operation(
+         description = "Get the restricted service role's permissions.\n\n"
+                 + ""
+                 + "The requestor must be an authenticated user in the tenant or a service."
+                 + "",
+         tags = "restricted",
+         security = {@SecurityRequirement(name = "TapisJWT")},
+         responses = 
+             {@ApiResponse(responseCode = "200", description = "Named role returned.",
+               content = @Content(schema = @Schema(
+                   implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray.class))),
+              @ApiResponse(responseCode = "400", description = "Input error.",
+               content = @Content(schema = @Schema(
+                  implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
+              @ApiResponse(responseCode = "401", description = "Not authorized.",
+               content = @Content(schema = @Schema(
+                  implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
+              @ApiResponse(responseCode = "404", description = "Named role not found.",
+                content = @Content(schema = @Schema(
+                   implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
+              @ApiResponse(responseCode = "500", description = "Server error.",
+                content = @Content(schema = @Schema(
+                   implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
+     )
+     public Response getServiceRolePermissions(@PathParam("adminTenant") String tenant,
+    		 								   @PathParam("serviceName") String serviceName,
+                                               @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+     {
+         // Trace this request.
+         if (_log.isTraceEnabled()) {
+             String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(), 
+                                          "getServiceRolePermissions", _request.getRequestURL());
+             _log.trace(msg);
+         }
+         
+         // ------------------------- Input Processing -------------------------
+         if (!SKApiUtils.isValidName(tenant)) {
+        	 String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "getServiceRolePermissions", "tenant", tenant);
+             _log.error(msg);
+             return Response.status(Status.BAD_REQUEST).
+            		 entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+         }
+
+         // Make sure the restricted service role name conforms to the required format.
+         if (!SKApiUtils.isValidName(serviceName)) {
+             String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "getServiceRolePermissions", "roleName", serviceName);
+             _log.error(msg);
+             return Response.status(Status.BAD_REQUEST).
+                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+         }
+         
+         // ------------------------- Check Authz ------------------------------
+         // Authorization passed if a null response is returned.
+         Response resp = SKCheckAuthz.configure(tenant, null)
+        		 					 .setPreventNonSiteAdminTenant()
+        		 					 .check(prettyPrint);
+         if (resp != null) return resp;
+         
+         // ------------------------ Request Processing ------------------------
+         // Construct the restricted service role name using the service name.
+         var roleName = RESTRICTED_SVC_ROLENAME_PREFIX + serviceName;
+         
+         // Create the role.
+         List<String> list = null;
+         try {
+        	 final boolean immediate = true;
+             list = getRoleImpl().getRolePermissions(tenant, roleName, immediate);
+         } catch (Exception e) {
+             String msg = MsgUtils.getMsg("SK_ROLE_GET_PERMISSIONS_ERROR",tenant, 
+                                          TapisThreadLocal.tapisThreadContext.get().getJwtUser(), 
+                                          roleName);
+             return getExceptionResponse(e, msg, prettyPrint);
+         }
+
+         // Assign result.
+         ResultNameArray names = new ResultNameArray();
+         names.names = list.toArray(new String[list.size()]);
+         RespNameArray r = new RespNameArray(names);
+
+         // ---------------------------- Success ------------------------------- 
+         // Success means we found the role. 
+         int cnt = names.names.length;
+         return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
+             MsgUtils.getMsg("TAPIS_FOUND", "Permissions", cnt + " permissions"), prettyPrint, r)).build();
+     }
+
+     /* ---------------------------------------------------------------------------- */
      /* createServiceRole:                                                           */
      /* ---------------------------------------------------------------------------- */
      @POST
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
      @Operation(
-             description = "Create a role for a restricted service using a request body.  "
-                           + "Role names are case sensitive, alpha-numeric "
-                           + "strings that can also contain underscores.  Role names must "
-                           + "start with an alphbetic character and can be no more than 58 "
-                           + "characters in length.  The desciption can be no more than "
-                           + "2048 characters long.  If the role already exists, this "
-                           + "request has no effect.\n\n"
+             description = "Create a role for a restricted service.  "
+             			   + "Parameters include the standard serviceName; the adminTenant, "
+             			   + "which is the name of a site-admin tenant; and a description.  "
+             			   + "This endpoint will construct a standard restricted "
+             			   + "service role name using the serviceName parameter.  Restricted "
+             			   + "service role names have the format !#service_<service> and are "
+            			   + "only defined in site-admin tenants.\n\n"
+             			   + ""
+                           + "The desciption can be no more than 2048 characters long.  "
+                           + "If the role already exists, this request has no effect.\n\n"
                            + ""
                            + "For the request to be authorized, the requestor must be "
-                           + "either an administrator or a service allowed to perform "
-                           + "updates in the new role's tenant."
+                           + "the administrator in the site-admin tenant."
                            + "",
              tags = "restricted",
              security = {@SecurityRequirement(name = "TapisJWT")},
@@ -367,8 +473,8 @@ public final class RestrictedResource
          }
              
          // Fill in the parameter fields.
-         String roleTenant  = payload.roleTenant;
-         String roleName    = payload.roleName;
+         String roleTenant  = payload.adminTenant;
+         String roleName    = RESTRICTED_SVC_ROLENAME_PREFIX + payload.serviceName;
          String description = payload.description;
          
          // ------------------------- Check Authz ------------------------------
@@ -377,6 +483,7 @@ public final class RestrictedResource
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
                              .setPreventDifferentJwtAndReqTenants()
+                             .setPreventNonSiteAdminTenant()
                              .check(prettyPrint);
          if (resp != null) return resp;
          
@@ -413,16 +520,14 @@ public final class RestrictedResource
      /* deleteServiceRoleByName:                                                     */
      /* ---------------------------------------------------------------------------- */
      @DELETE
-     @Path("/{roleName}")
+     @Path("/{adminTenant}/{serviceName}")
      @Produces(MediaType.APPLICATION_JSON)
      @Operation(
-         description = "Delete the named role. A valid tenant and user must be "
-                       + "specified as query parameters.\n\n"
+         description = "Delete the named role. A valid site admin-tenant and service name "
+         			   + "must be provided.\n\n"
                        + ""
-                       + "This request is authorized only if the authenticated user is either the "
-                       + "role owner or an administrator.\n\n"
-                       + ""
-                       + "URL encoding in rolenames and permissions: $ -> %24, # -> %23, : -> %3A"
+                       + "This request is authorized only if the authenticated user is the "
+                       + "tenant administrator.\n\n"
                        + "",
          tags = "restricted",
          security = {@SecurityRequirement(name = "TapisJWT")},
@@ -440,8 +545,8 @@ public final class RestrictedResource
                  content = @Content(schema = @Schema(
                      implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
      )
-     public Response deleteServiceRoleByName(@PathParam("roleName") String roleName,
-                                             @QueryParam("tenant") String tenant,
+     public Response deleteServiceRoleByName(@PathParam("adminTenant") String tenant,
+                                             @PathParam("serviceName") String serviceName,
                                              @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
      {
          // Trace this request.
@@ -452,20 +557,17 @@ public final class RestrictedResource
          }
          
          // ------------------------- Input Processing -------------------------
-         if (StringUtils.isBlank(tenant)) {
-             String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
+         // Make sure the restricted service role name conforms to the required format.
+         if (!SKApiUtils.isValidName(serviceName)) {
+             String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "deleteServiceRoleByName", 
+            		                      "serviceName", serviceName);
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
                      entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
          }
          
-         // Make sure the restricted service role name conforms to the required format.
-         if (!SKApiUtils.isValidName(roleName)) {
-             String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "deleteServiceRoleByName", "roleName", roleName);
-             _log.error(msg);
-             return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
-         }
+         // Construct role name.
+         var roleName = RESTRICTED_SVC_ROLENAME_PREFIX + serviceName;
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned. The caller must 
@@ -473,6 +575,7 @@ public final class RestrictedResource
          Response resp = SKCheckAuthz.configure(tenant, null)
                              .setCheckIsAdmin()
                              .setPreventDifferentJwtAndReqTenants()
+                             .setPreventNonSiteAdminTenant()
                              .check(prettyPrint);
          if (resp != null) return resp;
          
@@ -507,81 +610,47 @@ public final class RestrictedResource
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
      @Operation(
-             description = "Add a permission to an existing role using a request body.  "
-                         + "If the permission already exists, "
+             description = "Add a resticted service permission to an existing role.  "
+                         + "If the exact same permission already exists, "
                          + "then the request has no effect and the change count returned is "
                          + "zero. Otherwise, the permission is added and the change count is one.\n\n"
                          + ""
-                         + "Permissions are case-sensitive strings that follow the format "
+                         + "In general, permissions are case-sensitive strings that follow the format "
                          + "defined by Apache Shiro (https://shiro.apache.org/permissions.html).  "
-                         + "This format defines any number of colon-separated (:) parts, with the "
+                         + "This format defines colon-separated (:) parts, with the "
                          + "possible use of asterisks (*) as wildcards and commas (,) as "
-                         + "aggregators.  Here are two example permission strings:\n\n"
+                         + "aggregators.  See the Shiro documentation for further details.\n\n"
                          + ""
-                         + "    system:MyTenant:read,write:system1\n"
-                         + "    system:MyTenant:create,read,write,delete:*\n\n"
+                         + "Restricted service permissions must adhere to specific formats "
+                         + "that convey well-defined authorization semantics.  The four 'allow' formats "
+                         + "are as follows, where the fields enclosed in angle brackets represent "
+                         + "user supplied values:\n\n"
                          + ""
-                         + "See the Shiro documentation for further details.  Note that the three "
-                         + "reserved characters, [: * ,], cannot appear in the text of any part.  "
-                         + "It's the application's responsibility to escape those characters in "
-                         + "a manner that is safe in the application's domain.\n\n"
+                         + "  - service:allow:tenant:<tenant_name>\n"
+                         + "  - service:allow:user:<tenant>:<user_name>\n"
+                         + "  - service:allow:service:<tenant>:<service_name>\n"
+                         + "  - service:allow:action:<tenant>:<target_service>:<action_name>\n\n"
                          + ""
-                         + "### Extended Permissions\n"
+                         + "The first permission type limits the tenants in which a service can "
+                         + "run.  The second limits the users on whose behalf the service can "
+                         + "operate.  The third specifies the services with which the restricted "
+                         + "service can interact.  The fourth limits what actions the restricted service "
+                         + "is authorized to request of a target service.\n\n"
                          + ""
-                         + "Tapis extends Shiro permission checking with *path semantics*.  Path "
-                         + "semantics allows the last part of pre-configured permissions to be "
-                         + "treated as hierarchical path names, such as the paths used in POSIX file "
-                         + "systems.  Currently, only permissions that start with *files:* have their "
-                         + "last (5th) component configured with path semantics.\n\n"
+                         + "At least one instance of each of the four above permission types need to be "
+                         + "defined for a restricted service to successfully make requests.  "
+                         + "This fail-safe approach means that restricted services must be fully "
+                         + "configured to partipate in a Tapis deployment.\n\n"
                          + ""
-                         + "Path semantics treat the extended permission part "
-                         + "as the root of the subtree to which the permission is applied "
-                         + "recursively.  Grantees assigned the permission will "
-                         + "have the permission on the path itself and on all its children.\n\n"
+                         + "In addition to the above 'allow' permission, there is a complimentary set "
+                         + "of 'deny' permission with the same formats, except the second element "
+                         + "in each permission string is 'deny' rather than 'allow'.  At runtime, deny "
+                         + "permissions are evaluated first and if a match is found, the request is "
+                         + "immediately rejected even if an allow permission would have authorized the "
+                         + "request." 
                          + ""
-                         + "As an example, consider a role that's assigned the following permission:\n\n"
-                         + ""
-                         + "    files:iplantc.org:read:stampede2:/home/bud\n\n"
-                         + ""
-                         + "Users granted the role have read permission on the following file "
-                         + "system resources on stampede2:\n\n"
-                         + ""
-                         + "    /home/bud\n"
-                         + "    /home/bud/\n"
-                         + "    /home/bud/myfile\n"
-                         + "    /home/bud/mydir/myfile\n\n"
-                         + ""
-                         + "Those users, however, will not have access to /home.\n\n"
-                         + ""
-                         + "When an extended permission part ends with a slash, such as /home/bud/, "
-                         + "then that part is interpreted as a directory or, more generally, some type of "
-                         + "container.  In such cases, the permission applies to the children of the path "
-                         + "and to the path as written with a slash.  For instance, for the file permission "
-                         + "path /home/bud/, the permission allows access to /home/bud/ and /home/bud/myfile, "
-                         + "but not to /home/bud.\n\n"
-                         + ""
-                         + "When an extended permission part does not end with a slash, such as /home/bud, "
-                         + "then the permission applies to the children of the path and to the path written "
-                         + "with or without a trailing slash.  For instance, for the file permission path "
-                         + "/home/bud, the permission allows access to /home/bud, /home/bud/ and "
-                         + "/home/bud/myfile.\n\n"
-                         + ""
-                         + "In the previous examples, we assumed /home/bud was a directory.  If /home/bud is a "
-                         + "file (or more generally a leaf), then specifying the permission path /home/bud/ "
-                         + "will not work as intended.  Permissions with paths that have trailing slashes "
-                         + "should only be used for directories, and they require a trailing slash "
-                         + "whenever refering to the root directory.  Permissions that don't have a trailing "
-                         + "slash can represent directories or files, and thus are more general.\n\n"
-                         + ""
-                         + "Extended permission checking avoids *false capture*.  Whether a path has a "
-                         + "trailing slash or not, "
-                         + "permission checking will not capture similarly named sibling paths. For example, "
-                         + "using the file permission path /home/bud, grantees are allowed access to "
-                         + "/home/bud and all its children (if it's a directory), but not to the file "
-                         + "/home/buddy.txt nor the directory /home/bud2.\n\n"
-                         + ""
-                         + "This request is authorized only if the authenticated user is either the "
-                         + "role owner or an administrator."
+                         + "For the request to be authorized, the requestor must be "
+                         + "the administrator in the site-admin tenant."
                          + "",
              tags = "restricted",
              security = {@SecurityRequirement(name = "TapisJWT")},
@@ -632,9 +701,9 @@ public final class RestrictedResource
          }
              
          // Fill in the parameter fields.
-         String roleTenant = payload.roleTenant;
-         String roleName   = payload.roleName;
-         String permSpec   = payload.permSpec;
+         String roleTenant = payload.adminTenant;
+         String roleName   = RESTRICTED_SVC_ROLENAME_PREFIX + payload.serviceName;
+         String permSpec   = payload.permSpec;  // format already validated
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned. The caller must 
@@ -642,6 +711,7 @@ public final class RestrictedResource
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
                              .setPreventDifferentJwtAndReqTenants()
+                             .setPreventNonSiteAdminTenant()
                              .check(prettyPrint);
          if (resp != null) return resp;
          
@@ -680,11 +750,12 @@ public final class RestrictedResource
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
      @Operation(
-             description = "Remove a permission from a role using a request body.  "
-                     + "A valid role, roleTenant and permission must be specified in "
-                     + "the request body.\n\n"
+             description = "Remove a permission from a role.  "
+                     + "A valid serviceName, adminTenant and permission must be "
+                     + "specified in the request body.\n\n"
                      + ""
-                     + "Only the role owner or administrators are authorized to make this call."
+                     + "For the request to be authorized, the requestor must be "
+                     + "the administrator in the site-admin tenant."
                      + "",
              tags = "restricted",
              security = {@SecurityRequirement(name = "TapisJWT")},
@@ -735,9 +806,9 @@ public final class RestrictedResource
          }
              
          // Fill in the parameter fields.
-         String roleTenant = payload.roleTenant;
-         String roleName   = payload.roleName;
-         String permSpec   = payload.permSpec;
+         String roleTenant = payload.adminTenant;
+         String roleName   = RESTRICTED_SVC_ROLENAME_PREFIX + payload.serviceName;
+         String permSpec   = payload.permSpec; // format already validated
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned. The caller must 
@@ -745,6 +816,7 @@ public final class RestrictedResource
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
                              .setPreventDifferentJwtAndReqTenants()
+                             .setPreventNonSiteAdminTenant()
                              .check(prettyPrint);
          if (resp != null) return resp;
          

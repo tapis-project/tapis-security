@@ -21,9 +21,9 @@ public class SKApiUtils
     // a leading $ character is reserved for SK generated names and must be rejected.
     private static final Pattern _namePattern = Pattern.compile("^\\p{Alpha}(\\p{Alnum}|_)*");
     
-    // Restricted service role name validator.  All such roles must begin with "$#" 
+    // Restricted service role name validator.  All such roles must begin with "$#service_" 
     // followed by at least one letter and zero or more alphanumerics and underscores.
-    private static final Pattern _restrictedRolePattern = Pattern.compile("^\\$#\\p{Alpha}(\\p{Alnum}|_)*");
+    private static final Pattern _restrictedRolePattern = Pattern.compile("^\\$#service_\\p{Alpha}(\\p{Alnum}|_)*");
     
     // Restricted service permissions format validator. The minimum number of colon
     // separated segments is 4 and the maximum is 6. The first 3 segment values are 
@@ -34,7 +34,8 @@ public class SKApiUtils
     private static final Pattern _permPattern = 
         Pattern.compile("^service:(allow|deny):(tenant|user|action|service):(\\p{Alnum}|_)+(:(\\p{Alnum}|_)+)?(:(\\p{Alnum}|_)+)?$");
 
-    // Split a string into colon separated segments.
+    // Split a string into colon separated segments to validate cardinality in 
+    // restricted service permission strings.
     private static final Pattern _colonSeparated = Pattern.compile(":");
     
     /* **************************************************************************** */
