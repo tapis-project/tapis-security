@@ -31,6 +31,8 @@ public class SKApiUtils
     // 4 segments; the user and service variants expect 5; and the action variant  
     // expects 6 segments.  This regex doesn't enforce those cardinality constraints
     // so we use the next regex for validating the number of segments.
+    //
+    // See RestrictedResource.addServiceRolePermission() comments for more details.
     private static final Pattern _permPattern = 
         Pattern.compile("^service:(allow|deny):(tenant|user|action|service):(\\p{Alnum}|_)+(:(\\p{Alnum}|_)+)?(:(\\p{Alnum}|_)+)?$");
 
@@ -98,7 +100,12 @@ public class SKApiUtils
     	if (!_permPattern.matcher(perm).matches()) return false;
 
     	// Further check the number of colon separated segments required
-    	// by each permission category.
+    	// by each permission category.  Note that we tradeoff a bit of 
+    	// syntactic sugar by not interpreting missing components as '*'
+    	// but instead require explicit '*' as placeholders.  The benefit
+    	// is that we require the user to make explicit their intentions.
+    	// During permission checking, however, the inputs to be checked 
+    	// can have missing trailing components as usual.
     	var segments = _colonSeparated.split(perm);
     	if (segments[2].equals("tenant") && segments.length == 4) return true;
     	else if (segments[2].equals("user") && segments.length == 5) return true;
