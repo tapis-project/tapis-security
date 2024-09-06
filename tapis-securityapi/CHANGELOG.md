@@ -9,10 +9,16 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 -----------------------
+## 1.7.0 - 2024-09-17
+
+### New Features:
+1. Release number change.
+
+-----------------------
 ## 1.6.3 - 2024-09-04
 
 ### New Features:
-1. Included latest shared library version.
+1. Updated shared library.
 
 -----------------------
 ## 1.6.2 - 2024-05-19
