@@ -847,4 +847,110 @@ public final class RestrictedResource
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
              MsgUtils.getMsg("TAPIS_UPDATED", "Role", roleName), prettyPrint, r)).build();
      }
+
+     /* ---------------------------------------------------------------------------- */
+     /* isJwtPermitted:                                                              */
+     /* ---------------------------------------------------------------------------- */
+     @POST
+     @Path("/isJwtPermitted")
+     @Consumes(MediaType.APPLICATION_JSON)
+     @Produces(MediaType.APPLICATION_JSON)
+     @Operation(
+             description = "Determine whether a restricted service's JWT information "
+             		 + "allows the service to make a request.  The restricted service's "
+             		 + "JWT oboTenant, oboUser and jwtUser (sendingService) values are "
+             		 + "sent, along with the receivingService name."
+                     + ""
+                     + "For the request to be authorized, the requestor must be "
+                     + "the administrator in the site-admin tenant or a service."
+                     + "",
+             tags = "restricted",
+             security = {@SecurityRequirement(name = "TapisJWT")},
+             requestBody = 
+                 @RequestBody(
+                     required = true,
+                     content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqRemoveRolePermission.class))),
+             responses = 
+                 {@ApiResponse(responseCode = "200", description = "Permission removed from role.",
+                      content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
+                  @ApiResponse(responseCode = "400", description = "Input error.",
+                     content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
+                  @ApiResponse(responseCode = "401", description = "Not authorized.",
+                     content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
+                  @ApiResponse(responseCode = "404", description = "Named role not found.",
+                      content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
+                  @ApiResponse(responseCode = "500", description = "Server error.",
+                      content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
+         )
+     public Response isServiceJwtPermitted(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
+                                                 InputStream payloadStream)
+     {
+         // Trace this request.
+         if (_log.isTraceEnabled()) {
+             String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(), 
+                                          "isServiceJwtPermitted", _request.getRequestURL());
+             _log.trace(msg);
+         }
+         
+         return null;
+     }
+
+     /* ---------------------------------------------------------------------------- */
+     /* isActionPermitted:                                                           */
+     /* ---------------------------------------------------------------------------- */
+     @POST
+     @Path("/isActionPermitted")
+     @Consumes(MediaType.APPLICATION_JSON)
+     @Produces(MediaType.APPLICATION_JSON)
+     @Operation(
+             description = "Determine whether a restricted service can make a request "
+             		 + "of another service to take a specific action.  The JWT's oboTenant, "
+             		 + "action, receivingService and sendingService must be "
+                     + "specified in the request body.\n\n"
+                     + ""
+                     + "For the request to be authorized, the requestor must be "
+                     + "the administrator in the site-admin tenant or a service."
+                     + "",
+             tags = "restricted",
+             security = {@SecurityRequirement(name = "TapisJWT")},
+             requestBody = 
+                 @RequestBody(
+                     required = true,
+                     content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqRemoveRolePermission.class))),
+             responses = 
+                 {@ApiResponse(responseCode = "200", description = "Permission removed from role.",
+                      content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
+                  @ApiResponse(responseCode = "400", description = "Input error.",
+                     content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
+                  @ApiResponse(responseCode = "401", description = "Not authorized.",
+                     content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
+                  @ApiResponse(responseCode = "404", description = "Named role not found.",
+                      content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
+                  @ApiResponse(responseCode = "500", description = "Server error.",
+                      content = @Content(schema = @Schema(
+                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
+         )
+     public Response isServiceActionPermitted(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
+                                                 InputStream payloadStream)
+     {
+         // Trace this request.
+         if (_log.isTraceEnabled()) {
+             String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(), 
+                                          "isServiceActionPermitted", _request.getRequestURL());
+             _log.trace(msg);
+         }
+         
+         return null;
+     }
 }

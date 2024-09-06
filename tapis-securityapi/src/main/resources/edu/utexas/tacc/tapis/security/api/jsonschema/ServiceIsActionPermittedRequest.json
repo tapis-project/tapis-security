@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$id": "http://tapis.tacc.utexas.edu/ServiceIsActionPermittedRequest",
+    "description": "Top-level schema to check a restricted service's action",
+    "additionalProperties": false,
+    "type": "object",
+        "properties": {
+          "oboTenant": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "jwtUser": {
+            "type": "string"
+          },
+          "receivingService": {
+            "type": "string"
+          }
+        },
+    "required": [
+        "oboTenant",
+        "action",
+        "jwtUser",
+        "receivingService"
+    ]
+}
