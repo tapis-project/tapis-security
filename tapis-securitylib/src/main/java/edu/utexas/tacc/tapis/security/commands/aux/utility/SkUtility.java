@@ -88,6 +88,8 @@ public class SkUtility
 
   // We split vault paths on slashes.
   private static final Pattern SPLIT_SLASH_PATTERN = Pattern.compile("/");
+  // Delimiter for user field is +
+  private static final Pattern SPLIT_PLUS_PATTERN = Pattern.compile("\\+");
 
   // We sanitize by removing all characters not in this character class.
   private static final Pattern SANITIZER = Pattern.compile("[^a-zA-Z0-9_]");
@@ -177,6 +179,7 @@ public class SkUtility
     {
       debug("Processing tenant: " + tenant);
       if (_parms.sysCleanup) sysCleanupForTenant(tenant);
+      if (_parms.sysExportMeta) sysExportMetadataForTenant(tenant);
     }
 
 //    {
@@ -332,17 +335,54 @@ public class SkUtility
       debug("******** Users Count: " + users.size() + " ********");
       for (String user : users)
       {
-        debug(String.format("Found system user. Tenant: %s System: %s User: %s", tenant, system, user));
+//        debug(String.format("Found system user. Tenant: %s System: %s User: %s", tenant, system, user));
+//        // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
+//        if (!StringUtils.startsWith(user,"static+") && !StringUtils.startsWith(user,"dynamic+"))
+//        {
+//          debug(String.format("Found legacy record. Tenant: %s System: %s User: %s", tenant, system, user));
+//        }
         // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
-        if (!StringUtils.startsWith(user,"static+") && !StringUtils.startsWith(user,"dynamic+"))
+        if (StringUtils.startsWith(user,"static+") || StringUtils.startsWith(user,"dynamic+"))
         {
-          debug(String.format("Found legacy record. Tenant: %s System: %s User: %s", tenant, system, user));
+          String userName = SPLIT_PLUS_PATTERN.split(user, 2)[1];
+          debug(String.format("Found non-legacy record. Tenant: %s System: %s User field: %s Username: %s",
+                              tenant, system, user, userName));
         }
       }
     }
   }
 
-  // Print debug message
+  /**
+   * Run sysExportMetadata action for a single tenant.
+   * TODO
+   * @param tenant tenant to process
+   * @throws Exception on error
+   */
+  private void sysExportMetadataForTenant(String tenant) throws Exception
+  {
+    debug("Executing action: SysExportMetadata for tenant. Tenant: " + tenant);
+    // Get all systems under the tenant
+    List<String> systems = getSystems(tenant);
+    debug("******** Systems Count: " + systems.size() + " ********");
+    for (String system : systems)
+    {
+      debug(String.format("Found system. Tenant: %s System: %s", tenant, system));
+      // Get all users under system
+      List<String> users = getUsers(tenant, system);
+      debug("******** Users Count: " + users.size() + " ********");
+      for (String user : users)
+      {
+        debug(String.format("Found system user. Tenant: %s System: %s User: %s", tenant, system, user));
+//TODO        // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
+//        if (!StringUtils.startsWith(user,"static+") && !StringUtils.startsWith(user,"dynamic+"))
+//        {
+//          debug(String.format("Found legacy record. Tenant: %s System: %s User: %s", tenant, system, user));
+//        }
+      }
+    }
+  }
+
+    // Print debug message
   private void debug(String s) { if (_parms.verbose) System.out.println("DEBUG: " + s); }
   // Print warning message
   private void warn(String s) { if (_parms.verbose) System.out.println("WARN: " + s); }
