@@ -1,6 +1,8 @@
-package edu.utexas.tacc.tapis.security.commands.aux.export;
+package edu.utexas.tacc.tapis.security.commands.aux.utility;
 
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
@@ -9,195 +11,399 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
-
 import com.google.gson.JsonObject;
-
-import edu.utexas.tacc.tapis.security.commands.aux.export.SkExportParameters.OutputFormat;
+import edu.utexas.tacc.tapis.security.commands.aux.utility.SkUtilityParameters.OutputFormat;
 import edu.utexas.tacc.tapis.security.secrets.SecretPathMapper;
 import edu.utexas.tacc.tapis.security.secrets.SecretType;
 import edu.utexas.tacc.tapis.security.secrets.SecretTypeDetector;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
+import org.apache.commons.lang3.StringUtils;
 
-/** Export secrets from Vault in either raw or deployment ready formats.
- * 
- * @author rcardone
+/**
+ * Support various actions for maintaining SK secrets.
+ * Actions to take are determined by the options specified.
+ *
+ * If no actions are specified then only the check of the vault status is performed
+ *   and the tenants under path tapis/tenant are retrieved.
+ *
+ * Actions:
+ *   -sys_cleanup : Removes orphaned Systems secrets.
+ *   -sys_export_meta : Exports metadata for all systems secrets
+ *
+ * sys_cleanup:
+ *   Initial version of Systems service stored secrets using a path of the format:
+ *     secret/tapis/tenant/<tenant_id>/system/<system_id>/user/<target_user>/<key_type>/S1
+ *   Later this was changed in order to distinguish static versus dynamic secrets.
+ *     secret/tapis/tenant/<tenant_id>/system/<system_id>/user/<static|dynamic>+<target_user>/<key_type>/S1
+ *   This resulted in Systems secrets in SK becoming orphaned. Systems will never look for secrets
+ *     using the older path format.
+ *   This action will find and remove all Systems secrets matching the old path format
+ *
+ *  sys_export_meta:
+ *    This will output metadata for System secrets. This is used to initialize the Systems table
+ *    that tracks credential metadata. The table was introduced as part of Systems version TODO/TBD 1.?.?
+ *    The metadata will be output for each path, either static or dynamic, i.e., paths in the form:
+ *      secret/tapis/tenant/<tenant_id>/system/<system_id>/user/static+<target_user>
+ *    or
+ *      secret/tapis/tenant/<tenant_id>/system/<system_id>/user/dynamic+<target_user>
+ *    Each metadata record will output as json. For example, for the path
+ *      secret/tapis/tenant/dev/test-system/user/static+testuser1
+ *    the output would be similar to the following:
+ *    {
+ *      "tenant_id": "dev",
+ *      "system_id": "test-system",
+ *      "target_user": "testuser1",
+ *      "is_static": true,
+ *      "has_password": false,
+ *      "has_pki_keys": true,
+ *      "has_access_key": false,
+ *      "has_token": false
+ *    }
+ *
+ *   Based on SKExport utility written by @rcardone
  */
-public class SkExport 
+public class SkUtility
 {
-    /* ********************************************************************** */
-    /*                               Constants                                */
-    /* ********************************************************************** */
-    // Root of the tapis secrets subtree.
-    private static final String TAPIS_SECRET_ROOT = "tapis/";
-    
-    // Initial output string.
-    private static final String START_SECRETS = "[";
-    private static final int    START_SECRETS_LEN = START_SECRETS.length();
-    private static final String END_SECRETS  = "\n]";
-    private static final int    OUTPUT_BUFLEN = 8192;
-    
-    // We split vault paths on slashes.
-    private static final Pattern SPLIT_PATTERN = Pattern.compile("/");
-    
-    // We sanitize by removing all characters not in this character class.
-    private static final Pattern SANITIZER = Pattern.compile("[^a-zA-Z0-9_]");
+  /* ********************************************************************** */
+  /*                               Constants                                */
+  /* ********************************************************************** */
+  // Base URL path for walking tree to find Tapis meta records.
+  private static final String VAULT_BASE_URL_META = "v1/secret/metadata";
+  // Base URL path for walking tree to find Tapis data records.
+  private static final String VAULT_BASE_URL_DATA = "v1/secret/data/";
+  // Root of the tapis secrets subtree.
+  private static final String TAPIS_ROOT = "tapis";
+  // Path element for tenants.
+  private static final String TENANT_ROOT = String.format("%s/tenant", TAPIS_ROOT);
+  // Path element for systems.
+  private static final String SYSTEM_ELEMENT = "system";
+  // Path element for users.
+  private static final String USER_ELEMENT = "user";
 
-    /* ********************************************************************** */
-    /*                                 Fields                                 */
-    /* ********************************************************************** */
-    // User input.
-    private final SkExportParameters   _parms;
-    
-    // The client used for all http calls.
-    private final HttpClient           _httpClient;
-    
-    // Raw secrets information.
-    private final ArrayList<SecretInfo> _secretRecs;
-    
-    // Progress counters.
-    private int                        _numListings;
-    private int                        _numReads;
-    private int                        _numUnknownPaths;
-    
-    // Result reporting lists.
-    private final TreeSet<String>      _failedReads;   // Number of secrets paths that could not be read.
-    
-    /* ********************************************************************** */
-    /*                                 Records                                */
-    /* ********************************************************************** */
-    // Wrapper for raw secret info.
-    private record SecretInfo(SecretType type, String path, String secret) {}
-    
-    // Wrapper for processed SecretInfo records.
-    private record SecretOutput(String key, String value) {}
-    
-    /* ********************************************************************** */
-    /*                              Constructors                              */
-    /* ********************************************************************** */
-    /* ---------------------------------------------------------------------- */
-    /* constructor:                                                           */
-    /* ---------------------------------------------------------------------- */
-    public SkExport(SkExportParameters parms) 
+  // Constants used when generating text output
+  private static final String START_SECRETS = "[";
+  private static final int    START_SECRETS_LEN = START_SECRETS.length();
+  private static final String END_SECRETS  = "]";
+  private static final int    OUTPUT_BUFLEN = 8192;
+
+  // We split vault paths on slashes.
+  private static final Pattern SPLIT_SLASH_PATTERN = Pattern.compile("/");
+
+  // We sanitize by removing all characters not in this character class.
+  private static final Pattern SANITIZER = Pattern.compile("[^a-zA-Z0-9_]");
+
+  /* ********************************************************************** */
+  /*                                 Fields                                 */
+  /* ********************************************************************** */
+  // User input.
+  private final SkUtilityParameters _parms;
+
+  // The client used for all http calls.
+  private final HttpClient           _httpClient;
+
+  // Metadata records for secrets
+  private final ArrayList<SecretInfo> _secretRecords;
+
+  // Progress counters.
+  private int _numListings;
+  private int _numReads;
+  private int _numUnknownPaths;
+
+  // Result reporting lists.
+  private final TreeSet<String> _failedReads;   // Secrets paths that could not be read.
+
+  /* ********************************************************************** */
+  /*                                 Records                                */
+  /* ********************************************************************** */
+  // Wrapper for secret info metadata.
+  private record SecretInfo(SecretType type, String path, String secret) {}
+
+  // Wrapper for processed SecretInfo records.
+  private record SecretOutput(String key, String value) {}
+
+  /* ********************************************************************** */
+  /*                              Constructors                              */
+  /* ********************************************************************** */
+  public SkUtility(SkUtilityParameters parms)
+  {
+    // Parameters cannot be null.
+    if (parms == null)
     {
-        // Parameters cannot be null.
-        if (parms == null) {
-          String msg = "SkExport requires a parameter object.";
-          throw new IllegalArgumentException(msg);
-        }
-        
-        // Initialize final fields.
-        _parms = parms;
-        _httpClient  = HttpClient.newHttpClient();
-        _failedReads = new TreeSet<String>();
-        _secretRecs  = new ArrayList<>(256);
+      String msg = "SkUtility requires a parameter object.";
+      throw new IllegalArgumentException(msg);
     }
 
-    /* ********************************************************************** */
-    /*                             Public Methods                             */
-    /* ********************************************************************** */
-    /* ---------------------------------------------------------------------- */
-    /* main:                                                                  */
-    /* ---------------------------------------------------------------------- */
-    /** No logging necessary in this method since the called methods log errors.
-     * 
-     * @param args the command line parameters
-     * @throws Exception on error
-     */
-    public static void main(String[] args) throws Exception 
+    // Initialize final fields.
+    _parms = parms;
+    _httpClient  = HttpClient.newHttpClient();
+    _failedReads = new TreeSet<String>();
+    _secretRecords = new ArrayList<>(256);
+  }
+
+  /* ********************************************************************** */
+  /*                             Public Methods                             */
+  /* ********************************************************************** */
+  /**
+   * Main
+   * No logging necessary in this method since the called methods log errors.
+   *
+   * @param args the command line parameters
+   * @throws Exception on error
+   */
+  public static void main(String[] args) throws Exception
+  {
+    // Parse the command line parameters.
+    SkUtilityParameters parms = new SkUtilityParameters(args);
+    // Run the utility
+    SkUtility skUtility = new SkUtility(parms);
+    skUtility.run();
+  }
+
+  /**
+   * Execute the actions requested
+   * @throws Exception on error
+   */
+  public void run() throws Exception
+  {
+    // Check status of Vault.
+    debug("Checking status of Vault");
+    checkVaultStatus();
+
+    // Get all tenants under tapis/tenant
+    debug("Retrieving tenants");
+    List<String> tenants = getTenants();
+    debug("******** Tenants Count: " + tenants.size() + " ********");
+    for (String tenant: tenants)
     {
-        // Parse the command line parameters.
-        SkExportParameters parms = null;
-        parms = new SkExportParameters(args);
-        
-        // Start the worker.
-        SkExport skAdmin = new SkExport(parms);
-        skAdmin.export();
+      debug("Processing tenant: " + tenant);
+      if (_parms.sysCleanup) sysCleanupForTenant(tenant);
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* export:                                                                */
-    /* ---------------------------------------------------------------------- */
-    public void export()
-     throws Exception
+//    {
+//      debug("Execuing SysCleanup action");
+//      executeSysCleanup(tenants);
+//    }
+
+//TODO if (_parms.sysExportMeta) executeSysExportMeta();
+    // Walk the Vault source tree and discover all tapis secrets.
+//TODO    processSourceTree(TAPIS_SECRET_ROOT);
+        
+    // Put all secrets into a list of records.
+//TODO    var outputRecs = calculateOutputRecs();
+        
+    // Put the raw data into the user-specified output format.
+//TODO    writeResults(outputRecs);
+  }
+
+  /* ********************************************************************** */
+  /*                             Private Methods                            */
+  /* ********************************************************************** */
+
+  /*
+   * getTenants
+   * A LIST on tapis/tenant will yield a list of all tenants under that path
+   * Exit with a 1 on error.
+   * If we cannot get tenants then it is an unrecoverable error.
+   */
+  private List<String> getTenants() throws Exception
+  {
+    List<String> tenants = new ArrayList<>();
+    // Build the full path
+    String fullPath = String.format("%s%s/%s/",_parms.vurl,VAULT_BASE_URL_META,TENANT_ROOT);
+    // Make the request to list
+    HttpResponse<String> resp = sendListRequest(fullPath);
+    // Check return code.
+    int rc = resp.statusCode();
+    debug("Received HTTP status code: " + rc);
+    if (rc == 404)
     {
-        // Check status of Vault.
-        checkVaultStatus();
-        
-        // Walk the Vault source tree and discover all tapis secrets.
-        processSourceTree(TAPIS_SECRET_ROOT);
-        
-        // Put all secrets into a list of records.
-        var outputRecs = calculateOutputRecs();
-        
-        // Put the raw data into the user-specified output format.
-        writeResults(outputRecs);
+      // This should never happen. It means no tenants.
+      warn("No tenants found");
+      return tenants;
     }
-    
-    /* ********************************************************************** */
-    /*                             Private Methods                            */
-    /* ********************************************************************** */
-    /* ---------------------------------------------------------------------- */
-    /* out:                                                                   */
-    /* ---------------------------------------------------------------------- */
-    private void out(String s) {if (_parms.verbose) System.out.println(s);}
-    
-    /* ---------------------------------------------------------------------- */
-    /* processSourceTree:                                                     */
-    /* ---------------------------------------------------------------------- */
-    /** The first call to this recursive method starts at the root of the tapis
-     * hierarchy in Vault. 
-     * 
-     * @param curpath the path to explore depth-first
-     */
-    private void processSourceTree(String curpath) throws Exception
+    else if (rc >= 300)
     {
-        // Increment listing counter.
-        _numListings++;
-        
-        // Make the request to list the curpath.
-        HttpRequest request;
-        HttpResponse<String> resp;
-        try {
-            request = HttpRequest.newBuilder()
-                .uri(new URI(_parms.vurl + "v1/secret/metadata/" + curpath))
-                .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json", 
-                         "Content-Type", "application/json")
-                .method("LIST", BodyPublishers.noBody())
-                .build();
-            resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            // Record read failure and display error message.
-            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
-            out(e.getClass().getSimpleName() + ": " + e.getMessage());
-            return;
-        }
-        
+      // Looks like an error.
+      errorExit("Received http status code " + rc + " on LIST request to vault. FullPath: " + fullPath);
+    }
+
+    // Intermediate node. Response body should look like this: {"data": {"keys": ["foo", "foo/"]}}.
+    // Parse the response to get the keys
+    tenants = getKeysFromResponse(resp);
+    return tenants;
+  }
+
+  /*
+   * getSystems
+   * A LIST on tapis/tenant/<tenant_id>/system will yield a list of all systems under that path
+   */
+  private List<String> getSystems(String tenant) throws Exception
+  {
+    List<String> systems = new ArrayList<>();
+    // Build the full path
+    String fullPath = String.format("%s%s/%s/%s/%s",_parms.vurl,VAULT_BASE_URL_META,TENANT_ROOT,tenant,SYSTEM_ELEMENT);
+    // Make the request to list
+    HttpResponse<String> resp = sendListRequest(fullPath);
+    // Check return code.
+    int rc = resp.statusCode();
+    System.out.println("Received HTTP status code: " + rc);
+    if (rc == 404)
+    {
+      // Indicates no systems for this tenant. This could happen.
+      warn("No systems found for tenant. Tenant: " + tenant);
+      return systems;
+    }
+    else if (rc >= 300)
+    {
+      // Looks like an error.
+      errorExit("Received http status code " + rc + " on LIST request to vault. FullPath: " + fullPath);
+    }
+    // Intermediate node. Response body should look like this: {"data": {"keys": ["foo", "foo/"]}}.
+    // Parse the response to get the keys
+    systems = getKeysFromResponse(resp);
+    debug("Number of systems: " + systems.size());
+    return systems;
+  }
+
+  /*
+   * getUsers
+   * A LIST on tapis/tenant/<tenant_id>/system/<system_id>/user will yield a list of all users under that path
+   */
+    private List<String> getUsers(String tenant, String system) throws Exception
+    {
+        List<String> users = new ArrayList<>();
+        // Build the full path
+        String fullPath =
+            String.format("%s%s/%s/%s/%s/%s/%s/",
+                          _parms.vurl,VAULT_BASE_URL_META,TENANT_ROOT,tenant,SYSTEM_ELEMENT,system,USER_ELEMENT);
+        // Make the request to list
+        HttpResponse<String> resp = sendListRequest(fullPath);
         // Check return code.
         int rc = resp.statusCode();
-        if (rc == 404) {
-            // We probably discovered a secret (i.e., leaf node).
-            copySecret(curpath);
-            return;
+        System.out.println("Received HTTP status code: " + rc);
+        if (rc == 404)
+        {
+            // Indicates no systems for this tenant. This could happen.
+            warn("No systems found for tenant. Tenant: " + tenant);
+            return users;
         }
-        else if (rc >= 300) {
+        else if (rc >= 300)
+        {
             // Looks like an error.
-            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
-            out("Received http status code " + rc + " on LIST request to " + 
-                "source vault: " + request.uri().toString() + ".");
-            return;
-        } else {
-            // Intermediate node. Parse the response body that looks something like this:
-            // {"data": {"keys": ["foo", "foo/"]}}
-            var jsonObj = TapisGsonUtils.getGson().fromJson(resp.body(), JsonObject.class);
-            var data    = jsonObj.get("data").getAsJsonObject();
-            var keys    = data.get("keys").getAsJsonArray();
-            int numKeys = keys.size();
-            for (int i = 0; i < numKeys; i++) {         
-               String key = keys.get(i).getAsString();
-               processSourceTree(curpath + key);
-            }
+            errorExit("Received http status code " + rc + " on LIST request to vault. FullPath: " + fullPath);
         }
+        // Intermediate node. Response body should look like this: {"data": {"keys": ["foo", "foo/"]}}.
+        // Parse the response to get the keys
+        users = getKeysFromResponse(resp);
+        debug("Number of users: " + users.size());
+        return users;
     }
+
+  /**
+   * Run sysCleanup action for a single tenant.
+   *TODO Remove legacy orphaned secrets
+   *TODO  This action will find and remove all Systems secrets matching the old path format
+   * Initial version of Systems service stored secrets using a path of the format:
+   *   secret/tapis/tenant/<tenant_id>/system/<system_id>/user/<target_user>/<key_type>/S1
+   * Later this was changed in order to distinguish static versus dynamic secrets.
+   *   secret/tapis/tenant/<tenant_id>/system/<system_id>/user/static+<target_user>/<key_type>/S1
+   *   or
+   *   secret/tapis/tenant/<tenant_id>/system/<system_id>/user/dynamic+<target_user>/<key_type>/S1
+   * This resulted in Systems secrets in SK becoming orphaned. Systems will never look for secrets
+   *   using the older path format.
+   * For given tenant walk the tree looking for System type records that do not match the format of
+   *   the current implementation of system secrets.
+   * If a path does contain "dynamic+" or "static+" in the expected location then it is a legacy record
+   *   and can be removed.
+   * @param tenant tenant to process
+   * @throws Exception on error
+   */
+  private void sysCleanupForTenant(String tenant) throws Exception
+  {
+    debug("Executing action: SysCleanup for tenant. Tenant: " + tenant);
+    // Get all systems under the tenant
+    List<String> systems = getSystems(tenant);
+    debug("******** Systems Count: " + systems.size() + " ********");
+    for (String system : systems)
+    {
+      debug(String.format("Found system. Tenant: %s System: %s", tenant, system));
+      // Get all users under system
+      List<String> users = getUsers(tenant, system);
+      debug("******** Users Count: " + users.size() + " ********");
+      for (String user : users)
+      {
+        debug(String.format("Found system user. Tenant: %s System: %s User: %s", tenant, system, user));
+        // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
+        if (!StringUtils.startsWith(user,"static+") && !StringUtils.startsWith(user,"dynamic+"))
+        {
+          debug(String.format("Found legacy record. Tenant: %s System: %s User: %s", tenant, system, user));
+        }
+      }
+    }
+  }
+
+  // Print debug message
+  private void debug(String s) { if (_parms.verbose) System.out.println("DEBUG: " + s); }
+  // Print warning message
+  private void warn(String s) { if (_parms.verbose) System.out.println("WARN: " + s); }
+  // Print out error message and exit
+  private void errorExit(String s) { System.out.printf("ERROR: %s%n", s); System.exit(1); }
+
+//  /**
+//   * processSourceTree
+//   * The first call to this recursive method starts at the root of the tapis hierarchy in Vault.
+//   *
+//   * @param curpath the path to explore depth-first
+//   */
+//  private void processSourceTree(String curpath) throws Exception
+//  {
+//      // Increment listing counter.
+//        _numListings++;
+//
+//        // Make the request to list the curpath.
+//        HttpRequest request;
+//        HttpResponse<String> resp;
+//        try {
+//            request = HttpRequest.newBuilder()
+//                .uri(new URI(_parms.vurl + "v1/secret/metadata/" + curpath))
+//                .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json",
+//                         "Content-Type", "application/json")
+//                .method("LIST", BodyPublishers.noBody())
+//                .build();
+//            resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+//        } catch (Exception e) {
+//            // Record read failure and display error message.
+//            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
+//            out(e.getClass().getSimpleName() + ": " + e.getMessage());
+//            return;
+//        }
+//
+//        // Check return code.
+//        int rc = resp.statusCode();
+//        if (rc == 404) {
+//            // We probably discovered a secret (i.e., leaf node).
+//            copySecret(curpath);
+//            return;
+//        }
+//        else if (rc >= 300) {
+//            // Looks like an error.
+//            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
+//            out("Received http status code " + rc + " on LIST request to " +
+//                "source vault: " + request.uri().toString() + ".");
+//            return;
+//        } else {
+//            // Intermediate node. Parse the response body that looks something like this:
+//            // {"data": {"keys": ["foo", "foo/"]}}
+//            var jsonObj = TapisGsonUtils.getGson().fromJson(resp.body(), JsonObject.class);
+//            var data    = jsonObj.get("data").getAsJsonObject();
+//            var keys    = data.get("keys").getAsJsonArray();
+//            int numKeys = keys.size();
+//            for (int i = 0; i < numKeys; i++) {
+//               String key = keys.get(i).getAsString();
+//               processSourceTree(curpath + key);
+//            }
+//        }
+//    }
     
     /* ---------------------------------------------------------------------- */
     /* copySecret:                                                            */
@@ -215,11 +421,11 @@ public class SkExport
         
         // Collect the path and secret.
         var r = new SecretInfo(typeWrapper._secretType, curpath, secretText);
-        _secretRecs.add(r);
+        _secretRecords.add(r);
         
         // Accumulate the secrets written.
         if (_numReads % 500 == 0) 
-            out("->Listings = " + _numListings 
+            debug("->Listings = " + _numListings
                 + ",\tReads = "  + _numReads);
     }
     
@@ -236,15 +442,15 @@ public class SkExport
         HttpResponse<String> resp;
         try {
             request = HttpRequest.newBuilder()
-                .uri(new URI(_parms.vurl + "v1/secret/data/" + secretPath))
+                .uri(new URI(_parms.vurl + VAULT_BASE_URL_DATA + secretPath))
                 .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json", 
                          "Content-Type", "application/json")
                 .build();
             resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (Exception e) {
             // Record read failure and display error message.
-            recordFailedRead(_parms.vurl + "v1/secret/data/" + secretPath);
-            out(e.getClass().getSimpleName() + ": " + e.getMessage());
+            recordFailedRead(_parms.vurl + VAULT_BASE_URL_DATA + secretPath);
+            debug(e.getClass().getSimpleName() + ": " + e.getMessage());
             return null;
         }
         
@@ -252,8 +458,8 @@ public class SkExport
         int rc = resp.statusCode();
         if (rc >= 300) {
             // Looks like an error.
-            recordFailedRead(_parms.vurl + "v1/secret/data/" + secretPath);
-            out("Received http status code " + rc + " on READ request to " + 
+            recordFailedRead(_parms.vurl + VAULT_BASE_URL_DATA + secretPath);
+            debug("Received http status code " + rc + " on READ request to " +
                 "source vault: " + request.uri().toString() + ".");
             return null;
         } 
@@ -288,7 +494,7 @@ public class SkExport
         resultType._secretType = secretType;
         
         // Is this a full dump of all secrets?
-        if (_parms.noSkipUserSecrets) return false;
+//TODO remove        if (_parms.noSkipUserSecrets) return false;
         
         // Determine if this is a user-initiated secret.
         if (secretType == SecretType.System || secretType == SecretType.User) 
@@ -304,10 +510,10 @@ public class SkExport
     private List<SecretOutput> calculateOutputRecs()
     {
         // Estimate the output list size based on the number of raw secrets.
-        var olist = new ArrayList<SecretOutput>(2*_secretRecs.size());
+        var olist = new ArrayList<SecretOutput>(2* _secretRecords.size());
         
         // Each raw record can create one or more output records.
-        for (var srec : _secretRecs) {
+        for (var srec : _secretRecords) {
             // The easy case is when we return Vault's output as is.
             if (_parms.format != OutputFormat.ENV) {
                 olist.add(getRawDumpOutputRec(srec));
@@ -339,7 +545,7 @@ public class SkExport
         // Split the path into segments.  We know the split is valid since it 
         // already passed muster in SecretTypeDetector. The service name is 
         // at index 4.
-        var parts = SPLIT_PATTERN.split(srec.path(), 0);
+        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
         String keyPrefix = SecretType.ServicePwd.name().toUpperCase() + "_" +
                            parts[4].toUpperCase(); 
         addDynamicSecrets(keyPrefix, srec.secret(), olist);
@@ -354,7 +560,7 @@ public class SkExport
         // Split the path into segments.  We know the split is valid since it 
         // already passed muster in SecretTypeDetector. The service name is 
         // at index 2, dbhost at 4, dbname at 6, dbuser at 8. 
-        var parts = SPLIT_PATTERN.split(srec.path(), 0);
+        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
         String keyPrefix = SecretType.DBCredential.name().toUpperCase() + "_" +
                            parts[2].toUpperCase() + "_" + 
                            parts[4].toUpperCase() + "_" +
@@ -372,7 +578,7 @@ public class SkExport
         // Split the path into segments.  We know the split is valid since it 
         // already passed muster in SecretTypeDetector. The tenant name is 
         // at index 2. 
-        var parts = SPLIT_PATTERN.split(srec.path(), 0);
+        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
         
         // Process both public and private keys.
         String keyPrefix = SecretType.JWTSigning.name().toUpperCase() + "_" +
@@ -389,7 +595,7 @@ public class SkExport
         // Split the path into segments.  We know the split is valid since it 
         // already passed muster in SecretTypeDetector. The tenant name is 
         // at index 2, the system id at 4.  
-        var parts = SPLIT_PATTERN.split(srec.path(), 0);
+        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
         
         // Set the key prefix.
         String keyPrefix = SecretType.System.name().toUpperCase() + "_" +
@@ -412,7 +618,7 @@ public class SkExport
         SecretPathMapper.KeyType keyTypeEnum = null;
         try {keyTypeEnum = SecretPathMapper.KeyType.valueOf(keyType);}
             catch (Exception e) {
-                out(srec.path() + " has invalid keyType: " + keyType + ".\n" + e.toString());
+                debug(srec.path() + " has invalid keyType: " + keyType + ".\n" + e.toString());
                 return;
             }
         
@@ -439,7 +645,7 @@ public class SkExport
         // Split the path into segments.  We know the split is valid since it 
         // already passed muster in SecretTypeDetector. The tenant name is 
         // at index 2, user at 4, secretName at 6.
-        var parts = SPLIT_PATTERN.split(srec.path(), 0);
+        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
         String keyPrefix = SecretType.User.name().toUpperCase() + "_" +
                            parts[2].toUpperCase() + "_" +
                            parts[4].toUpperCase() + "_" +
@@ -463,7 +669,7 @@ public class SkExport
         if (!_parms.noSanitizeName) keyPrefix = sanitize(keyPrefix);
         
         // Dynamically discover the individual values associated with this 
-        // user secret.  Since the keys are user chosen, we may have to transform 
+        // user secret.  Since the keys are user chosen, we may have to transform
         // them to avoid illegal characters in target context (e.g., env variables).
         // First let's see if there's any secret.
         if (rawSecret == null) {
@@ -609,7 +815,7 @@ public class SkExport
         }
         boolean sealed = jsonObj.get("sealed").getAsBoolean();
         String version = jsonObj.get("version").getAsString();
-        out("Vault at " + baseUrl + "is at version " + version + 
+        debug("Vault at " + baseUrl + "is at version " + version +
             " and is " + (sealed ? "" : "not ") + "sealed.");
         if (sealed) {
             String msg = "Unable to continue because vault at " + baseUrl + " is sealed.";
@@ -631,21 +837,21 @@ public class SkExport
         var unknownPathMsg = _numUnknownPaths == 0 ? "" : " <-- INVESTIGATE";
         
         // Print summary information.
-        var numWrites = _secretRecs.size();
-        out("\n-------------------------------------------------");
-        out("Attempted listings = " + _numListings + ", attempted reads = " + _numReads);
-        out("Unknown paths encountered = " + _numUnknownPaths + unknownPathMsg);
-        out("Secrets written = " + numWrites + ", secrets skipped = " + (_numReads - numWrites));
+        var numWrites = _secretRecords.size();
+        debug("\n-------------------------------------------------");
+        debug("Attempted listings = " + _numListings + ", attempted reads = " + _numReads);
+        debug("Unknown paths encountered = " + _numUnknownPaths + unknownPathMsg);
+        debug("Secrets written = " + numWrites + ", secrets skipped = " + (_numReads - numWrites));
         if (!_failedReads.isEmpty()) {
-            out("\n-------------------------------------------------");
-            out("Failed secret reads: " + _failedReads.size() + "\n");
+            debug("\n-------------------------------------------------");
+            debug("Failed secret reads: " + _failedReads.size() + "\n");
             var it = _failedReads.iterator();
-            while (it.hasNext()) out("  " + it.next());
+            while (it.hasNext()) debug("  " + it.next());
         }
         
         // Print secrets.
-        out("\n-------------------------------------------------");
-        out("****** SECRETS ******");
+        debug("\n-------------------------------------------------");
+        debug("****** SECRETS ******");
         System.out.println(secrets); // Always write the secrets.
     }
 
@@ -658,8 +864,8 @@ public class SkExport
         var secrets = new StringBuilder(OUTPUT_BUFLEN);
         secrets.append(START_SECRETS);
         
-        // Write each path/secret pair as json. The secret is itself a json object 
-        // so the result is that secret is nested in the result object. When raw 
+        // Write each path/secret pair as json. The secret is itself a json object
+        // so the result is that secret is nested in the result object. When raw
         // output is requested, the result objects end up looking like this:
         //
         // {
@@ -692,8 +898,8 @@ public class SkExport
         // Initialize result json string.
         var secrets = new StringBuilder(OUTPUT_BUFLEN);
         
-        // Write each path/secret pair in environment variable format. The secret 
-        // key is a name derived from the secret's Vault path and the value is 
+        // Write each path/secret pair in environment variable format. The secret
+        // key is a name derived from the secret's Vault path and the value is
         // the secret itself. The result lines end up looking like this:
         //
         //    SOME_ENV_NAME='abcdefg'
@@ -719,4 +925,47 @@ public class SkExport
     private static final class SecretTypeWrapper {
         private SecretType _secretType;
     }
+
+  /**
+   * Send http LIST request
+   * @param fullPath - url for request
+   * @return http response
+   */
+  private HttpResponse<String> sendListRequest(String fullPath)
+          throws URISyntaxException, IOException, InterruptedException
+  {
+    var reqUri = new URI(fullPath);
+    debug("Sending LIST request to: " + reqUri);
+    HttpRequest request = HttpRequest.newBuilder().uri(reqUri)
+            .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json",
+                     "Content-Type", "application/json")
+            .method("LIST", BodyPublishers.noBody())
+            .build();
+    return _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  /**
+   * Get keys from http LIST response
+   * @param resp - response from request
+   * @return List of keys as strings with trailig slash (/) removed
+   */
+  private List<String> getKeysFromResponse(HttpResponse<String> resp)
+  {
+    List<String> keysAsString = new ArrayList<>();
+    var jsonObj = TapisGsonUtils.getGson().fromJson(resp.body(), JsonObject.class);
+    if (jsonObj == null) errorExit("Unable to create Json object from response.");
+    var dataObj = jsonObj.get("data");
+    if (dataObj == null) errorExit("Did not find data field in json object from response.");
+    var data = dataObj.getAsJsonObject();
+    var keysObj = data.get("keys");
+    if (keysObj == null) errorExit("Did not find keys field in json object from response.");
+    var keys = data.get("keys").getAsJsonArray();
+    // Create the list of keys
+    for (int i = 0; i < keys.size(); i++)
+    {
+      String keyStr = StringUtils.removeEnd(keys.get(i).getAsString(), "/");
+      keysAsString.add(keyStr);
+    }
+    return keysAsString;
+  }
 }
