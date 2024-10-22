@@ -11,13 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.StringUtils;
 import com.google.gson.JsonObject;
-import edu.utexas.tacc.tapis.security.commands.aux.utility.SkUtilityParameters.OutputFormat;
 import edu.utexas.tacc.tapis.security.secrets.SecretPathMapper;
 import edu.utexas.tacc.tapis.security.secrets.SecretType;
 import edu.utexas.tacc.tapis.security.secrets.SecretTypeDetector;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * Support various actions for maintaining SK secrets.
@@ -77,6 +76,8 @@ public class SkUtility
   private static final String TENANT_ROOT = String.format("%s/tenant", TAPIS_ROOT);
   // Path element for systems.
   private static final String SYSTEM_ELEMENT = "system";
+  // Path element for systems secret suffix.
+  private static final String SYSTEM_SECRET_SUFFIX = "S1";
   // Path element for users.
   private static final String USER_ELEMENT = "user";
 
@@ -116,9 +117,21 @@ public class SkUtility
 
   /* ********************************************************************** */
   /*                                 Records                                */
+ /*    {
+ *      "tenant_id": "dev",
+ *      "system_id": "test-system",
+ *      "target_user": "testuser1",
+ *      "is_static": true,
+ *      "has_password": false,
+ *      "has_pki_keys": true,
+ *      "has_access_key": false,
+ *      "has_token": false
+ *    } */
   /* ********************************************************************** */
   // Wrapper for secret info metadata.
-  private record SecretInfo(SecretType type, String path, String secret) {}
+  private record SecretInfo(SecretType type, String path, String secret) {} // TODO remove
+  private record SecretMetaInfo(String tenantId, String systemId, String targetUser, boolean isStatic,
+                                boolean hasPassword, boolean hasPkiKeys, boolean hasAccessKey, boolean hasToken) {}
 
   // Wrapper for processed SecretInfo records.
   private record SecretOutput(String key, String value) {}
@@ -147,7 +160,6 @@ public class SkUtility
   /* ********************************************************************** */
   /**
    * Main
-   * No logging necessary in this method since the called methods log errors.
    *
    * @param args the command line parameters
    * @throws Exception on error
@@ -323,6 +335,9 @@ public class SkUtility
    */
   private void sysCleanupForTenant(String tenant) throws Exception
   {
+    // TODO/TBD If all actions require iterating over systems and users,
+    //   then probably makes sense to refactor and place the loops outside the individual action methods,
+    //   i.e. in SkUtility.run()
     debug("Executing action: SysCleanup for tenant. Tenant: " + tenant);
     // Get all systems under the tenant
     List<String> systems = getSystems(tenant);
@@ -354,96 +369,207 @@ public class SkUtility
 
   /**
    * Run sysExportMetadata action for a single tenant.
+   * The metadata will be output for each path, either static or dynamic,
+   * Vault paths are in the form:
+   *      secret/tapis/tenant/<tenant_id>/system/<system_id>/user/static+<target_user>
+   *    or
+   *      secret/tapis/tenant/<tenant_id>/system/<system_id>/user/dynamic+<target_user>
+   * Metadata is under TODO ???
+   * and data is under TODO ???
+   * Vault paths for Systems secrets always end with <secret_type>/S1
+   *   where secret_type is password, sshkey, accesskey or
    * TODO
    * @param tenant tenant to process
    * @throws Exception on error
    */
   private void sysExportMetadataForTenant(String tenant) throws Exception
   {
+    // TODO/TBD If all actions require iterating over systems and users,
+    //   then probably makes sense to refactor and place the loops outside the individual action methods,
+    //   i.e. in SkUtility.run()
     debug("Executing action: SysExportMetadata for tenant. Tenant: " + tenant);
     // Get all systems under the tenant
     List<String> systems = getSystems(tenant);
     debug("******** Systems Count: " + systems.size() + " ********");
     for (String system : systems)
     {
+      boolean isStatic;
+      String userName;
       debug(String.format("Found system. Tenant: %s System: %s", tenant, system));
       // Get all users under system
       List<String> users = getUsers(tenant, system);
       debug("******** Users Count: " + users.size() + " ********");
-      for (String user : users)
+      for (String userField : users)
       {
-        debug(String.format("Found system user. Tenant: %s System: %s User: %s", tenant, system, user));
-//TODO        // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
-//        if (!StringUtils.startsWith(user,"static+") && !StringUtils.startsWith(user,"dynamic+"))
-//        {
-//          debug(String.format("Found legacy record. Tenant: %s System: %s User: %s", tenant, system, user));
-//        }
+        // If user field begins with static+ or dynamic+ then it is a non-legacy record we process it
+        if (StringUtils.startsWith(userField,"static+"))
+        {
+          isStatic = true;
+          userName = SPLIT_PLUS_PATTERN.split(userField, 2)[1];
+        }
+        else if (StringUtils.startsWith(userField,"dynamic+"))
+        {
+          isStatic = false;
+          userName = SPLIT_PLUS_PATTERN.split(userField, 2)[1];
+          debug(String.format("Found dynamic record. Tenant: %s System: %s User field: %s Username: %s",
+                              tenant, system, userField, userName));
+        }
+        else
+        {
+          // It is a legacy record. Ignore it.
+          continue;
+        }
+        debug(String.format("Found record. Tenant: %s System: %s TargetUsername: %s isStatic: %b",
+                            tenant, system, userName, isStatic));
+        // TODO determine metadata for this user as a java record
+        var secretMetadata = getSecretMetadata(tenant, system, userField, userName, isStatic);
+        outputSecretMetadata(secretMetadata);
       }
     }
   }
 
-    // Print debug message
+  /*
+   * getSecretMetadata
+   * Determine secret metadata by making calls to vault under path v1/secret/data/
+   */
+  private SecretMetaInfo getSecretMetadata(String tenant, String system, String userField, String targetUser, boolean isStatic)
+          throws Exception
+  {
+    // Build the base path for secret dta
+    String baseSecretDataPath = String.format("%s%s/%s/%s/%s/%s/%s/%s/",
+                   _parms.vurl,VAULT_BASE_URL_DATA,TENANT_ROOT,tenant,SYSTEM_ELEMENT,system,USER_ELEMENT,userField);
+    // For each secret type build the path and attempt to check for data
+    boolean hasPassword = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.password);
+    boolean hasPkiKeys = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.sshkey);
+    boolean hasAccessKey = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.accesskey);
+    boolean hasToken = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.token);
+    return new SecretMetaInfo(tenant, system, targetUser, isStatic, hasPassword, hasPkiKeys, hasAccessKey, hasToken);
+  }
+
+  /*
+   * checkSecretData
+   * Determine if secret of given type is present.
+   */
+  private boolean checkSecretData(String baseSecretDataPath, SecretPathMapper.KeyType keytype)
+          throws Exception
+  {
+    // Build the full path to the secret
+    String fullPath = String.format("%s/%s/%s/", baseSecretDataPath, keytype.toString(), SYSTEM_SECRET_SUFFIX);
+
+    // Make the GET request
+    // Parse the response body and return the value of the data object.
+    // The secrets should look like:  "data": {"data": {"foo": "bar"}, "metadata": {..}}
+    HttpRequest request;
+    HttpResponse<String> resp;
+    var reqUri = new URI(fullPath);
+    debug("Sending GET request to: " + reqUri);
+    request = HttpRequest.newBuilder().uri(reqUri)
+            .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json",
+                     "Content-Type", "application/json")
+            .build();
+    resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+    // Check return code.
+    int rc = resp.statusCode();
+    System.out.println("Received HTTP status code: " + rc);
+    // If not found then no secret data, so return false
+    if (rc == 404) return false;
+    // For error status code log an error and return false
+    if (rc >= 300)
+    {
+      warn("Received http status code " + rc + " on GET request to " + reqUri);
+      return false;
+    }
+
+    // Parse the response body and return the value of the data object.
+    // The secrets look like:  "data": {"data": {"foo": "bar"}, "metadata": {..}}
+    JsonObject jsonObj =  TapisGsonUtils.getGson().fromJson(resp.body(), JsonObject.class);
+    if (jsonObj == null)
+    {
+        error("Unable to create Json object from response.");
+        return false;
+    }
+    var dataObj = jsonObj.get("data");
+    if (dataObj == null)
+    {
+      error("Did not find data field in json object from response.");
+      return false;
+    }
+    var dataJsonObj = dataObj.getAsJsonObject();
+
+    if (dataJsonObj == null)
+    {
+      error("Unable to get dataJsonObj from response.");
+      return false;
+    }
+    // TODO For given keytype (password, sshkeys, etc) check that all fields present and valid
+    return checkSecretDataForKeytype(keytype, dataJsonObj);
+  }
+
+  // Print debug message
   private void debug(String s) { if (_parms.verbose) System.out.println("DEBUG: " + s); }
   // Print warning message
   private void warn(String s) { if (_parms.verbose) System.out.println("WARN: " + s); }
+  // Print out error message
+  private void error(String s) { System.out.printf("ERROR: %s%n", s); }
   // Print out error message and exit
   private void errorExit(String s) { System.out.printf("ERROR: %s%n", s); System.exit(1); }
 
-//  /**
-//   * processSourceTree
-//   * The first call to this recursive method starts at the root of the tapis hierarchy in Vault.
-//   *
-//   * @param curpath the path to explore depth-first
-//   */
-//  private void processSourceTree(String curpath) throws Exception
-//  {
-//      // Increment listing counter.
-//        _numListings++;
-//
-//        // Make the request to list the curpath.
-//        HttpRequest request;
-//        HttpResponse<String> resp;
-//        try {
-//            request = HttpRequest.newBuilder()
-//                .uri(new URI(_parms.vurl + "v1/secret/metadata/" + curpath))
-//                .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json",
-//                         "Content-Type", "application/json")
-//                .method("LIST", BodyPublishers.noBody())
-//                .build();
-//            resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-//        } catch (Exception e) {
-//            // Record read failure and display error message.
-//            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
-//            out(e.getClass().getSimpleName() + ": " + e.getMessage());
-//            return;
-//        }
-//
-//        // Check return code.
-//        int rc = resp.statusCode();
-//        if (rc == 404) {
-//            // We probably discovered a secret (i.e., leaf node).
-//            copySecret(curpath);
-//            return;
-//        }
-//        else if (rc >= 300) {
-//            // Looks like an error.
-//            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
-//            out("Received http status code " + rc + " on LIST request to " +
-//                "source vault: " + request.uri().toString() + ".");
-//            return;
-//        } else {
-//            // Intermediate node. Parse the response body that looks something like this:
-//            // {"data": {"keys": ["foo", "foo/"]}}
-//            var jsonObj = TapisGsonUtils.getGson().fromJson(resp.body(), JsonObject.class);
-//            var data    = jsonObj.get("data").getAsJsonObject();
-//            var keys    = data.get("keys").getAsJsonArray();
-//            int numKeys = keys.size();
-//            for (int i = 0; i < numKeys; i++) {
-//               String key = keys.get(i).getAsString();
-//               processSourceTree(curpath + key);
-//            }
-//        }
-//    }
+  /** TODO remove
+   * processSourceTree
+   * The first call to this recursive method starts at the root of the tapis hierarchy in Vault.
+   *
+   * @param curpath the path to explore depth-first
+   */
+  private void processSourceTree(String curpath) throws Exception
+  {
+      // Increment listing counter.
+        _numListings++;
+
+        // Make the request to list the curpath.
+        HttpRequest request;
+        HttpResponse<String> resp;
+        try {
+            request = HttpRequest.newBuilder()
+                .uri(new URI(_parms.vurl + "v1/secret/metadata/" + curpath))
+                .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json",
+                         "Content-Type", "application/json")
+                .method("LIST", BodyPublishers.noBody())
+                .build();
+            resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            // Record read failure and display error message.
+            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
+            out(e.getClass().getSimpleName() + ": " + e.getMessage());
+            return;
+        }
+
+        // Check return code.
+        int rc = resp.statusCode();
+        if (rc == 404) {
+            // We probably discovered a secret (i.e., leaf node).
+            copySecret(curpath);
+            return;
+        }
+        else if (rc >= 300) {
+            // Looks like an error.
+            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
+            out("Received http status code " + rc + " on LIST request to " +
+                "source vault: " + request.uri().toString() + ".");
+            return;
+        } else {
+            // Intermediate node. Parse the response body that looks something like this:
+            // {"data": {"keys": ["foo", "foo/"]}}
+            var jsonObj = TapisGsonUtils.getGson().fromJson(resp.body(), JsonObject.class);
+            var data    = jsonObj.get("data").getAsJsonObject();
+            var keys    = data.get("keys").getAsJsonArray();
+            int numKeys = keys.size();
+            for (int i = 0; i < numKeys; i++) {
+               String key = keys.get(i).getAsString();
+               processSourceTree(curpath + key);
+            }
+        }
+    }
     
     /* ---------------------------------------------------------------------- */
     /* copySecret:                                                            */
@@ -553,25 +679,7 @@ public class SkUtility
         var olist = new ArrayList<SecretOutput>(2* _secretRecords.size());
         
         // Each raw record can create one or more output records.
-        for (var srec : _secretRecords) {
-            // The easy case is when we return Vault's output as is.
-            if (_parms.format != OutputFormat.ENV) {
-                olist.add(getRawDumpOutputRec(srec));
-                continue;
-            }
-            
-            // Parse json record and add record(s) to output list in preparation
-            // for ENV output.  By default the key are sanitized.
-            switch (srec.type) {
-                case ServicePwd:   getServicePwdOutputRec(srec, olist); break;
-                case DBCredential: getDBCredentialOutputRec(srec, olist); break;
-                case JWTSigning:   getJWTSigningOutputRec(srec, olist); break;
-                case System:       getSystemOutputRec(srec, olist); break;
-                case User:         getUserOutputRec(srec, olist); break;
-                default:
-            }
-        }
-        
+        for (var srec : _secretRecords) { olist.add(getRawDumpOutputRec(srec)); }
         // Return the list.
         return olist;
     }
@@ -705,10 +813,7 @@ public class SkUtility
      */
     private void addDynamicSecrets(String keyPrefix, String rawSecret, List<SecretOutput> olist)
     {
-        // Replace env unfriendly character in the prefix.
-        if (!_parms.noSanitizeName) keyPrefix = sanitize(keyPrefix);
-        
-        // Dynamically discover the individual values associated with this 
+        // Dynamically discover the individual values associated with this
         // user secret.  Since the keys are user chosen, we may have to transform
         // them to avoid illegal characters in target context (e.g., env variables).
         // First let's see if there's any secret.
@@ -722,7 +827,6 @@ public class SkUtility
         JsonObject jsonObj = TapisGsonUtils.getGson().fromJson(rawSecret, JsonObject.class);
         for (var entry : jsonObj.entrySet()) {
             var key = entry.getKey();
-            if (!_parms.noSanitizeName) key = sanitize(key); 
             var val = entry.getValue().getAsString();
             if (val == null) val = "";
             olist.add(new SecretOutput(keyPrefix + "_" + key.toUpperCase(), val));
@@ -743,9 +847,6 @@ public class SkUtility
      */
     private void addKeyPair(String keyPrefix, String rawSecret, List<SecretOutput> olist)
     {
-        // Replace env unfriendly character in the prefix.
-        if (!_parms.noSanitizeName) keyPrefix = sanitize(keyPrefix);
-        
         // The keys are at the top level in the json object.
         // We process the private key first.
         String value = null;
@@ -870,8 +971,7 @@ public class SkUtility
     {
         // Populate a json object will all the secrets
         // in the user-specified format.
-        String secrets = _parms.format == OutputFormat.JSON ? 
-                               writeJsonOutput(olist) : writeEnvOutput(olist);
+        String secrets = writeJsonOutput(olist);
         
         // Did we encounter unknown paths?
         var unknownPathMsg = _numUnknownPaths == 0 ? "" : " <-- INVESTIGATE";
@@ -927,34 +1027,6 @@ public class SkUtility
         
         // Close the secrets outer json object and return.
         secrets.append(END_SECRETS);
-        return secrets.toString();
-    }
-
-    /* ---------------------------------------------------------------------- */
-    /* writeEnvOutput:                                                        */
-    /* ---------------------------------------------------------------------- */
-    private String writeEnvOutput(List<SecretOutput> olist)
-    {
-        // Initialize result json string.
-        var secrets = new StringBuilder(OUTPUT_BUFLEN);
-        
-        // Write each path/secret pair in environment variable format. The secret
-        // key is a name derived from the secret's Vault path and the value is
-        // the secret itself. The result lines end up looking like this:
-        //
-        //    SOME_ENV_NAME='abcdefg'
-        //
-        for (var rec: olist) {
-            // Format the json payload.
-            secrets.append(rec.key());
-            secrets.append("=");
-            if (_parms.quoteEnvValues) secrets.append("'");
-            secrets.append(rec.value());
-            if (_parms.quoteEnvValues) secrets.append("'");
-            secrets.append("\n");
-        }
-        
-        // Close the secrets outer json object and return.
         return secrets.toString();
     }
 

@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.security.commands.aux.utility;
 
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
@@ -42,23 +44,11 @@ public class SkUtilityParameters
             usage = "Vault URL including port, ex: http(s)://host:32342")
     public String vurl;
 
-    @Option(name = "-format", required = false, aliases = {"--format"},
-            usage = "JSON writes raw Vault data, ENV writes key=value")
-    public OutputFormat format = OutputFormat.ENV;
-
     @Option(name = "-sys_cleanup", required = false, usage = "Remove orphaned legacy Systems secrets")
     public boolean sysCleanup = false;
 
     @Option(name = "-sys_export_meta", required = false, usage = "Export metadata for Systems secrets")
     public boolean sysExportMeta = false;
-
-    @Option(name = "-nosan", required = false, aliases = {"--nosanitize"},
-            usage = "don't replace unsupported characters with underscore when -format=ENV")
-    public boolean noSanitizeName = false;
-
-    @Option(name = "-quote", required = false, aliases = {"--quoteenv"},
-            usage = "enclose secret values in single quotes when -format=ENV")
-    public boolean quoteEnvValues = false;
 
     @Option(name = "-v", required = false, aliases = {"--verbose"},
             usage = "output statistics in addition to data")
@@ -114,27 +104,27 @@ public class SkUtilityParameters
             writer.write("SkUtility [options...]\n");
             ByteArrayOutputStream ostream = new ByteArrayOutputStream(initialCapacity);
             parser.printUsage(ostream);
-            try {writer.write(ostream.toString("UTF-8"));}
-              catch (Exception e1) {}
+            try {writer.write(ostream.toString(StandardCharsets.UTF_8));}
+            catch (Exception e1) { /* Ignore. About to throw exception anyway. */ }
             writer.write("\n");
             // Throw exception.
             throw new TapisException(writer.toString());
            }
         }
       
-      // Display help and exit program.
-      if (help)
-      {
-        String s = "\nSkExport for exporting Tapis secrets from Vault.";
-        System.out.println(s);
-        System.out.println("\nSkExport [options...]\n");
-        parser.printUsage(System.out);
-        // Add a usage blurb.
-        s = "\n\nThis utility exports as JSON all Tapis secrets currently in Vault.\n";
-        System.out.println(s);
-        System.exit(0);
-      }
+    // Display help and exit program.
+    if (help)
+    {
+      String s = "\nSkExport for exporting Tapis secrets from Vault.";
+      System.out.println(s);
+      System.out.println("\nSkExport [options...]");
+      parser.printUsage(System.out);
+      // Add a usage blurb.
+      s = "\n\nThis utility exports as JSON all Tapis secrets currently in Vault.";
+      System.out.println(s);
+      System.exit(0);
     }
+  }
 
   /* Check the semantic integrity of the input parameters. Replace all
    * placeholder characters with spaces in the name and contactName inputs
