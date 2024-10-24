@@ -9,6 +9,12 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 -----------------------
+## 1.7.1 - 2024-10-24
+
+### New Features:
+1. Add support for managing system secrets with KeyType = tmskey.
+
+-----------------------
 ## 1.7.0 - 2024-09-17
 
 ### New Features:
