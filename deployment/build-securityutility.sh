@@ -9,6 +9,13 @@
 #
 # usage : $TAPIS_ROOT/deployment/build-securityutility.sh
 #
+# To build image locally from github repo:
+#   set env variable TAPIS_ENV, e.g. export TAPIS_ENV=dev
+#   mvn clean install
+#   mvn -f tapis-securitylib/shaded-pom.xml package
+# To push image to docker hub:
+#   docker push tapis/securityutility:dev
+#
 ###########################################################
 export VER=${TAPIS_VERSION}
 export TAPIS_ENV=${TAPIS_ENV}

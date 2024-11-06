@@ -69,7 +69,7 @@ public class SkUtility
   // Base URL path for walking tree to find Tapis meta records.
   private static final String VAULT_BASE_URL_META = "v1/secret/metadata";
   // Base URL path for walking tree to find Tapis data records.
-  private static final String VAULT_BASE_URL_DATA = "v1/secret/data/";
+  private static final String VAULT_BASE_URL_DATA = "v1/secret/data";
   // Root of the tapis secrets subtree.
   private static final String TAPIS_ROOT = "tapis";
   // Path element for tenants.
@@ -180,13 +180,14 @@ public class SkUtility
   public void run() throws Exception
   {
     // Check status of Vault.
-    debug("Checking status of Vault");
+    info("Checking status of Vault");
     checkVaultStatus();
 
     // Get all tenants under tapis/tenant
-    debug("Retrieving tenants");
+    info("Retrieving tenants");
     List<String> tenants = getTenants();
-    debug("******** Tenants Count: " + tenants.size() + " ********");
+    info("******** Tenants Count: " + tenants.size() + " ********");
+    int totalSystems = 0;
     for (String tenant: tenants)
     {
       debug("Processing tenant: " + tenant);
@@ -224,7 +225,7 @@ public class SkUtility
   {
     List<String> tenants = new ArrayList<>();
     // Build the full path
-    String fullPath = String.format("%s%s/%s/",_parms.vurl,VAULT_BASE_URL_META,TENANT_ROOT);
+    String fullPath = String.format("%s/%s/%s",_parms.vurl,VAULT_BASE_URL_META,TENANT_ROOT);
     // Make the request to list
     HttpResponse<String> resp = sendListRequest(fullPath);
     // Check return code.
@@ -256,12 +257,12 @@ public class SkUtility
   {
     List<String> systems = new ArrayList<>();
     // Build the full path
-    String fullPath = String.format("%s%s/%s/%s/%s",_parms.vurl,VAULT_BASE_URL_META,TENANT_ROOT,tenant,SYSTEM_ELEMENT);
+    String fullPath = String.format("%s/%s/%s/%s/%s",_parms.vurl,VAULT_BASE_URL_META,TENANT_ROOT,tenant,SYSTEM_ELEMENT);
     // Make the request to list
     HttpResponse<String> resp = sendListRequest(fullPath);
     // Check return code.
     int rc = resp.statusCode();
-    System.out.println("Received HTTP status code: " + rc);
+    debug("Received HTTP status code: " + rc);
     if (rc == 404)
     {
       // Indicates no systems for this tenant. This could happen.
@@ -289,13 +290,13 @@ public class SkUtility
         List<String> users = new ArrayList<>();
         // Build the full path
         String fullPath =
-            String.format("%s%s/%s/%s/%s/%s/%s/",
+            String.format("%s/%s/%s/%s/%s/%s/%s/",
                           _parms.vurl,VAULT_BASE_URL_META,TENANT_ROOT,tenant,SYSTEM_ELEMENT,system,USER_ELEMENT);
         // Make the request to list
         HttpResponse<String> resp = sendListRequest(fullPath);
         // Check return code.
         int rc = resp.statusCode();
-        System.out.println("Received HTTP status code: " + rc);
+        debug("Received HTTP status code: " + rc);
         if (rc == 404)
         {
             // Indicates no systems for this tenant. This could happen.
@@ -390,7 +391,7 @@ public class SkUtility
     debug("Executing action: SysExportMetadata for tenant. Tenant: " + tenant);
     // Get all systems under the tenant
     List<String> systems = getSystems(tenant);
-    debug("******** Systems Count: " + systems.size() + " ********");
+    info("******** Systems Count: " + systems.size() + " ********");
     for (String system : systems)
     {
       boolean isStatic;
@@ -422,8 +423,9 @@ public class SkUtility
         debug(String.format("Found record. Tenant: %s System: %s TargetUsername: %s isStatic: %b",
                             tenant, system, userName, isStatic));
         // TODO determine metadata for this user as a java record
-        var secretMetadata = getSecretMetadata(tenant, system, userField, userName, isStatic);
-        outputSecretMetadata(secretMetadata);
+        SecretMetaInfo secretMetadata = getSecretMetadata(tenant, system, userField, userName, isStatic);
+        debug("Found secret metadata: " + secretMetadata);
+//TODO        outputSecretMetadata(secretMetadata);
       }
     }
   }
@@ -435,14 +437,21 @@ public class SkUtility
   private SecretMetaInfo getSecretMetadata(String tenant, String system, String userField, String targetUser, boolean isStatic)
           throws Exception
   {
-    // Build the base path for secret dta
-    String baseSecretDataPath = String.format("%s%s/%s/%s/%s/%s/%s/%s/",
+    // Build the base path for secret data
+    String baseSecretDataPath = String.format("%s/%s/%s/%s/%s/%s/%s/%s",
                    _parms.vurl,VAULT_BASE_URL_DATA,TENANT_ROOT,tenant,SYSTEM_ELEMENT,system,USER_ELEMENT,userField);
     // For each secret type build the path and attempt to check for data
     boolean hasPassword = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.password);
     boolean hasPkiKeys = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.sshkey);
     boolean hasAccessKey = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.accesskey);
     boolean hasToken = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.token);
+
+    // Trace if it is sshkey
+    if (hasPkiKeys)
+    {
+      trace(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
+                             tenant, system, targetUser, isStatic, SecretPathMapper.KeyType.sshkey));
+    }
     return new SecretMetaInfo(tenant, system, targetUser, isStatic, hasPassword, hasPkiKeys, hasAccessKey, hasToken);
   }
 
@@ -454,7 +463,7 @@ public class SkUtility
           throws Exception
   {
     // Build the full path to the secret
-    String fullPath = String.format("%s/%s/%s/", baseSecretDataPath, keytype.toString(), SYSTEM_SECRET_SUFFIX);
+    String fullPath = String.format("%s/%s/%s", baseSecretDataPath, keytype.toString(), SYSTEM_SECRET_SUFFIX);
 
     // Make the GET request
     // Parse the response body and return the value of the data object.
@@ -471,13 +480,17 @@ public class SkUtility
 
     // Check return code.
     int rc = resp.statusCode();
-    System.out.println("Received HTTP status code: " + rc);
+    String headers = resp.headers().toString();
+    String respStr = resp.toString();
+    var location = resp.headers().firstValue("location");
+    warn(String.format("Received HTTP status code: %d location: %s Headers: %s Response: %s", rc, location, headers, respStr));
     // If not found then no secret data, so return false
     if (rc == 404) return false;
     // For error status code log an error and return false
     if (rc >= 300)
     {
       warn("Received http status code " + rc + " on GET request to " + reqUri);
+      debug(String.format("Received HTTP status code: %d location: %s Headers: %s Response: %s", rc, location, headers, respStr));
       return false;
     }
 
@@ -502,18 +515,25 @@ public class SkUtility
       error("Unable to get dataJsonObj from response.");
       return false;
     }
+    // Log if found
+    debug(String.format("Found secret. KeyType: %s reqUri: %s", SecretPathMapper.KeyType.sshkey, reqUri));
+    return true;
     // TODO For given keytype (password, sshkeys, etc) check that all fields present and valid
-    return checkSecretDataForKeytype(keytype, dataJsonObj);
+//TODO    return checkSecretDataForKeytype(keytype, dataJsonObj);
   }
 
-  // Print debug message
-  private void debug(String s) { if (_parms.verbose) System.out.println("DEBUG: " + s); }
-  // Print warning message
-  private void warn(String s) { if (_parms.verbose) System.out.println("WARN: " + s); }
-  // Print out error message
-  private void error(String s) { System.out.printf("ERROR: %s%n", s); }
   // Print out error message and exit
   private void errorExit(String s) { System.out.printf("ERROR: %s%n", s); System.exit(1); }
+  // Print out error message
+  private void error(String s) { System.out.printf("ERROR: %s%n", s); }
+  // Print warning message
+  private void warn(String s) { if (_parms.verbose) System.out.println("WARN: " + s); }
+  // Print info message
+  private void info(String s) { System.out.println("INFO: " + s); }
+  // Print debug message
+  private void debug(String s) { if (_parms.verbose) System.out.println("DEBUG: " + s); }
+  // Print trace message
+  private void trace(String s) { if (_parms.verbose) System.out.println("TRACE: " + s); }
 
   /** TODO remove
    * processSourceTree
@@ -529,9 +549,9 @@ public class SkUtility
         // Make the request to list the curpath.
         HttpRequest request;
         HttpResponse<String> resp;
+        String uriStr = String.format("%s/%s/%s", _parms.vurl, VAULT_BASE_URL_META, curpath);
         try {
-            request = HttpRequest.newBuilder()
-                .uri(new URI(_parms.vurl + "v1/secret/metadata/" + curpath))
+            request = HttpRequest.newBuilder().uri(new URI(uriStr))
                 .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json",
                          "Content-Type", "application/json")
                 .method("LIST", BodyPublishers.noBody())
@@ -539,8 +559,8 @@ public class SkUtility
             resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (Exception e) {
             // Record read failure and display error message.
-            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
-            out(e.getClass().getSimpleName() + ": " + e.getMessage());
+            recordFailedRead(uriStr);
+            debug(e.getClass().getSimpleName() + ": " + e.getMessage());
             return;
         }
 
@@ -553,8 +573,8 @@ public class SkUtility
         }
         else if (rc >= 300) {
             // Looks like an error.
-            recordFailedRead(_parms.vurl + "v1/secret/metadata/" + curpath);
-            out("Received http status code " + rc + " on LIST request to " +
+            recordFailedRead(uriStr);
+            debug("Received http status code " + rc + " on LIST request to " +
                 "source vault: " + request.uri().toString() + ".");
             return;
         } else {
@@ -606,16 +626,16 @@ public class SkUtility
         // Make the request.
         HttpRequest request;
         HttpResponse<String> resp;
+        String uriStr = String.format("%s/%s/%s", _parms.vurl, VAULT_BASE_URL_DATA, secretPath);
         try {
-            request = HttpRequest.newBuilder()
-                .uri(new URI(_parms.vurl + VAULT_BASE_URL_DATA + secretPath))
+            request = HttpRequest.newBuilder().uri(new URI(uriStr))
                 .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json", 
                          "Content-Type", "application/json")
                 .build();
             resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (Exception e) {
             // Record read failure and display error message.
-            recordFailedRead(_parms.vurl + VAULT_BASE_URL_DATA + secretPath);
+            recordFailedRead(uriStr);
             debug(e.getClass().getSimpleName() + ": " + e.getMessage());
             return null;
         }
@@ -624,7 +644,7 @@ public class SkUtility
         int rc = resp.statusCode();
         if (rc >= 300) {
             // Looks like an error.
-            recordFailedRead(_parms.vurl + VAULT_BASE_URL_DATA + secretPath);
+            recordFailedRead(uriStr);
             debug("Received http status code " + rc + " on READ request to " +
                 "source vault: " + request.uri().toString() + ".");
             return null;
@@ -932,7 +952,7 @@ public class SkUtility
         
         // Issue request.
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(new URI(baseUrl + "v1/sys/health"))
+            .uri(new URI(baseUrl + "/v1/sys/health"))
             .headers("X-Vault-Token", tok, "Accept", "application/json", 
                      "Content-Type", "application/json")
             .GET()
@@ -956,7 +976,7 @@ public class SkUtility
         }
         boolean sealed = jsonObj.get("sealed").getAsBoolean();
         String version = jsonObj.get("version").getAsString();
-        debug("Vault at " + baseUrl + "is at version " + version +
+        info("Vault at " + baseUrl + " is at version " + version +
             " and is " + (sealed ? "" : "not ") + "sealed.");
         if (sealed) {
             String msg = "Unable to continue because vault at " + baseUrl + " is sealed.";

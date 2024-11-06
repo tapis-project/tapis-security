@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 
+import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
@@ -131,7 +132,7 @@ public class SkUtilityParameters
    */
   private void validateParms()
   {
-    // Make sure there's a trailing slash in the url.
-    if (!vurl.endsWith("/")) vurl += "/";
+    // Make sure there is no trailing slash in the url.
+    vurl = StringUtils.removeEnd(vurl, "/");
   }
 }
