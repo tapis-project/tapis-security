@@ -63,6 +63,30 @@ function setVars() {
     #set as part of the init process
     export VAULT_SECRET_ID
     echo VAULT_SECRET_ID = ${VAULT_SECRET_ID}
+
+    #set as part of the init process
+    export VAULT_TOKEN
+    echo VAULT_TOKEN = ${VAULT_TOKEN}
+
+    #set as part of the init process
+    export VAULT_UNSEAL_KEY1
+    echo VAULT_UNSEAL_KEY1 = ${VAULT_UNSEAL_KEY1}
+
+    #set as part of the init process
+    export VAULT_UNSEAL_KEY2
+    echo VAULT_UNSEAL_KEY2 = ${VAULT_UNSEAL_KEY2}
+
+    #set as part of the init process
+    export VAULT_UNSEAL_KEY3
+    echo VAULT_UNSEAL_KEY3 = ${VAULT_UNSEAL_KEY3}
+
+    #set as part of the init process
+    export VAULT_UNSEAL_KEY4
+    echo VAULT_UNSEAL_KEY4 = ${VAULT_UNSEAL_KEY4}
+
+    #set as part of the init process
+    export VAULT_UNSEAL_KEY5
+    echo VAULT_UNSEAL_KEY5 = ${VAULT_UNSEAL_KEY5}
 }
 
 function announce() {
@@ -70,14 +94,38 @@ function announce() {
 }
 
 function readConfig() {
+  announce "Reading Config"
   source ${CONFIG_FILE}
   setVars
 }
 
-function doVault() {
-  readConfig
-  announce "Docker compose down"
-  docker compose -f ${SCRIPT_DIR}/docker-compose.yml up -d tapis-security-vault
+function ensureVaultStarted() {
+  announce "starting vault"
+  docker compose -f ${SCRIPT_DIR}/docker-compose.yml up tapis-security-vault --wait
+}
+
+function initializeVault() {
+  ensureVaultStarted
+  announce "Attempting to get vault token"
+  docker exec -i tapis-security-vault /bin/sh -c "vault operator init > /tmp/vault-init" 
+}
+
+function unsealVault() {
+  vaultKey1=$1
+  vaultKey2=$2
+  vaultKey3=$3
+  vaultKey4=$4
+  vaultKey5=$5
+
+  ensureVaultStarted
+
+  announce "Unsealing Vault"
+  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${vaultKey1}" 
+  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${vaultKey2}" 
+  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${vaultKey3}" 
+  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${vaultkey4}" 
+  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${vaultKey5}" 
+  announce "Vault Unsealed"
 }
 
 function doDown() {
@@ -88,12 +136,14 @@ function doDown() {
 
 function doStart() {
   readConfig
+  unsealVault ${VAULT_UNSEAL_KEY1} ${VAULT_UNSEAL_KEY2} ${VAULT_UNSEAL_KEY3} ${VAULT_UNSEAL_KEY4} ${VAULT_UNSEAL_KEY5}
   announce "Docker compose start"
   docker compose -f ${SCRIPT_DIR}/docker-compose.yml start 
 }
 
 function doUp() {
   readConfig
+  unsealVault ${VAULT_UNSEAL_KEY1} ${VAULT_UNSEAL_KEY2} ${VAULT_UNSEAL_KEY3} ${VAULT_UNSEAL_KEY4} ${VAULT_UNSEAL_KEY5}
   announce "Docker compose up"
   docker compose -f ${SCRIPT_DIR}/docker-compose.yml up -d
 }
@@ -125,7 +175,6 @@ function doInit() {
   cp ${SCRIPT_DIR}/${CONFIG_TEMPLATE} ${SCRIPT_DIR}/${CONFIG_FILE}
 
   readConfig
-
   announce "starting postgres"
   docker compose -f ${SCRIPT_DIR}/docker-compose.yml up tapis-security-postgres --wait
 
@@ -133,7 +182,6 @@ function doInit() {
   docker compose -f ${SCRIPT_DIR}/docker-compose.yml up tapis-security-vault --wait
 
   announce "Attempting to get vault token"
-  #docker exec -i tapis-security-vault /bin/sh -c "export VAULT_ADDR='http://127.0.0.1:8200' ;vault operator init > /tmp/vault-init" 
   docker exec -i tapis-security-vault /bin/sh -c "vault operator init > /tmp/vault-init" 
 
   VAULT_TOKEN=`docker exec -i tapis-security-vault /bin/sh -c "cat /tmp/vault-init" | grep "Root Token" | sed -E "s/.*Root Token[[:space:]]*:[[:space:]]*//"`
@@ -142,16 +190,6 @@ function doInit() {
   VAULT_UNSEAL_KEY3=`docker exec -i tapis-security-vault /bin/sh -c "cat /tmp/vault-init" | grep "Unseal Key 3" | sed -E "s/Unseal Key 3[[:space:]]*:[[:space:]]*//"`
   VAULT_UNSEAL_KEY4=`docker exec -i tapis-security-vault /bin/sh -c "cat /tmp/vault-init" | grep "Unseal Key 4" | sed -E "s/Unseal Key 4[[:space:]]*:[[:space:]]*//"`
   VAULT_UNSEAL_KEY5=`docker exec -i tapis-security-vault /bin/sh -c "cat /tmp/vault-init" | grep "Unseal Key 5" | sed -E "s/Unseal Key 5[[:space:]]*:[[:space:]]*//"`
-
-#  for attempt in {1..5}; do
-#      announce "Attempting to get vault token"
-#      VAULT_TOKEN=`docker exec -i tapis-security-vault /bin/sh -c "cat /tmp/vault-init" | grep "Root Token" | sed -E "s/Root Token[[:space:]]*:[[:space:]]*//"`
-#      if [[ -z ${VAULT_TOKEN} ]] ; then
-#          sleep 1;
-#      else
-#          break;
-#      fi
-#  done;
 
   if [[ -z ${VAULT_TOKEN} ]] ; then
      echo VAULT TOKEN could not be found
@@ -165,16 +203,8 @@ function doInit() {
   echo VAULT_UNSEAL_KEY4=${VAULT_UNSEAL_KEY4} >> ${CONFIG_FILE}
   echo VAULT_UNSEAL_KEY5=${VAULT_UNSEAL_KEY5} >> ${CONFIG_FILE}
 
-#  docker exec -i tapis-security-vault /bin/sh -c "export VAULT_ADDR='http://127.0.0.1:8200' ;vault operator unseal ${VAULT_UNSEAL_KEY1}" 
-#  docker exec -i tapis-security-vault /bin/sh -c "export VAULT_ADDR='http://127.0.0.1:8200' ;vault operator unseal ${VAULT_UNSEAL_KEY2}" 
-#  docker exec -i tapis-security-vault /bin/sh -c "export VAULT_ADDR='http://127.0.0.1:8200' ;vault operator unseal ${VAULT_UNSEAL_KEY3}" 
-#  docker exec -i tapis-security-vault /bin/sh -c "export VAULT_ADDR='http://127.0.0.1:8200' ;vault operator unseal ${VAULT_UNSEAL_KEY4}" 
-#  docker exec -i tapis-security-vault /bin/sh -c "export VAULT_ADDR='http://127.0.0.1:8200' ;vault operator unseal ${VAULT_UNSEAL_KEY5}" 
-  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${VAULT_UNSEAL_KEY1}" 
-  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${VAULT_UNSEAL_KEY2}" 
-  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${VAULT_UNSEAL_KEY3}" 
-  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${VAULT_UNSEAL_KEY4}" 
-  docker exec -i tapis-security-vault /bin/sh -c "vault operator unseal ${VAULT_UNSEAL_KEY5}" 
+  initializeVault
+  unsealVault ${VAULT_UNSEAL_KEY1} ${VAULT_UNSEAL_KEY2} ${VAULT_UNSEAL_KEY3} ${VAULT_UNSEAL_KEY4} ${VAULT_UNSEAL_KEY5}
 
   docker exec -i tapis-security-vault /bin/sh -c "export VAULT_TOKEN=${VAULT_TOKEN} ; vault secrets enable -version=2 -path=secret kv"
   docker exec -i tapis-security-vault /bin/sh -c "export VAULT_TOKEN=${VAULT_TOKEN} ; vault auth enable approle"
@@ -190,8 +220,8 @@ function doInit() {
 
   http ${VAULT_ADDRESS}/v1/auth/token/create displayname="tapisroot" ttl:=0 policies:='["root"]' X-Vault-Token:${VAULT_TOKEN}
 
-#  VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id")
-#  VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id")
+  VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id")
+  VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id")
 
   echo VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id") >> ${CONFIG_FILE}
   echo VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id") >> ${CONFIG_FILE}
@@ -243,10 +273,6 @@ esac
 
 exit 0
 
-
-
-announce "starting rabbitmq"
-docker compose -f ${SCRIPT_DIR}/docker-compose.yml up tapis-security-rabbitmq --wait
 
 
 announce "Start security environment"

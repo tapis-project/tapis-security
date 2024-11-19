@@ -3,7 +3,6 @@ version: "3"
 
 volumes:
   tapis-security-postgres-data:
-  tapis-security-vault-config:
   tapis-security-vault-data:
 
 networks:
@@ -42,6 +41,7 @@ services:
        - /home/dvernon/source/tapis/tapis-security/deployment/debug/context.xml:/tmp/context.xml
        - /home/dvernon/source/tapis/tapis-security/tapis-securityapi/target/v3:/usr/local/tapis/security
     command: ["/bin/bash", "-c", "chmod +x ~/startTapisSecurityApp.sh;~/startTapisSecurityApp.sh"]
+#    command: ["/bin/bash", "-c", "catalina.sh jpda run"]
   tapis-security-rabbitmq:
     image: rabbitmq:3.7.16-management
     container_name: tapis-security-rabbitmq
@@ -84,16 +84,18 @@ services:
       - CAP_SETFCAP
     environment:
        - 'VAULT_ADDR=http://0.0.0.0:8200'
+#    command: ["/bin/sh", "-c", "mkdir /vault/data;sleep 10000"]
+#    command: ["/bin/sh", "-c", "mkdir -p /vault/data/vaultData; sleep 10000"]
+    command: ["/bin/sh", "-c", "mkdir -p /vault/data/vaultData; vault server -config=/vault/config/vault_config.hcl"]
+#    command: ["vault", "server", "-config=/vault/config/vault_config.hcl"]
+#    command: ["vault", "server", "-dev", "-dev-listen-address=0.0.0.0:8200", "-config=/vault/config"]
 #      - 'VAULT_LOCAL_CONFIG={"storage": {"file": {"path": "/vault/file"}}, "listener": [{"tcp": { "address": "0.0.0.0:8200", "tls_disable": true}}], "default_lease_ttl": "168h", "max_lease_ttl": "720h", "ui": true}'
 #      - 'POSTGRES_USER=${PG_ADMIN_NAME}'
 #      - 'POSTGRES_PASSWORD=${PG_ADMIN_PASSWORD}'
 #      - 'POSTGRES_DB=postgres'
-    command: ["/bin/sh", "-c", "mkdir -p /vault/data/vaultData; vault server -config=/vault/config/vault_config.hcl"]
-#    command: ["vault", "server", "-config=/vault/config/vault_config.hcl"]
-#    command: ["vault", "server", "-dev", "-dev-listen-address=0.0.0.0:8200", "-config=/vault/config"]
     ports:
       - '8200:8200'
       - '8201:8201'
     volumes:
-      - tapis-security-vault-data:/vault/config/data
+      - tapis-security-vault-data:/vault
       - /home/dvernon/source/tapis/tapis-security/deployment/debug/vault_config.hcl:/vault/config/vault_config.hcl
