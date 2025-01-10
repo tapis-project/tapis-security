@@ -6,6 +6,18 @@ function missingVarMessage() {
     exit 1
 }
 
+function getRoleAndSecretIds() {
+  VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id")
+  VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id")
+
+#  echo VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id") >> ${CONFIG_FILE}
+  echo VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id")  
+  export VAULT_ROLE_ID
+#  echo VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id") >> ${CONFIG_FILE}
+  echo VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id") 
+  export VAULT_SECRET_ID
+}
+
 function setVars() {
     if [[ ! ${PG_PORT} ]] ; then
         missingVarMessage "PG_PORT" 
@@ -57,12 +69,12 @@ function setVars() {
     fi
 
     #set as part of the init process
-    export VAULT_ROLE_ID
-    echo VAULT_ROLE_ID = ${VAULT_ROLE_ID}
+#    export VAULT_ROLE_ID
+#    echo VAULT_ROLE_ID = ${VAULT_ROLE_ID}
 
     #set as part of the init process
-    export VAULT_SECRET_ID
-    echo VAULT_SECRET_ID = ${VAULT_SECRET_ID}
+#    export VAULT_SECRET_ID
+#    echo VAULT_SECRET_ID = ${VAULT_SECRET_ID}
 
     #set as part of the init process
     export VAULT_TOKEN
@@ -87,6 +99,9 @@ function setVars() {
     #set as part of the init process
     export VAULT_UNSEAL_KEY5
     echo VAULT_UNSEAL_KEY5 = ${VAULT_UNSEAL_KEY5}
+
+    export SCRIPT_DIR
+    echo SCRIPT_DIR = ${SCRIPT_DIR}
 }
 
 function announce() {
@@ -137,6 +152,7 @@ function doDown() {
 function doStart() {
   readConfig
   unsealVault ${VAULT_UNSEAL_KEY1} ${VAULT_UNSEAL_KEY2} ${VAULT_UNSEAL_KEY3} ${VAULT_UNSEAL_KEY4} ${VAULT_UNSEAL_KEY5}
+  getRoleAndSecretIds
   announce "Docker compose start"
   docker compose -f ${SCRIPT_DIR}/docker-compose.yml start 
 }
@@ -144,6 +160,7 @@ function doStart() {
 function doUp() {
   readConfig
   unsealVault ${VAULT_UNSEAL_KEY1} ${VAULT_UNSEAL_KEY2} ${VAULT_UNSEAL_KEY3} ${VAULT_UNSEAL_KEY4} ${VAULT_UNSEAL_KEY5}
+  getRoleAndSecretIds
   announce "Docker compose up"
   docker compose -f ${SCRIPT_DIR}/docker-compose.yml up -d
 }
@@ -220,11 +237,12 @@ function doInit() {
 
   http ${VAULT_ADDRESS}/v1/auth/token/create displayname="tapisroot" ttl:=0 policies:='["root"]' X-Vault-Token:${VAULT_TOKEN}
 
-  VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id")
-  VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id")
-
-  echo VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id") >> ${CONFIG_FILE}
-  echo VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id") >> ${CONFIG_FILE}
+#  VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id")
+#  VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id")
+#
+#  echo VAULT_ROLE_ID=$(http ${VAULT_ADDRESS}/v1/auth/approle/role/sk/role-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.role_id") >> ${CONFIG_FILE}
+#  echo VAULT_SECRET_ID=$(echo | http POST ${VAULT_ADDRESS}/v1/auth/approle/role/sk/secret-id X-Vault-Token:${VAULT_TOKEN} | jq -r ".data.secret_id") >> ${CONFIG_FILE}
+  getRoleAndSecretIds
 
   announce "setup database"
   java -jar ../../tapis-securitymigrate/target/securitymigrate.jar -h localhost -p ${PG_PORT} -u ${PG_ADMIN_NAME} -pw ${PG_ADMIN_PASSWORD} -tpw ${PG_USER_PASSWORD}

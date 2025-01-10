@@ -11,7 +11,7 @@ networks:
 
 services:
   tapis-security:
-    image: tomcat:9.0.88-jdk17-temurin-jammy
+    image: tomcat:9.0.88-jdk21-temurin-jammy
     container_name: tapis-security
     labels:
       name: tapis_security_postgres
@@ -36,10 +36,10 @@ services:
       - 8090:8080
       - 8000:8000
     volumes:
-       - /home/dvernon/source/tapis/tapis-security/deployment/debug/tomcat-users.xml:/usr/local/tomcat/conf/tomcat-users.xml
-       - /home/dvernon/source/tapis/tapis-security/deployment/debug/startTapisSecurityApp.sh:/root/startTapisSecurityApp.sh
-       - /home/dvernon/source/tapis/tapis-security/deployment/debug/context.xml:/tmp/context.xml
-       - /home/dvernon/source/tapis/tapis-security/tapis-securityapi/target/v3:/usr/local/tapis/security
+       - ${SCRIPT_DIR}/tomcat-users.xml:/usr/local/tomcat/conf/tomcat-users.xml
+       - ${SCRIPT_DIR}/startTapisSecurityApp.sh:/root/startTapisSecurityApp.sh
+       - ${SCRIPT_DIR}/context.xml:/tmp/context.xml
+       - ${SCRIPT_DIR}/../../tapis-securityapi/target/v3:/usr/local/tapis/security
     command: ["/bin/bash", "-c", "chmod +x ~/startTapisSecurityApp.sh;~/startTapisSecurityApp.sh"]
 #    command: ["/bin/bash", "-c", "catalina.sh jpda run"]
   tapis-security-rabbitmq:
@@ -98,4 +98,4 @@ services:
       - '8201:8201'
     volumes:
       - tapis-security-vault-data:/vault
-      - /home/dvernon/source/tapis/tapis-security/deployment/debug/vault_config.hcl:/vault/config/vault_config.hcl
+      - ${SCRIPT_DIR}/vault_config.hcl:/vault/config/vault_config.hcl
