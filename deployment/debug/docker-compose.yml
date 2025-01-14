@@ -1,0 +1,101 @@
+---
+version: "3"
+
+volumes:
+  tapis-security-postgres-data:
+  tapis-security-vault-data:
+
+networks:
+  security_network:
+    driver: bridge
+
+services:
+  tapis-security:
+    image: tomcat:9.0.88-jdk21-temurin-jammy
+    container_name: tapis-security
+    labels:
+      name: tapis_security_postgres
+    restart: always
+    environment:
+       - CATALINA_OPTS=-Xms2g -Xmx2g --add-opens java.base/java.time=ALL-UNNAMED
+       - tapis.db.connection.pool.size=5
+        # going through localhost, you need the PG_PORT, but inside docker, it's container:5432
+       - tapis.db.jdbc.url=jdbc:postgresql://tapis-security-postgres:5432/tapissecdb
+       - tapis.db.password=${PG_USER_PASSWORD}
+       - tapis.db.user=${PG_USER_NAME}
+       - tapis.site.id=tacc
+       - tapis.sk.vault.disable=false
+       - tapis.sk.vault.address=http://tapis-security-vault:8200
+       - tapis.sk.vault.secretid=${VAULT_SECRET_ID}
+       - tapis.sk.vault.roleid=${VAULT_ROLE_ID}
+       - tapis.tenant.svc.baseurl=https://admin.develop.tapis.io
+       - JPDA_ADDRESS=0.0.0.0:8000
+       - JPDA_SUSPEND=y
+
+    ports:
+      - 8090:8080
+      - 8000:8000
+    volumes:
+       - ${SCRIPT_DIR}/tomcat-users.xml:/usr/local/tomcat/conf/tomcat-users.xml
+       - ${SCRIPT_DIR}/startTapisSecurityApp.sh:/root/startTapisSecurityApp.sh
+       - ${SCRIPT_DIR}/context.xml:/tmp/context.xml
+       - ${SCRIPT_DIR}/../../tapis-securityapi/target/v3:/usr/local/tapis/security
+    command: ["/bin/bash", "-c", "chmod +x ~/startTapisSecurityApp.sh;~/startTapisSecurityApp.sh"]
+#    command: ["/bin/bash", "-c", "catalina.sh jpda run"]
+  tapis-security-rabbitmq:
+    image: rabbitmq:3.7.16-management
+    container_name: tapis-security-rabbitmq
+    labels:
+      name: tapis-security-rabbitmq
+    restart: on-failure
+    ports:
+      - '4369:4369' 
+      - '5671:5671'
+      - '5672:5672' 
+      - '15671:15671'
+      - '15672:15672'
+      - '25672:25672'  
+
+  tapis-security-postgres:
+    image: postgres:11.4
+    container_name: tapis-security-postgres
+    labels:
+      name: tapis-security-postgres
+    restart: on-failure
+    environment:
+      - 'POSTGRES_USER=${PG_ADMIN_NAME}'
+      - 'POSTGRES_PASSWORD=${PG_ADMIN_PASSWORD}'
+      - 'POSTGRES_DB=postgres'
+    ports:
+      - ${PG_PORT}:5432
+    volumes:
+      - tapis-security-postgres-data:/var/lib/postgresql/data
+
+
+  tapis-security-vault:
+    user: "vault:vault"
+    image: hashicorp/vault:1.18
+    container_name: tapis-security-vault
+    labels:
+      name: tapis-security-vault
+    restart: on-failure
+    cap_add: 
+      - IPC_LOCK
+      - CAP_SETFCAP
+    environment:
+       - 'VAULT_ADDR=http://0.0.0.0:8200'
+#    command: ["/bin/sh", "-c", "mkdir /vault/data;sleep 10000"]
+#    command: ["/bin/sh", "-c", "mkdir -p /vault/data/vaultData; sleep 10000"]
+    command: ["/bin/sh", "-c", "mkdir -p /vault/data/vaultData; vault server -config=/vault/config/vault_config.hcl"]
+#    command: ["vault", "server", "-config=/vault/config/vault_config.hcl"]
+#    command: ["vault", "server", "-dev", "-dev-listen-address=0.0.0.0:8200", "-config=/vault/config"]
+#      - 'VAULT_LOCAL_CONFIG={"storage": {"file": {"path": "/vault/file"}}, "listener": [{"tcp": { "address": "0.0.0.0:8200", "tls_disable": true}}], "default_lease_ttl": "168h", "max_lease_ttl": "720h", "ui": true}'
+#      - 'POSTGRES_USER=${PG_ADMIN_NAME}'
+#      - 'POSTGRES_PASSWORD=${PG_ADMIN_PASSWORD}'
+#      - 'POSTGRES_DB=postgres'
+    ports:
+      - '8200:8200'
+      - '8201:8201'
+    volumes:
+      - tapis-security-vault-data:/vault
+      - ${SCRIPT_DIR}/vault_config.hcl:/vault/config/vault_config.hcl
