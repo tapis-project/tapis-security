@@ -18,9 +18,29 @@ import edu.utexas.tacc.tapis.security.secrets.SecretType;
 import edu.utexas.tacc.tapis.security.secrets.SecretTypeDetector;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 
-/**
+/*
  * Support various actions for maintaining SK secrets.
  * Actions to take are determined by the options specified.
+ *
+ * Dockerfile for image is at deployment/tapis-securityutility/Dockerfile
+ *
+ * To build the utility image run the jenkins job https://jenkins-cic.tacc.utexas.edu/job/TapisJava/job/3_ManualBuildDeploy/job/sk
+ *   The job will run the script at deployment/build-securityutility.sh which creates docker image tapis/securityutility
+ *   The job also tags the image as tapis/securityutility:dev and pushes to docker hub.
+ *
+ * To build and push a "dev" version of the image from a laptop:
+ *   mvn clean install
+ *   mvn -f tapis-securitylib/shaded-pom.xml package
+ *   export TAPIS_ENV=dev
+ *   ./deployment/build-securityutility.sh
+ *   docker push tapis/securityutility:dev
+ *
+ * Here is an example of running the utility from the TACC Tapis DEV k8s environment
+     export VT="$VAULT_TOKEN"
+     export SP="-vtok $VT -vurl http://vault:8200 -v -sys_export_meta"
+     kubectl run skutility -i --tty --image-pull-policy="Always" \
+                              --pod-running-timeout 5m0s \
+                             --image=tapis/securityutility:dev --restart=Never --rm --env="SKUTILITY_PARMS=$SP"
  *
  * If no actions are specified then only the check of the vault status is performed
  *   and the tenants under path tapis/tenant are retrieved.
@@ -59,7 +79,7 @@ import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
  *      "has_token": false
  *    }
  *
- *   Based on SKExport utility written by @rcardone
+ *   Based on SkExport utility written by @rcardone
  */
 public class SkUtility
 {
@@ -397,6 +417,9 @@ public class SkUtility
       boolean isStatic;
       String userName;
       debug(String.format("Found system. Tenant: %s System: %s", tenant, system));
+      // TODO remove - for now, generate output for only certain systems
+      if (!(system.contains("designsafe") || system.contains("cloud.data"))) continue;
+//      if (!"designsafe.storage.default".equals(system)) continue;
       // Get all users under system
       List<String> users = getUsers(tenant, system);
       debug("******** Users Count: " + users.size() + " ********");
@@ -447,11 +470,13 @@ public class SkUtility
     boolean hasToken = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.token);
 
     // Trace if it is sshkey
-    if (hasPkiKeys)
-    {
-      trace(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
-                             tenant, system, targetUser, isStatic, SecretPathMapper.KeyType.sshkey));
-    }
+      info(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
+                            tenant, system, targetUser, isStatic, SecretPathMapper.KeyType.sshkey));
+//    if (hasPkiKeys)
+//    {
+//      trace(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
+//                             tenant, system, targetUser, isStatic, SecretPathMapper.KeyType.sshkey));
+//    }
     return new SecretMetaInfo(tenant, system, targetUser, isStatic, hasPassword, hasPkiKeys, hasAccessKey, hasToken);
   }
 

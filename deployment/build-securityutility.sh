@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 ###########################################################
-#  This script helps build images for service specified
-#  It relies on Docker 18.06.0-ce and acts as a template
-#  for future Tapis services and building an image from a
-#  set of maven artifacts.
+#  This script builds a local docker image for tapis/securityutility
 #
 # environment : TAPIS_VERSION set to the version in tapis/pom.xml 
 #
