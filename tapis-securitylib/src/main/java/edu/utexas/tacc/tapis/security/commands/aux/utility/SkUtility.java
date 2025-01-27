@@ -9,13 +9,11 @@ import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeSet;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 import com.google.gson.JsonObject;
 import edu.utexas.tacc.tapis.security.secrets.SecretPathMapper;
 import edu.utexas.tacc.tapis.security.secrets.SecretType;
-import edu.utexas.tacc.tapis.security.secrets.SecretTypeDetector;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 
 /*
@@ -59,7 +57,7 @@ import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
  *   This action will find and remove all Systems secrets matching the old path format
  *
  *  sys_export_meta:
- *    This will output metadata for System secrets. This is used to initialize the Systems table
+ *    This will output metadata for System secrets. This can be used to initialize the Systems table
  *    that tracks credential metadata. The table was introduced as part of Systems version TODO/TBD 1.?.?
  *    The metadata will be output for each path, either static or dynamic, i.e., paths in the form:
  *      secret/tapis/tenant/<tenant_id>/system/<system_id>/user/static+<target_user>
@@ -112,9 +110,6 @@ public class SkUtility
   // Delimiter for user field is +
   private static final Pattern SPLIT_PLUS_PATTERN = Pattern.compile("\\+");
 
-  // We sanitize by removing all characters not in this character class.
-  private static final Pattern SANITIZER = Pattern.compile("[^a-zA-Z0-9_]");
-
   /* ********************************************************************** */
   /*                                 Fields                                 */
   /* ********************************************************************** */
@@ -124,19 +119,8 @@ public class SkUtility
   // The client used for all http calls.
   private final HttpClient           _httpClient;
 
-  // Metadata records for secrets
-  private final ArrayList<SecretInfo> _secretRecords;
-
-  // Progress counters.
-  private int _numListings;
-  private int _numReads;
-  private int _numUnknownPaths;
-
-  // Result reporting lists.
-  private final TreeSet<String> _failedReads;   // Secrets paths that could not be read.
-
-  /* ********************************************************************** */
-  /*                                 Records                                */
+ /* ********************************************************************** */
+ /*                                 Records                                */
  /*    {
  *      "tenant_id": "dev",
  *      "system_id": "test-system",
@@ -149,7 +133,6 @@ public class SkUtility
  *    } */
   /* ********************************************************************** */
   // Wrapper for secret info metadata.
-  private record SecretInfo(SecretType type, String path, String secret) {} // TODO remove
   private record SecretMetaInfo(String tenantId, String systemId, String targetUser, boolean isStatic,
                                 boolean hasPassword, boolean hasPkiKeys, boolean hasAccessKey, boolean hasToken) {}
 
@@ -171,8 +154,6 @@ public class SkUtility
     // Initialize final fields.
     _parms = parms;
     _httpClient  = HttpClient.newHttpClient();
-    _failedReads = new TreeSet<String>();
-    _secretRecords = new ArrayList<>(256);
   }
 
   /* ********************************************************************** */
@@ -207,28 +188,31 @@ public class SkUtility
     info("Retrieving tenants");
     List<String> tenants = getTenants();
     info("******** Tenants Count: " + tenants.size() + " ********");
-    int totalSystems = 0;
+    // Iterate over tenants
     for (String tenant: tenants)
     {
       debug("Processing tenant: " + tenant);
-      if (_parms.sysCleanup) sysCleanupForTenant(tenant);
-      if (_parms.sysExportMeta) sysExportMetadataForTenant(tenant);
+      // Get all systems under the tenant
+      List<String> systems = getSystems(tenant);
+      debug("******** Systems Count: " + systems.size() + " ********");
+      // Iterate over systems
+      for (String system : systems)
+      {
+        debug(String.format("Found system. Tenant: %s System: %s", tenant, system));
+        // Get all users under system
+        List<String> users = getUsers(tenant, system);
+        debug("******** Users Count: "+users.size() +" ********");
+        // TODO remove
+        //   If user count < 10 then skip
+        if (users.size() < 10) continue;
+        // Iterate over users
+        for(String user :users)
+        {
+          if (_parms.sysCleanup) sysCleanupForTenant(tenant, system, user);
+          if (_parms.sysExportMeta) sysExportMetadataForTenant(tenant, system, user);
+        }
+      }
     }
-
-//    {
-//      debug("Execuing SysCleanup action");
-//      executeSysCleanup(tenants);
-//    }
-
-//TODO if (_parms.sysExportMeta) executeSysExportMeta();
-    // Walk the Vault source tree and discover all tapis secrets.
-//TODO    processSourceTree(TAPIS_SECRET_ROOT);
-        
-    // Put all secrets into a list of records.
-//TODO    var outputRecs = calculateOutputRecs();
-        
-    // Put the raw data into the user-specified output format.
-//TODO    writeResults(outputRecs);
   }
 
   /* ********************************************************************** */
@@ -354,37 +338,20 @@ public class SkUtility
    * @param tenant tenant to process
    * @throws Exception on error
    */
-  private void sysCleanupForTenant(String tenant) throws Exception
+  private void sysCleanupForTenant(String tenant, String system, String user) throws Exception
   {
-    // TODO/TBD If all actions require iterating over systems and users,
-    //   then probably makes sense to refactor and place the loops outside the individual action methods,
-    //   i.e. in SkUtility.run()
-    debug("Executing action: SysCleanup for tenant. Tenant: " + tenant);
-    // Get all systems under the tenant
-    List<String> systems = getSystems(tenant);
-    debug("******** Systems Count: " + systems.size() + " ********");
-    for (String system : systems)
+    debug(String.format("Executing action: SysCleanup for tenant: %s system: %s user: %s.", tenant, system, user));
+//    // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
+//    if (!StringUtils.startsWith(user,"static+") && !StringUtils.startsWith(user,"dynamic+"))
+//    {
+//      debug(String.format("Found legacy record. Tenant: %s System: %s User: %s", tenant, system, user));
+//    }
+    // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
+    if (StringUtils.startsWith(user,"static+") || StringUtils.startsWith(user,"dynamic+"))
     {
-      debug(String.format("Found system. Tenant: %s System: %s", tenant, system));
-      // Get all users under system
-      List<String> users = getUsers(tenant, system);
-      debug("******** Users Count: " + users.size() + " ********");
-      for (String user : users)
-      {
-//        debug(String.format("Found system user. Tenant: %s System: %s User: %s", tenant, system, user));
-//        // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
-//        if (!StringUtils.startsWith(user,"static+") && !StringUtils.startsWith(user,"dynamic+"))
-//        {
-//          debug(String.format("Found legacy record. Tenant: %s System: %s User: %s", tenant, system, user));
-//        }
-        // TODO If user does not begin with static+ or dynamic+ then it is a legacy record and is removed.
-        if (StringUtils.startsWith(user,"static+") || StringUtils.startsWith(user,"dynamic+"))
-        {
-          String userName = SPLIT_PLUS_PATTERN.split(user, 2)[1];
-          debug(String.format("Found non-legacy record. Tenant: %s System: %s User field: %s Username: %s",
-                              tenant, system, user, userName));
-        }
-      }
+      String userName = SPLIT_PLUS_PATTERN.split(user, 2)[1];
+      debug(String.format("Found non-legacy record. Tenant: %s System: %s User field: %s Username: %s",
+                          tenant, system, user, userName));
     }
   }
 
@@ -403,54 +370,38 @@ public class SkUtility
    * @param tenant tenant to process
    * @throws Exception on error
    */
-  private void sysExportMetadataForTenant(String tenant) throws Exception
+  private void sysExportMetadataForTenant(String tenant, String system, String userField) throws Exception
   {
-    // TODO/TBD If all actions require iterating over systems and users,
-    //   then probably makes sense to refactor and place the loops outside the individual action methods,
-    //   i.e. in SkUtility.run()
-    debug("Executing action: SysExportMetadata for tenant. Tenant: " + tenant);
-    // Get all systems under the tenant
-    List<String> systems = getSystems(tenant);
-    info("******** Systems Count: " + systems.size() + " ********");
-    for (String system : systems)
+    debug(String.format("Executing action: SysExportMetadata for tenant: %s system: %s user: %s.",
+                        tenant, system, userField));
+    boolean isStatic;
+    String userName;
+    // TODO remove - for now, generate output for only certain systems
+//TODO REMOVE    if (!(system.contains("designsafe") || system.contains("cloud.data"))) return;
+//TODO REMOVE    if (!"designsafe.storage.default".equals(system)) return;
+    // If user field begins with static+ or dynamic+ then it is a non-legacy record we process it
+    if (StringUtils.startsWith(userField,"static+"))
     {
-      boolean isStatic;
-      String userName;
-      debug(String.format("Found system. Tenant: %s System: %s", tenant, system));
-      // TODO remove - for now, generate output for only certain systems
-      if (!(system.contains("designsafe") || system.contains("cloud.data"))) continue;
-//      if (!"designsafe.storage.default".equals(system)) continue;
-      // Get all users under system
-      List<String> users = getUsers(tenant, system);
-      debug("******** Users Count: " + users.size() + " ********");
-      for (String userField : users)
-      {
-        // If user field begins with static+ or dynamic+ then it is a non-legacy record we process it
-        if (StringUtils.startsWith(userField,"static+"))
-        {
-          isStatic = true;
-          userName = SPLIT_PLUS_PATTERN.split(userField, 2)[1];
-        }
-        else if (StringUtils.startsWith(userField,"dynamic+"))
-        {
-          isStatic = false;
-          userName = SPLIT_PLUS_PATTERN.split(userField, 2)[1];
-          debug(String.format("Found dynamic record. Tenant: %s System: %s User field: %s Username: %s",
-                              tenant, system, userField, userName));
-        }
-        else
-        {
-          // It is a legacy record. Ignore it.
-          continue;
-        }
-        debug(String.format("Found record. Tenant: %s System: %s TargetUsername: %s isStatic: %b",
-                            tenant, system, userName, isStatic));
-        // TODO determine metadata for this user as a java record
-        SecretMetaInfo secretMetadata = getSecretMetadata(tenant, system, userField, userName, isStatic);
-        debug("Found secret metadata: " + secretMetadata);
-//TODO        outputSecretMetadata(secretMetadata);
-      }
+      isStatic = true;
+      userName = SPLIT_PLUS_PATTERN.split(userField, 2)[1];
     }
+    else if (StringUtils.startsWith(userField,"dynamic+"))
+    {
+      isStatic = false;
+      userName = SPLIT_PLUS_PATTERN.split(userField, 2)[1];
+      debug(String.format("Found dynamic record. Tenant: %s System: %s User field: %s Username: %s",
+                          tenant, system, userField, userName));
+    }
+    else
+    {
+      // It is a legacy record. Ignore it.
+      return;
+    }
+    debug(String.format("Found record. Tenant: %s System: %s TargetUsername: %s isStatic: %b",
+                        tenant, system, userName, isStatic));
+    // TODO determine metadata for this user as a java record
+    SecretMetaInfo secretMetadata = getSecretMetadata(tenant, system, userField, userName, isStatic);
+    debug("Found secret metadata: " + secretMetadata);
   }
 
   /*
@@ -470,8 +421,9 @@ public class SkUtility
     boolean hasToken = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.token);
 
     // Trace if it is sshkey
+    if (hasPkiKeys)
       info(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
-                            tenant, system, targetUser, isStatic, SecretPathMapper.KeyType.sshkey));
+                         tenant, system, targetUser, isStatic, SecretPathMapper.KeyType.sshkey));
 //    if (hasPkiKeys)
 //    {
 //      trace(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
@@ -560,412 +512,6 @@ public class SkUtility
   // Print trace message
   private void trace(String s) { if (_parms.verbose) System.out.println("TRACE: " + s); }
 
-  /** TODO remove
-   * processSourceTree
-   * The first call to this recursive method starts at the root of the tapis hierarchy in Vault.
-   *
-   * @param curpath the path to explore depth-first
-   */
-  private void processSourceTree(String curpath) throws Exception
-  {
-      // Increment listing counter.
-        _numListings++;
-
-        // Make the request to list the curpath.
-        HttpRequest request;
-        HttpResponse<String> resp;
-        String uriStr = String.format("%s/%s/%s", _parms.vurl, VAULT_BASE_URL_META, curpath);
-        try {
-            request = HttpRequest.newBuilder().uri(new URI(uriStr))
-                .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json",
-                         "Content-Type", "application/json")
-                .method("LIST", BodyPublishers.noBody())
-                .build();
-            resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            // Record read failure and display error message.
-            recordFailedRead(uriStr);
-            debug(e.getClass().getSimpleName() + ": " + e.getMessage());
-            return;
-        }
-
-        // Check return code.
-        int rc = resp.statusCode();
-        if (rc == 404) {
-            // We probably discovered a secret (i.e., leaf node).
-            copySecret(curpath);
-            return;
-        }
-        else if (rc >= 300) {
-            // Looks like an error.
-            recordFailedRead(uriStr);
-            debug("Received http status code " + rc + " on LIST request to " +
-                "source vault: " + request.uri().toString() + ".");
-            return;
-        } else {
-            // Intermediate node. Parse the response body that looks something like this:
-            // {"data": {"keys": ["foo", "foo/"]}}
-            var jsonObj = TapisGsonUtils.getGson().fromJson(resp.body(), JsonObject.class);
-            var data    = jsonObj.get("data").getAsJsonObject();
-            var keys    = data.get("keys").getAsJsonArray();
-            int numKeys = keys.size();
-            for (int i = 0; i < numKeys; i++) {
-               String key = keys.get(i).getAsString();
-               processSourceTree(curpath + key);
-            }
-        }
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* copySecret:                                                            */
-    /* ---------------------------------------------------------------------- */
-    private void copySecret(String curpath)
-    {
-        // Get the secret from the source vault.
-        var secretText = readSecret(curpath);
-        if (secretText == null) return;
-        
-        // Do we care about this path?
-        // We may not need to export all secrets.
-        var typeWrapper = new SecretTypeWrapper(); 
-        if (skipStore(curpath, typeWrapper)) return;
-        
-        // Collect the path and secret.
-        var r = new SecretInfo(typeWrapper._secretType, curpath, secretText);
-        _secretRecords.add(r);
-        
-        // Accumulate the secrets written.
-        if (_numReads % 500 == 0) 
-            debug("->Listings = " + _numListings
-                + ",\tReads = "  + _numReads);
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* readSecret:                                                            */
-    /* ---------------------------------------------------------------------- */
-    private String readSecret(String secretPath)
-    {
-        // Increment listing counter.
-        _numReads++;
-        
-        // Make the request.
-        HttpRequest request;
-        HttpResponse<String> resp;
-        String uriStr = String.format("%s/%s/%s", _parms.vurl, VAULT_BASE_URL_DATA, secretPath);
-        try {
-            request = HttpRequest.newBuilder().uri(new URI(uriStr))
-                .headers("X-Vault-Token", _parms.vtok, "Accept", "application/json", 
-                         "Content-Type", "application/json")
-                .build();
-            resp = _httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            // Record read failure and display error message.
-            recordFailedRead(uriStr);
-            debug(e.getClass().getSimpleName() + ": " + e.getMessage());
-            return null;
-        }
-        
-        // Check return code.
-        int rc = resp.statusCode();
-        if (rc >= 300) {
-            // Looks like an error.
-            recordFailedRead(uriStr);
-            debug("Received http status code " + rc + " on READ request to " +
-                "source vault: " + request.uri().toString() + ".");
-            return null;
-        } 
-        
-        // Parse the response body and return the value of the data object.
-        // The secrets look like:  "data": {"data": {"foo": "bar"}, "metadata": {..}}
-        JsonObject jsonObj =  TapisGsonUtils.getGson().fromJson(resp.body(), JsonObject.class);
-        var dataObj = jsonObj.get("data").getAsJsonObject();
-        if (dataObj == null) return null;
-          else return dataObj.get("data").toString();
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* skipStore:                                                             */
-    /* ---------------------------------------------------------------------- */
-    /** Based on the output settings determine whether we ignore this record. 
-     * 
-     * @param secretPath the path of the secret.
-     * @param resultType output variable that captures the secret type.
-     * @return true if secret should be skipped, false to store and process.
-     */
-    private boolean skipStore(String secretPath, SecretTypeWrapper resultType)
-    {
-        // Always parse the path.
-        var secretType = SecretTypeDetector.detectType(secretPath);
-        if (secretType == null) {
-            _numUnknownPaths++;
-            return true; // skip
-        }
-        
-        // Pass back the result secret type.
-        resultType._secretType = secretType;
-        
-        // Is this a full dump of all secrets?
-//TODO remove        if (_parms.noSkipUserSecrets) return false;
-        
-        // Determine if this is a user-initiated secret.
-        if (secretType == SecretType.System || secretType == SecretType.User) 
-            return true; // skip
-        
-        // Don't skip writing this secret.
-        return false;
-    }
-
-    /* ---------------------------------------------------------------------- */
-    /* calculateOutputRecs:                                                   */
-    /* ---------------------------------------------------------------------- */
-    private List<SecretOutput> calculateOutputRecs()
-    {
-        // Estimate the output list size based on the number of raw secrets.
-        var olist = new ArrayList<SecretOutput>(2* _secretRecords.size());
-        
-        // Each raw record can create one or more output records.
-        for (var srec : _secretRecords) { olist.add(getRawDumpOutputRec(srec)); }
-        // Return the list.
-        return olist;
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* getServicePwdOutputRec:                                                */
-    /* ---------------------------------------------------------------------- */
-    private void getServicePwdOutputRec(SecretInfo srec, List<SecretOutput> olist)
-    {
-        // Construct the key string based on the user-selected output format.
-        // Split the path into segments.  We know the split is valid since it 
-        // already passed muster in SecretTypeDetector. The service name is 
-        // at index 4.
-        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
-        String keyPrefix = SecretType.ServicePwd.name().toUpperCase() + "_" +
-                           parts[4].toUpperCase(); 
-        addDynamicSecrets(keyPrefix, srec.secret(), olist);
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* getDBCredentialOutputRec:                                              */
-    /* ---------------------------------------------------------------------- */
-    private void getDBCredentialOutputRec(SecretInfo srec, List<SecretOutput> olist)
-    {
-        // Construct the key string based on the user-selected output format.
-        // Split the path into segments.  We know the split is valid since it 
-        // already passed muster in SecretTypeDetector. The service name is 
-        // at index 2, dbhost at 4, dbname at 6, dbuser at 8. 
-        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
-        String keyPrefix = SecretType.DBCredential.name().toUpperCase() + "_" +
-                           parts[2].toUpperCase() + "_" + 
-                           parts[4].toUpperCase() + "_" +
-                           parts[6].toUpperCase() + "_" +
-                           parts[8].toUpperCase(); 
-        addDynamicSecrets(keyPrefix, srec.secret(), olist);
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* getJWTSigningOutputRec:                                                */
-    /* ---------------------------------------------------------------------- */
-    private void getJWTSigningOutputRec(SecretInfo srec, List<SecretOutput> olist)
-    {
-        // Construct the key string based on the user-selected output format.
-        // Split the path into segments.  We know the split is valid since it 
-        // already passed muster in SecretTypeDetector. The tenant name is 
-        // at index 2. 
-        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
-        
-        // Process both public and private keys.
-        String keyPrefix = SecretType.JWTSigning.name().toUpperCase() + "_" +
-                           parts[2].toUpperCase(); 
-        addKeyPair(keyPrefix, srec.secret(), olist);
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* getSystemOutputRec:                                                    */
-    /* ---------------------------------------------------------------------- */
-    private void getSystemOutputRec(SecretInfo srec, List<SecretOutput> olist)
-    {
-        // Construct the key string based on the user-selected output format.
-        // Split the path into segments.  We know the split is valid since it 
-        // already passed muster in SecretTypeDetector. The tenant name is 
-        // at index 2, the system id at 4.  
-        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
-        
-        // Set the key prefix.
-        String keyPrefix = SecretType.System.name().toUpperCase() + "_" +
-                           parts[2].toUpperCase() + "_" + 
-                           parts[4].toUpperCase() + "_";
-        
-        // We need to know if we are using a dynamic or static user to complete the key.
-        String keyType, key;
-        if ("dynamicUserId".equals(parts[5])) {
-            // Capture the authn type and the static dynamic user string.
-            keyType = parts[6];
-            key = keyPrefix + "DYNAMICUSERID";
-        } else {
-            // Capture the authn type and user.
-            keyType = parts[7];
-            key = keyPrefix + parts[6].toUpperCase();
-        }
-        
-        // Lock down the key type.
-        SecretPathMapper.KeyType keyTypeEnum = null;
-        try {keyTypeEnum = SecretPathMapper.KeyType.valueOf(keyType);}
-            catch (Exception e) {
-                debug(srec.path() + " has invalid keyType: " + keyType + ".\n" + e.toString());
-                return;
-            }
-        
-        // Assign the value based on the key type.
-        switch (keyTypeEnum) {
-            case sshkey:
-            case cert:
-                addKeyPair(key, srec.secret(), olist);
-            break;
-            
-            case password:
-            case accesskey:
-                addDynamicSecrets(key, srec.secret(), olist);
-            break;
-        }
-    }
-
-    /* ---------------------------------------------------------------------- */
-    /* getUserOutputRec:                                                      */
-    /* ---------------------------------------------------------------------- */
-    private void getUserOutputRec(SecretInfo srec, List<SecretOutput> olist)
-    {
-        // Construct the key string based on the user-selected output format.
-        // Split the path into segments.  We know the split is valid since it 
-        // already passed muster in SecretTypeDetector. The tenant name is 
-        // at index 2, user at 4, secretName at 6.
-        var parts = SPLIT_SLASH_PATTERN.split(srec.path(), 0);
-        String keyPrefix = SecretType.User.name().toUpperCase() + "_" +
-                           parts[2].toUpperCase() + "_" +
-                           parts[4].toUpperCase() + "_" +
-                           parts[6].toUpperCase();
-        addDynamicSecrets(keyPrefix, srec.secret(), olist);
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* addDynamicSecrets:                                                     */
-    /* ---------------------------------------------------------------------- */
-    /** Create an output entry for each key/value pair listed in the Vault
-     * secret text.
-     * 
-     * @param keyPrefix the prefix of the attribute we'll create
-     * @param rawSecret the Vault secret value as json text
-     * @param olist the result accumulator
-     */
-    private void addDynamicSecrets(String keyPrefix, String rawSecret, List<SecretOutput> olist)
-    {
-        // Dynamically discover the individual values associated with this
-        // user secret.  Since the keys are user chosen, we may have to transform
-        // them to avoid illegal characters in target context (e.g., env variables).
-        // First let's see if there's any secret.
-        if (rawSecret == null) {
-            olist.add(new SecretOutput(keyPrefix, ""));
-            return;
-        }
-        
-        // The keys are at the top level in the json object.
-        // We process the private key first.
-        JsonObject jsonObj = TapisGsonUtils.getGson().fromJson(rawSecret, JsonObject.class);
-        for (var entry : jsonObj.entrySet()) {
-            var key = entry.getKey();
-            var val = entry.getValue().getAsString();
-            if (val == null) val = "";
-            olist.add(new SecretOutput(keyPrefix + "_" + key.toUpperCase(), val));
-        }
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* addKeyPair:                                                            */
-    /* ---------------------------------------------------------------------- */
-    /** This specialized version of addDynamicSecrets ignores the "key" attribute
-     * that Vault return in add to privateKey and publicKey.  Basically, we
-     * hardcode the two attributes we're interested in and remove extraneous 
-     * quotes from the value string.
-     * 
-     * @param keyPrefix the prefix of the attribute we'll create
-     * @param rawSecret the Vault secret value as json text
-     * @param olist the result accumulator
-     */
-    private void addKeyPair(String keyPrefix, String rawSecret, List<SecretOutput> olist)
-    {
-        // The keys are at the top level in the json object.
-        // We process the private key first.
-        String value = null;
-        JsonObject jsonObj = null;
-        if (rawSecret != null) {
-            jsonObj = TapisGsonUtils.getGson().fromJson(rawSecret, JsonObject.class);
-            if (jsonObj != null)
-            {
-                var v = jsonObj.get("privateKey");
-                if (v != null) value = v.toString();
-            }
-        }
-        
-        // Massage the value.
-        if (value == null) value = "";
-         else {
-             // For some reason there are double quotes around the secret string.
-             if (value.startsWith("\"")) value = value.substring(1);
-             if (value.endsWith("\"")) value = value.substring(0, value.length()-1);
-         }
-        
-        // Construct the record.
-        olist.add(new SecretOutput(keyPrefix + "_PRIVATEKEY", value));
-        
-        // Next process the public key.
-        if (jsonObj != null) value = jsonObj.get("publicKey").toString();
-        if (value == null) value = "";
-        else {
-            // For some reason there are double quotes around the secret string.
-            if (value.startsWith("\"")) value = value.substring(1);
-            if (value.endsWith("\"")) value = value.substring(0, value.length()-1);
-        }
-        
-        // Construct the record.
-        olist.add(new SecretOutput(keyPrefix + "_PUBLICKEY", value));
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* sanitize:                                                              */
-    /* ---------------------------------------------------------------------- */
-    /** Replace all characters not in the sanitizer character class with underscore.
-     * 
-     * @param s string to be sanitized
-     * @return sanitized string
-     */
-    private String sanitize(String s)
-    {
-        if (s == null) return s;
-        return SANITIZER.matcher(s).replaceAll("_");
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* getRawDumpOutputRec:                                                   */
-    /* ---------------------------------------------------------------------- */
-    private SecretOutput getRawDumpOutputRec(SecretInfo srec)
-    {
-        return new SecretOutput(srec.path(), srec.secret());
-    }
-    
-    /* ---------------------------------------------------------------------- */
-    /* recordFailedRead:                                                      */
-    /* ---------------------------------------------------------------------- */
-    /** Add a source read failure record.
-     * 
-     * @param path the complete path on which the read was attempted
-     */
-    private void recordFailedRead(String path)
-    {
-        try {
-            URI uri = new URI(path);
-            _failedReads.add(uri.toString());
-        } catch (Exception e1) {_failedReads.add(path);}
-    }
-    
     /* ---------------------------------------------------------------------- */
     /* checkVaultStatus:                                                      */
     /* ---------------------------------------------------------------------- */
@@ -1007,37 +553,6 @@ public class SkUtility
             String msg = "Unable to continue because vault at " + baseUrl + " is sealed.";
             throw new RuntimeException(msg);
         }
-    }
-
-    /* ---------------------------------------------------------------------- */
-    /* writeResults:                                                          */
-    /* ---------------------------------------------------------------------- */
-    private void writeResults(List<SecretOutput> olist)
-    {
-        // Populate a json object will all the secrets
-        // in the user-specified format.
-        String secrets = writeJsonOutput(olist);
-        
-        // Did we encounter unknown paths?
-        var unknownPathMsg = _numUnknownPaths == 0 ? "" : " <-- INVESTIGATE";
-        
-        // Print summary information.
-        var numWrites = _secretRecords.size();
-        debug("\n-------------------------------------------------");
-        debug("Attempted listings = " + _numListings + ", attempted reads = " + _numReads);
-        debug("Unknown paths encountered = " + _numUnknownPaths + unknownPathMsg);
-        debug("Secrets written = " + numWrites + ", secrets skipped = " + (_numReads - numWrites));
-        if (!_failedReads.isEmpty()) {
-            debug("\n-------------------------------------------------");
-            debug("Failed secret reads: " + _failedReads.size() + "\n");
-            var it = _failedReads.iterator();
-            while (it.hasNext()) debug("  " + it.next());
-        }
-        
-        // Print secrets.
-        debug("\n-------------------------------------------------");
-        debug("****** SECRETS ******");
-        System.out.println(secrets); // Always write the secrets.
     }
 
     /* ---------------------------------------------------------------------- */
