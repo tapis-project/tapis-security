@@ -506,7 +506,12 @@ public class SkExport
         JsonObject jsonObj = null;
         if (rawSecret != null) {
             jsonObj = TapisGsonUtils.getGson().fromJson(rawSecret, JsonObject.class);
-            value = jsonObj.get("privateKey").toString();
+            // Avoid null pointer exception
+            if (jsonObj != null)
+            {
+                var v = jsonObj.get("privateKey");
+                if (v != null) value = v.toString();
+            }
         }
         
         // Massage the value.
