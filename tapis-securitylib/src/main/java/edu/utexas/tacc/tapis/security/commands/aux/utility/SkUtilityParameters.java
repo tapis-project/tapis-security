@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.security.commands.aux.utility;
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.CmdLineException;
@@ -15,51 +16,91 @@ import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 /**
  * Support various actions for maintaining SK secrets.
  * Actions to take are determined by the option specified.
- * All actions specified are executed.
+ * Only one action may be specified
  * If no actions are specified then only the check of the vault status is performed.
  * Actions:
- *   -sys_cleanup : Removes orphaned Systems secrets.
- *   -sys_export_meta : Exports metadata for all systems secrets
+ *  -sys_cleanup : Removes orphaned Systems secrets.
+ *  -sys_export_meta : Exports metadata for systems secrets
+ *      By default processes all tenants, systems and authentication methods.
+ *      List of tenants to process may be provided using -tenant_list
+ *      A single tenant may be specified using -tenant.
+ *        When a single tenant is specified:
+ *          - a list of systems to process may be provided using -system_list
+ *          - Output may be restricted based on the presence of a given authn method using -authn_method
+ *
  */
 public class SkUtilityParameters
 {
-    /* ********************************************************************** */
-    /*                               Constants                                */
-    /* ********************************************************************** */
-    // Tracing.
-    private static final Logger log = LoggerFactory.getLogger(SkUtilityParameters.class);
+  /* ********************************************************************** */
+  /*                               Constants                                */
+  /* ********************************************************************** */
+  // Tracing.
+  private static final Logger log = LoggerFactory.getLogger(SkUtilityParameters.class);
 
-    // The JSON format yields a list of json objects containing "key" and "value"
-    // attributes each assigned strings.  The ENV format yields a list of
-    // "name=value" strings suitable for assigning environment variables.
-    public enum OutputFormat {JSON, ENV}
+  /* ********************************************************************** */
+  /*                                 Fields                                 */
+  /* ********************************************************************** */
 
-    /* ********************************************************************** */
-    /*                                 Fields                                 */
-    /* ********************************************************************** */
-    @Option(name = "-vtok", required = true, aliases = {"--vaulttoken"},
-            usage = "Vault token with proper authorization")
-    public String vtok;
+  // ------------------------------------
+  // General parameters
+  // ------------------------------------
+  @Option(name = "-v", required = false, aliases = {"--verbose"},
+        usage = "output statistics in addition to data")
+  public boolean verbose = false;
 
-    @Option(name = "-vurl", required = true, aliases = {"--vaulturl"},
-            usage = "Vault URL including port, ex: http(s)://host:32342")
-    public String vurl;
+  @Option(name = "-help", aliases = {"--help"},
+        usage = "display help information")
+  public boolean help;
 
-    @Option(name = "-sys_cleanup", required = false, usage = "Remove orphaned legacy Systems secrets")
-    public boolean sysCleanup = false;
+  // ------------------------------------
+  // Required parameters
+  // ------------------------------------
+  @Option(name = "-vtok", required = true, aliases = {"--vaulttoken"},
+        usage = "Vault token with proper authorization")
+  public String vtok;
 
-    @Option(name = "-sys_export_meta", required = false, usage = "Export metadata for Systems secrets")
-    public boolean sysExportMeta = false;
+  @Option(name = "-vurl", required = true, aliases = {"--vaulturl"},
+        usage = "Vault URL including port, ex: http(s)://host:32342")
+  public String vurl;
 
-    @Option(name = "-v", required = false, aliases = {"--verbose"},
-            usage = "output statistics in addition to data")
-    public boolean verbose = false;
+  // ------------------------------------
+  // Actions
+  // ------------------------------------
 
-    @Option(name = "-help", aliases = {"--help"},
-            usage = "display help information")
-    public boolean help;
+  // Systems cleanup
+  @Option(name = "-sys_cleanup", required = false,
+          forbids = {"-sys_export_meta"},
+          usage = "Remove orphaned legacy Systems secrets")
+  public boolean sysCleanup = false;
 
-    /* ********************************************************************** */
+  // Systems secret metadata export
+  @Option(name = "-sys_export_meta", required = false,
+          forbids = {"-sys_cleanup"},
+          usage = "Export metadata for Systems secrets")
+  public boolean sysExportMeta = false;
+
+  @Option(name = "-tenant_list", required = false,
+          depends = {"-sys_export_meta"},
+          usage = "Process provided list of tenants")
+  public List<String> tenantList = null;
+
+  @Option(name = "-tenant", required = false,
+          depends = {"-sys_export_meta"},
+          forbids = {"-tenant_list"},
+          usage = "Process single tenant")
+  public String tenant = null;
+
+  @Option(name = "-system_list", required = false,
+          depends = {"-tenant"},
+          usage = "Process provided list of systems")
+  public List<String> systemList = null;
+
+  @Option(name = "-authn_method", required = false,
+          depends = {"-sys_export_meta"},
+          usage = "Output metadata only if record contains values for specified authentication method: PKI_KEYS, PASSWORD, TMS_KEYS, etc")
+  public String authnMethod = null;
+
+  /* ********************************************************************** */
     /*                              Constructors                              */
     /* ********************************************************************** */
     /* ---------------------------------------------------------------------- */

@@ -10,6 +10,8 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import com.bettercloud.vault.api.Auth;
 import org.apache.commons.lang3.StringUtils;
 import com.google.gson.JsonObject;
 import edu.utexas.tacc.tapis.security.secrets.SecretPathMapper;
@@ -110,6 +112,8 @@ public class SkUtility
   // Delimiter for user field is +
   private static final Pattern SPLIT_PLUS_PATTERN = Pattern.compile("\\+");
 
+  public enum AuthnMethod {PASSWORD, PKI_KEYS, ACCESS_KEY, TOKEN, CERT, TMS_KEYS}
+
   /* ********************************************************************** */
   /*                                 Fields                                 */
   /* ********************************************************************** */
@@ -134,7 +138,8 @@ public class SkUtility
   /* ********************************************************************** */
   // Wrapper for secret info metadata.
   private record SecretMetaInfo(String tenantId, String systemId, String targetUser, boolean isStatic,
-                                boolean hasPassword, boolean hasPkiKeys, boolean hasAccessKey, boolean hasToken) {}
+                                boolean hasPassword, boolean hasPkiKeys, boolean hasAccessKey, boolean hasToken,
+                                boolean hasTmsKeys) {}
 
   // Wrapper for processed SecretInfo records.
   private record SecretOutput(String key, String value) {}
@@ -180,36 +185,64 @@ public class SkUtility
    */
   public void run() throws Exception
   {
+    List<String> tenants = new ArrayList<>();
+    boolean allSystems = true;
+    AuthnMethod authnMethod = null;
+
     // Check status of Vault.
     info("Checking status of Vault");
     checkVaultStatus();
 
-    // Get all tenants under tapis/tenant
-    info("Retrieving tenants");
-    List<String> tenants = getTenants();
+    // If authnMethod specified then validate it
+    if (!StringUtils.isBlank(_parms.authnMethod))
+    {
+      authnMethod =  AuthnMethod.valueOf(_parms.authnMethod.toUpperCase());
+    }
+    // Figure out tenants and systems to process
+    if (!StringUtils.isBlank(_parms.tenant))
+    {
+      tenants.add(_parms.tenant);
+      info("Processing single tenant: " + _parms.tenant);
+      // Check for specified list of systems
+      if (_parms.systemList != null && !_parms.systemList.isEmpty())
+      {
+        info("Processing specified list of systems");
+        allSystems = false;
+      }
+    }
+    else if (_parms.tenantList != null && !_parms.tenantList.isEmpty())
+    {
+      info("Processing specified list of tenants");
+      tenants.addAll(_parms.tenantList);
+    }
+    else
+    {
+      // Get all tenants under tapis/tenant
+      info("Processing all tenants");
+      tenants = getAllTenants();
+    }
+
     info("******** Tenants Count: " + tenants.size() + " ********");
     // Iterate over tenants
     for (String tenant: tenants)
     {
-      debug("Processing tenant: " + tenant);
-      // Get all systems under the tenant
-      List<String> systems = getSystems(tenant);
-      debug("******** Systems Count: " + systems.size() + " ********");
+      // Figure out systems to process
+      List<String> systems;
+      if (allSystems) systems = getAllSystemsForTenant(tenant);
+      else systems = new ArrayList<>(_parms.systemList);
+      debug("Processing Tenant: " + tenant + " ******** Systems Count: " + systems.size() + " ********");
       // Iterate over systems
       for (String system : systems)
       {
         debug(String.format("Found system. Tenant: %s System: %s", tenant, system));
         // Get all users under system
         List<String> users = getUsers(tenant, system);
-        debug("******** Users Count: "+users.size() +" ********");
-        // TODO remove
-        //   If user count < 10 then skip
-        if (users.size() < 10) continue;
+        debug("******** Users Count: " + users.size() + " ********");
         // Iterate over users
         for(String user :users)
         {
           if (_parms.sysCleanup) sysCleanupForTenant(tenant, system, user);
-          if (_parms.sysExportMeta) sysExportMetadataForTenant(tenant, system, user);
+          if (_parms.sysExportMeta) sysExportMetadataForTenant(tenant, system, user, authnMethod);
         }
       }
     }
@@ -225,7 +258,7 @@ public class SkUtility
    * Exit with a 1 on error.
    * If we cannot get tenants then it is an unrecoverable error.
    */
-  private List<String> getTenants() throws Exception
+  private List<String> getAllTenants() throws Exception
   {
     List<String> tenants = new ArrayList<>();
     // Build the full path
@@ -257,7 +290,7 @@ public class SkUtility
    * getSystems
    * A LIST on tapis/tenant/<tenant_id>/system will yield a list of all systems under that path
    */
-  private List<String> getSystems(String tenant) throws Exception
+  private List<String> getAllSystemsForTenant(String tenant) throws Exception
   {
     List<String> systems = new ArrayList<>();
     // Build the full path
@@ -370,12 +403,13 @@ public class SkUtility
    * @param tenant tenant to process
    * @throws Exception on error
    */
-  private void sysExportMetadataForTenant(String tenant, String system, String userField) throws Exception
+  private void sysExportMetadataForTenant(String tenant, String system, String userField, AuthnMethod authnMethod) throws Exception
   {
-    debug(String.format("Executing action: SysExportMetadata for tenant: %s system: %s user: %s.",
-                        tenant, system, userField));
+    debug(String.format("Executing action: SysExportMetadata for tenant: %s system: %s user: %s authnMethod: %s.",
+                        tenant, system, userField, authnMethod));
     boolean isStatic;
     String userName;
+
     // TODO remove - for now, generate output for only certain systems
 //TODO REMOVE    if (!(system.contains("designsafe") || system.contains("cloud.data"))) return;
 //TODO REMOVE    if (!"designsafe.storage.default".equals(system)) return;
@@ -399,9 +433,24 @@ public class SkUtility
     }
     debug(String.format("Found record. Tenant: %s System: %s TargetUsername: %s isStatic: %b",
                         tenant, system, userName, isStatic));
-    // TODO determine metadata for this user as a java record
+    // Determine metadata for this user as a java record
     SecretMetaInfo secretMetadata = getSecretMetadata(tenant, system, userField, userName, isStatic);
     debug("Found secret metadata: " + secretMetadata);
+
+    // Log info record if asked for a specific authnMethod
+    boolean logIt =
+          switch (authnMethod)
+          {
+            case PASSWORD -> secretMetadata.hasPassword;
+            case PKI_KEYS -> secretMetadata.hasPkiKeys;
+            case ACCESS_KEY -> secretMetadata.hasAccessKey;
+            case TOKEN -> secretMetadata.hasToken;
+            case TMS_KEYS -> secretMetadata.hasTmsKeys;
+            default -> false;
+          };
+    if (logIt)
+      info(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
+                         tenant, system, secretMetadata.targetUser, isStatic, authnMethod));
   }
 
   /*
@@ -419,17 +468,8 @@ public class SkUtility
     boolean hasPkiKeys = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.sshkey);
     boolean hasAccessKey = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.accesskey);
     boolean hasToken = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.token);
-
-    // Trace if it is sshkey
-    if (hasPkiKeys)
-      info(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
-                         tenant, system, targetUser, isStatic, SecretPathMapper.KeyType.sshkey));
-//    if (hasPkiKeys)
-//    {
-//      trace(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
-//                             tenant, system, targetUser, isStatic, SecretPathMapper.KeyType.sshkey));
-//    }
-    return new SecretMetaInfo(tenant, system, targetUser, isStatic, hasPassword, hasPkiKeys, hasAccessKey, hasToken);
+    boolean hasTmsKeys = checkSecretData(baseSecretDataPath, SecretPathMapper.KeyType.tmskey);
+    return new SecretMetaInfo(tenant, system, targetUser, isStatic, hasPassword, hasPkiKeys, hasAccessKey, hasToken, hasTmsKeys);
   }
 
   /*
