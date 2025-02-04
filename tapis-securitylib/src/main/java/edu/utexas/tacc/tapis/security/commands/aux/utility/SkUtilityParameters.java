@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
+import org.kohsuke.args4j.spi.StringArrayOptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
@@ -44,9 +45,23 @@ public class SkUtilityParameters
   // ------------------------------------
   // General parameters
   // ------------------------------------
+  @Option(name = "-o", required = false, aliases = {"--output"},
+        usage = "write output")
+  public boolean output = false;
+
+  @Option(name = "-csv", required = false,
+        usage = "write output in csv format")
+  public boolean csv_output = false;
+
   @Option(name = "-v", required = false, aliases = {"--verbose"},
-        usage = "output statistics in addition to data")
+        forbids = {"-q"},
+        usage = "write trace and debug log messages")
   public boolean verbose = false;
+
+  @Option(name = "-q", required = false, aliases = {"--quiet"},
+        forbids = {"-v"},
+        usage = "suppress trace aall log messages")
+  public boolean quiet = false;
 
   @Option(name = "-help", aliases = {"--help"},
         usage = "display help information")
@@ -79,7 +94,7 @@ public class SkUtilityParameters
           usage = "Export metadata for Systems secrets")
   public boolean sysExportMeta = false;
 
-  @Option(name = "-tenant_list", required = false,
+  @Option(name = "-tenant_list", handler = StringArrayOptionHandler.class, required = false,
           depends = {"-sys_export_meta"},
           usage = "Process provided list of tenants")
   public List<String> tenantList = null;
@@ -90,7 +105,7 @@ public class SkUtilityParameters
           usage = "Process single tenant")
   public String tenant = null;
 
-  @Option(name = "-system_list", required = false,
+  @Option(name = "-system_list", handler = StringArrayOptionHandler.class, required = false,
           depends = {"-tenant"},
           usage = "Process provided list of systems")
   public List<String> systemList = null;

@@ -223,14 +223,23 @@ public class SkUtility
     }
 
     info("******** Tenants Count: " + tenants.size() + " ********");
+
+    // If writing output as CSV then output a header
+    if (_parms.csv_output)
+    {
+      out("===============================================");
+      out("Tenant, System, User, isStatic, AuthnMethod");
+      out("===============================================");
+    }
     // Iterate over tenants
     for (String tenant: tenants)
     {
+      debug("Processing tenant: " + tenant);
       // Figure out systems to process
       List<String> systems;
       if (allSystems) systems = getAllSystemsForTenant(tenant);
       else systems = new ArrayList<>(_parms.systemList);
-      debug("Processing Tenant: " + tenant + " ******** Systems Count: " + systems.size() + " ********");
+      debug(" ******** Systems Count: " + systems.size() + " ********");
       // Iterate over systems
       for (String system : systems)
       {
@@ -437,20 +446,31 @@ public class SkUtility
     SecretMetaInfo secretMetadata = getSecretMetadata(tenant, system, userField, userName, isStatic);
     debug("Found secret metadata: " + secretMetadata);
 
-    // Log info record if asked for a specific authnMethod
+
+    // Log info record if asked for a specific authnMethod, else return now.
+    if (authnMethod == null) return;
     boolean logIt =
-          switch (authnMethod)
-          {
-            case PASSWORD -> secretMetadata.hasPassword;
-            case PKI_KEYS -> secretMetadata.hasPkiKeys;
-            case ACCESS_KEY -> secretMetadata.hasAccessKey;
-            case TOKEN -> secretMetadata.hasToken;
-            case TMS_KEYS -> secretMetadata.hasTmsKeys;
-            default -> false;
-          };
+      switch (authnMethod)
+      {
+        case PASSWORD -> secretMetadata.hasPassword;
+        case PKI_KEYS -> secretMetadata.hasPkiKeys;
+        case ACCESS_KEY -> secretMetadata.hasAccessKey;
+        case TOKEN -> secretMetadata.hasToken;
+        case TMS_KEYS -> secretMetadata.hasTmsKeys;
+        default -> false;
+      };
     if (logIt)
-      info(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
-                         tenant, system, secretMetadata.targetUser, isStatic, authnMethod));
+    {
+      if (_parms.csv_output)
+      {
+        out(String.format("%s,%s,%s,%b,%s", tenant, system, secretMetadata.targetUser, isStatic, authnMethod));
+      }
+      else
+      {
+        out(String.format("Found secret. Tenant: %s System: %s TargetUsername: %s isStatic: %b, KeyType: %s",
+                          tenant, system, secretMetadata.targetUser, isStatic, authnMethod));
+      }
+    }
   }
 
   /*
@@ -546,11 +566,14 @@ public class SkUtility
   // Print warning message
   private void warn(String s) { if (_parms.verbose) System.out.println("WARN: " + s); }
   // Print info message
-  private void info(String s) { System.out.println("INFO: " + s); }
+  private void info(String s) { if (!_parms.quiet) System.out.println("INFO: " + s); }
   // Print debug message
   private void debug(String s) { if (_parms.verbose) System.out.println("DEBUG: " + s); }
   // Print trace message
   private void trace(String s) { if (_parms.verbose) System.out.println("TRACE: " + s); }
+
+  // Output result
+  private void out(String s) { if (_parms.output) System.out.println(s); }
 
     /* ---------------------------------------------------------------------- */
     /* checkVaultStatus:                                                      */
