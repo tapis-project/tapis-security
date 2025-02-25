@@ -47,12 +47,6 @@ import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultBoolean;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultChangeCount;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultResourceUrl;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @Path("/share")
 public class ShareResource 
@@ -121,58 +115,6 @@ public class ShareResource
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(
-            description = "Share a Tapis resource using a request body.  "
-                          + "Shared resources allow services to indicate that other services "
-                          + "should relax their Tapis authorization checking in certain, "
-                          + "well-defined contexts.\n\n"
-                          + ""
-                          + "Grantees can be given shared access "
-                          + "to a resource on an individual basis or by "
-                          + "using the public granting mechanism. Grants to the "
-                          + "distinguished **~public** and **~public_no_authn** "
-                          + "pseudo-grantees allow access to a resource to authenticated "
-                          + "users or to any user, respectively.\n\n"
-                          + ""
-                          + "The payload for this request includes these values, with all "
-                          + "except *resourceId2* required:\n\n"
-                          + ""
-                          + "   - grantor\n"
-                          + "   - grantee\n"
-                          + "   - tenant\n"
-                          + "   - resourceType\n"
-                          + "   - resourceId1\n"
-                          + "   - resourceId2\n"
-                          + "   - privilege\n\n"
-                          + ""
-                          + "If the share already exists, then this call has no effect. "
-                          + "For the request to be authorized, the requestor must be "
-                          + "a Tapis service."
-                          + "",
-            tags = "share",
-            security = {@SecurityRequirement(name = "TapisJWT")},
-            requestBody = 
-                @RequestBody(
-                    required = true,
-                    content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqShareResource.class))),
-            responses = 
-                {@ApiResponse(responseCode = "200", description = "Share existed.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespResourceUrl.class))),
-                 @ApiResponse(responseCode = "201", description = "Share created.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespResourceUrl.class))),
-                 @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-        )
     public Response shareResource(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                   InputStream payloadStream)
     {
@@ -261,55 +203,6 @@ public class ShareResource
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(
-            description = "Get a filtered list of shared resources. "
-                          + "Query parameters are used to restrict the returned shares. "
-                          + "The *grantor*, *grantee*, *tenant*, *resourceType*, *resourceId1*, "
-                          + "*resourceId2*, *privilege*, *createdBy* and *createdByTenant* "
-                          + "parameters are used to match values in shared resource objects. "
-                          + "Other query parameters are used to control how matching is "
-                          + "performed.  The *tenant* parameter is required.\n\n"
-                          + ""
-                          + "If resourceId1 or resourceId2 end with a percent sign (%) "
-                          + "wildcard then the search results will include all shares with "
-                          + "IDs that begin with the same prefix string.  Percent signs "
-                          + "embedded elsewhere in the string are *not* recognized as wildcards.\n\n"
-                          + ""
-                          + "Specifying the *id* parameter causes the other filtering "
-                          + "parameters to be ignored. The result list will contain at "
-                          + "most one entry.\n\n"
-                          + ""
-                          + "The *includePublicGrantees* flag, true by default, controls "
-                          + "whether resources granted to **~public** and **~public_no_authn** "
-                          + "are also considered for inclusion in the result list.\n\n"
-                          + ""
-                          + "The *requireNullId2* flag, true by default, applies only when no "
-                          + "*resourceId2* value is provided. When set, only shared resources "
-                          + "that do not specify a *resourceId2* value are considered for "
-                          + "inclusion in the result list. By setting this flag to false the caller "
-                          + "indicates a \"don't care\" designation on the *resourceId2* value, "
-                          + "allowing shares with any *resourceId2* value to be considered for "
-                          + "inclusion in the result list.\n\n"
-                          + ""
-                          + "For the request to be authorized, the requestor must be "
-                          + "a Tapis service."
-                          + "",
-            tags = "share",
-            security = {@SecurityRequirement(name = "TapisJWT")},
-            responses = 
-                {@ApiResponse(responseCode = "200", description = "List of shares returned.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.security.api.responses.RespShareList.class))),
-                 @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-        )
     public Response getShares(@DefaultValue("") @QueryParam("grantor")         String grantor,
                               @DefaultValue("") @QueryParam("grantee")         String grantee,
                               @DefaultValue("") @QueryParam("tenant")          String tenant,  // required
@@ -395,33 +288,6 @@ public class ShareResource
     @Path("/{id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(
-            description = "Get a shared resource by ID. "
-                          + "The shared resource is deleted only if it's in the tenant "
-                          + "specified in the required *tenant* query parameter.\n\n"
-                          + ""
-                          + "For the request to be authorized, the requestor must be "
-                          + "a Tapis service."
-                          + "",
-            tags = "share",
-            security = {@SecurityRequirement(name = "TapisJWT")},
-            responses = 
-                {@ApiResponse(responseCode = "200", description = "A share returned.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.security.api.responses.RespShare.class))),
-                 @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "404", description = "Not found.",
-                 content = @Content(schema = @Schema(
-                    implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-        )
     public Response getShare(@PathParam("id") int id,
                              @DefaultValue("") @QueryParam("tenant") String tenant,  // required
                              @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
@@ -494,37 +360,6 @@ public class ShareResource
     @Path("/{id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(
-            description = "Delete a shared resource by ID. "
-                          + "The shared resource is deleted only if it's in the tenant "
-                          + "specified in the required *tenant* query parameter. The "
-                          + "calling service must also be the same as the orginal "
-                          + "service that created the share.\n\n"
-                          + ""
-                          + "This call is idempotent.  If no share satisfies the above "
-                          + "constraints, a success response code is returned and the "
-                          + "indicated number of changes is set to zero.  When a share "
-                          + "is deleted, the indicated number of changes is one.\n\n"
-                          + ""
-                          + "For the request to be authorized, the requestor must be "
-                          + "the Tapis service that originally granted the share."
-                          + "",
-            tags = "share",
-            security = {@SecurityRequirement(name = "TapisJWT")},
-            responses = 
-                {@ApiResponse(responseCode = "200", description = "A share deleted if it exists.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                 @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-        )
     public Response deleteShareById(@PathParam("id") int id,
                                     @DefaultValue("") @QueryParam("tenant") String tenant,  // required
                                     @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
@@ -600,42 +435,6 @@ public class ShareResource
     @DELETE
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(
-            description = "Delete a single shared resource by unique attribute selection. "
-                          + "The *grantor*, *grantee*, *tenant*, *resourceType*, "
-                          + "*resourceId1* and *privilege* parameters are mandatory; "
-                          + "*resourceId2* is optional and assumed to be NULL if not "
-                          + "provided.\n\n"
-                          + ""
-                          + "The shared resource is deleted only if it's in the tenant "
-                          + "specified in the required *tenant* query parameter. The "
-                          + "calling service must also be the same as the orginal service "
-                          + "that granted the share.\n\n"
-                          + ""
-                          + "This call is idempotent.  If no share satisfies the above "
-                          + "constraints, a success response code is returned and the "
-                          + "indicated number of changes is set to zero.  When a share "
-                          + "is deleted, the indicated number of changes is one.\n\n"
-                          + ""
-                          + "For the request to be authorized, the requestor must be "
-                          + "the Tapis service that originally granted the share."
-                          + "",
-            tags = "share",
-            security = {@SecurityRequirement(name = "TapisJWT")},
-            responses = 
-                {@ApiResponse(responseCode = "200", description = "A share deleted if it exists.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                 @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-        )
     public Response deleteShare(@DefaultValue("") @QueryParam("grantor")      String grantor,
                                 @DefaultValue("") @QueryParam("grantee")      String grantee,
                                 @DefaultValue("") @QueryParam("tenant")       String tenant,
@@ -746,47 +545,6 @@ public class ShareResource
     @Path("/hasPrivilege")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(
-            description = "Determine if a user has been granted a specific privilege "
-                          + "on a specific resource. The *grantee*, *tenant*, *resourceType*, "
-                          + "*resourceId1* and *privilege* parameters are mandatory; "
-                          + "*resourceId2* is optional and assumed to be NULL if not "
-                          + "provided. Privilege matching is performed for the grantee "
-                          + "and tenant specified in the query parameters.\n\n"
-                          + ""
-                          + "True is returned if the user has been granted the privilege, "
-                          + "false otherwise.\n\n"
-                          + ""
-                          + "By default, both authenticated and unauthenticated "
-                          + "public privileges are included in the calculation. For "
-                          + "example, if a privilege on a resource has been granted "
-                          + "to all authenticated users in a tenant (~public), "
-                          + "then true will be returned for all users in the tenant.\n\n"
-                          + ""
-                          + "The *excludePublic* and *excludePublicNoAuthn* parameters "
-                          + "can be used to change the default handling of public "
-                          + "grants. Either or both types of public grants can "
-                          + "be excluded.\n\n"
-                          + ""
-                          + "For the request to be authorized, the requestor must be "
-                          + "a Tapis service."
-                          + "",
-            tags = "share",
-            security = {@SecurityRequirement(name = "TapisJWT")},
-            responses = 
-                {@ApiResponse(responseCode = "200", description = "A share returned.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBoolean.class))),
-                 @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                 @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                        implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-        )
     public Response hasPrivilege(@DefaultValue("") @QueryParam("grantee") String grantee,
                                  @DefaultValue("") @QueryParam("tenant") String tenant,
                                  @DefaultValue("") @QueryParam("resourceType") String resourceType,

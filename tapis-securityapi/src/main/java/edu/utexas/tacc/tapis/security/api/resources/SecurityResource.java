@@ -20,7 +20,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
-import edu.utexas.tacc.tapis.sharedapi.responses.RespAbstract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +30,6 @@ import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.shared.utils.CallSiteToggle;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @Path("/")
 public final class SecurityResource
@@ -119,15 +114,6 @@ public final class SecurityResource
   @Path("/hello")
   @Produces(MediaType.APPLICATION_JSON)
   @PermitAll
-  @Operation(
-          description = "Logged connectivity test. No authorization required.",
-          tags = "general",
-          responses = 
-              {@ApiResponse(responseCode = "200", description = "Message received.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-               @ApiResponse(responseCode = "500", description = "Server error.")}
-      )
   public Response sayHello(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
   {
       // Trace this request.
@@ -173,17 +159,6 @@ public final class SecurityResource
   @Path("/healthcheck")
   @Produces(MediaType.APPLICATION_JSON)
   @PermitAll
-  @Operation(
-          description = "Lightwieght health check for liveness. No authorization required.",
-          tags = "general",
-          responses = 
-              {@ApiResponse(responseCode = "200", description = "Message received.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class))),
-               @ApiResponse(responseCode = "503", description = "Service unavailable.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class)))}
-      )
   public Response checkHealth()
   {
       var skProbe = new SkHealthProbe();
@@ -204,17 +179,6 @@ public final class SecurityResource
   @Path("/ready")
   @Produces(MediaType.APPLICATION_JSON)
   @PermitAll
-  @Operation(
-          description = "Lightwieght readiness check. No authorization required.",
-          tags = "general",
-          responses =
-                  {@ApiResponse(responseCode = "200", description = "Service ready.",
-                          content = @Content(schema = @Schema(
-                                  implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class))),
-                          @ApiResponse(responseCode = "503", description = "Service unavailable.",
-                                  content = @Content(schema = @Schema(
-                                          implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class)))}
-    )
     public Response ready() {
       return readycheck();
     }
@@ -246,17 +210,6 @@ public final class SecurityResource
   @Path("/readycheck")
   @Produces(MediaType.APPLICATION_JSON)
   @PermitAll
-  @Operation(
-          description = "Lightwieght readiness check. No authorization required.",
-          tags = "general",
-          responses = 
-              {@ApiResponse(responseCode = "200", description = "Service ready.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class))),
-               @ApiResponse(responseCode = "503", description = "Service unavailable.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class)))}
-      )
   public Response readycheck()
   {
       // Assign the current check count to the probe result object.
