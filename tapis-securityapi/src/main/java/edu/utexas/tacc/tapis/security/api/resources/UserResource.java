@@ -58,12 +58,6 @@ import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultChangeCount;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultName;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultNameArray;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @Path("/user")
 public final class UserResource
@@ -153,28 +147,6 @@ public final class UserResource
      /* ---------------------------------------------------------------------------- */
      @GET
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Get the names of all users in the tenant that "
-                         + "have been granted a role or permission.\n\n"
-                  		 + "This request is authorized if the requestor is a user that has access "
-                		 + "to the specified tenant or if the requestor is a service."
-                         + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Sorted list of user names.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response getUserNames(@QueryParam("tenant") String tenant,
                                   @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
      {
@@ -225,29 +197,6 @@ public final class UserResource
      @GET
      @Path("/roles/{user}")
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Get the roles assigned to a user in the specified tenant, "
-                     + "including those assigned transively.\n\n"
-                     + ""
-            		 + "This request is authorized if the requestor is a user that has access "
-            		 + "to the specified tenant or if the requestor is a service."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "List of roles names assigned to the user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response getUserRoles(@PathParam("user") String user,
                                   @QueryParam("tenant") String tenant,
                                   @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
@@ -299,60 +248,6 @@ public final class UserResource
      @GET
      @Path("/perms/{user}")
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Get the permissions assigned to a user in a tenant, "
-                     + "including those assigned transively.  The result list can be "
-                     + "optionally filtered by the one or both of the query "
-                     + "parameters: implies and impliedBy.\n\n"
-                     + ""
-                     + "When implies is set, the filter _implies_ each entry in the result set. "
-                     + "When impliedBy is set, each entry in the result set is _implied by_ the filter. "
-                     + "Below are some examples.\n\n"
-                     + ""
-                     + "Consider a user that is assigned these permissions:\n\n"
-                     + ""
-                     + "    stream:dev:read:project1\n"
-                     + "    stream:dev:read,write:project1\n"
-                     + "    stream:dev:read,write,exec:project1\n\n"
-                     + ""
-                     + "**Using the *implies* Query Parameter**\n\n"
-                     + ""
-                     + "When _implies=stream:dev:*:project1_, this endpoint returns:\n\n"
-                     + ""
-                     + "    stream:dev:read:project1\n"
-                     + "    stream:dev:read,write:project1\n"
-                     + "    stream:dev:read,write,exec:project1\n\n"
-                     + ""
-                     + "When _implies=stream:dev:write:project1_, this endpoint returns an empty list.\n\n"
-                     + ""
-                     + "**Using the *impliedBy* Query Parameter**\n\n"
-                     + ""
-                     + "When _impliedBy=stream:dev:*:project1_, this endpoint returns an empty list.\n\n"
-                     + ""
-                     + "When _impliedBy=stream:dev:write:project1_, this endpoint returns:\n\n"
-                     + ""
-                     + "    stream:dev:read,write:project1\n"
-                     + "    stream:dev:read,write,exec:project1\n\n"
-                     + ""
-            		 + "This request is authorized if the requestor is a user that has access "
-            		 + "to the specified tenant or if the requestor is a service."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "List of permissions assigned to the user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response getUserPerms(@PathParam("user") String user,
                                   @QueryParam("tenant") String tenant,
                                   @DefaultValue("") @QueryParam("implies") String implies,
@@ -409,38 +304,6 @@ public final class UserResource
      @Path("/grantRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Grant a user the specified role.  A valid tenant and user "
-                     + "must be specified in the request body.\n\n"
-                     + ""
-                     + "This request is authorized only if the requestor is the role "
-                     + "owner or an administrator.  The user and the role must be in "
-                     + "the same tenant."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqGrantUserRole.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Role assigned to user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "404", description = "Named role not found.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response grantRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                InputStream payloadStream)
      {
@@ -509,35 +372,6 @@ public final class UserResource
      @Path("/revokeUserRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Revoke a previously granted role from a user. No action "
-                     + "is taken if the user is not currently assigned the role. "
-                     + "This request is idempotent.\n\n"
-                     + ""
-                     + "This request is authorized only if the requestor is the role "
-                     + "owner or an administrator."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqRevokeUserRole.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Role removed from user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response revokeUserRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                     InputStream payloadStream)
      {
@@ -613,35 +447,6 @@ public final class UserResource
      @Path("/grantAdminRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Grant a user the tenant administrator role.  A valid tenant and user "
-                     + "must be specified in the request body.  The user specified in the JWT must "
-                     + "be an administrator in the tenant specified in the request body."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqGrantAdminRole.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Role assigned to user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "404", description = "Named role not found.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response grantAdminRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                     InputStream payloadStream)
      {
@@ -710,35 +515,6 @@ public final class UserResource
      @Path("/revokeAdminRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Revoke the previously granted tenant administrator role from a user. "
-                     + "No action is taken if the user is not currently assigned the role "
-                     + "(the request is idempotent).  The request will not be honored if "
-                     + "revoking the role would leave the tenant with no administrator.\n\n"
-                     + ""
-                     + "The user specified in the JWT must themselves be an administrator "
-                     + "and a valid tenant and user must be specified in the request body.",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqRevokeAdminRole.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Role removed from user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response revokeAdminRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                     InputStream payloadStream)
      {
@@ -811,34 +587,6 @@ public final class UserResource
      @Path("/isAdmin")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Check whether a user in a tenant has been assigned "
-                     + "the tenant administrator role, either directly or transitively.\n\n"
-                     + ""
-                     + "This request is authorized if the requestor is a user that has "
-                     + "access to the specified tenant or if the requestor is a service."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqUserIsAdmin.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Check completed.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response isAdmin(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                              InputStream payloadStream)
      {
@@ -879,30 +627,6 @@ public final class UserResource
      @GET
      @Path("/admins/{tenant}")
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Get all users assigned the tenant administrator role ($!tenant_admin).\n\n"
-            		 + "This request is authorized if the requestor is a user that has access "
-            		 + "to the specified tenant or if the requestor is a service."
-            		 + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Sorted list of administrator users.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "404", description = "Named role not found.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response getAdmins(@PathParam("tenant") String tenant,
                                @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
      {
@@ -924,42 +648,6 @@ public final class UserResource
      @Path("/grantUserPermission")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Grant a user the specified permission by assigning that permission to "
-                     + "to the user's default role.  If the user's default role does not exist,"
-                     + "this request will create that role and grant it to the user before "
-                     + "assigning the permission to the role.\n\n"
-                     + ""
-                     + "A user's default role name is discoverable by calling either of the "
-                     + "user/defaultRole or role/defaultRole endpoints.\n\n"
-                     + ""
-                     + "The change count returned can range from zero to three "
-                     + "depending on how many insertions and updates were actually required\n\n"
-                     + ""
-                     + "The caller must be an administrator or service allowed to perform "
-                     + "updates in the user's tenant."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqGrantUserPermission.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Permission assigned to user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                      content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response grantUserPermission(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                          InputStream payloadStream)
      {
@@ -1034,40 +722,6 @@ public final class UserResource
      @Path("/revokeUserPermission")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Revoke the specified permission from the user's default role. "
-                     + "A user's default role is constructed by prepending '$$' to the "
-                     + "user's name. Default roles are created on demand. If the "
-                     + "role does not exist when this method is called no error is "
-                     + "reported and no changes occur.\n\n"
-                     + ""
-                     + "The change count returned can be zero or one "
-                     + "depending on how many permissions were revoked.\n\n"
-                     + ""
-                     + "A valid tenant and user must be specified in the request body.  "
-                     + "The caller must be an administrator, a service or the user themselves."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqRevokeUserPermission.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Permission assigned to user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                      content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response revokeUserPermission(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                           InputStream payloadStream)
      {
@@ -1144,40 +798,6 @@ public final class UserResource
      @Path("/grantRoleWithPerm")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Grant a user the specified role containing the specified permission.  "
-                         + "This compound request first adds the permission to the role if it is not "
-                         + "already a member of the role and then assigns the role "
-                         + "to the user.  The change count returned can range from zero to two "
-                         + "depending on how many insertions were actually required.\n\n"
-                         + ""
-                         + "Only the role owner or an administrator is authorized to make this request.  "
-                         + "The user and the role must be in the same tenant."
-                         + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqGrantUserRoleWithPermission.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Permission assigned to user.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "404", description = "Role not found.",
-                      content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                      content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response grantRoleWithPermission(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                              InputStream payloadStream)
      {
@@ -1254,34 +874,6 @@ public final class UserResource
      @Path("/hasRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Check whether a user in a tenant has been assigned "
-                     + "the specified role, either directly or transitively.\n\n"
-                     + ""
-                     + "This request is authorized if the requestor is a user that has "
-                     + "access to the specified tenant or if the requestor is a service."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqUserHasRole.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Check completed.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response hasRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                              InputStream payloadStream)
      {
@@ -1324,34 +916,6 @@ public final class UserResource
      @Path("/hasRoleAny")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Check whether a user in a tenant has been assigned "
-                     + "any of the roles specified in the request body.\n\n"
-                     + ""
-                     + "This request is authorized if the requestor is a user that has "
-                     + "access to the specified tenant or if the requestor is a service."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqUserHasRoleMulti.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Check completed.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response hasRoleAny(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                 InputStream payloadStream)
      {
@@ -1373,34 +937,6 @@ public final class UserResource
      @Path("/hasRoleAll")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Check whether a user in a tenant has been assigned "
-                     + "all of the roles specified in the request body.\n\n"
-                     + ""
-                     + "This request is authorized if the requestor is a user that has "
-                     + "access to the specified tenant or if the requestor is a service."
-                     + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqUserHasRoleMulti.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Check completed.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response hasRoleAll(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                 InputStream payloadStream)
      {
@@ -1422,34 +958,6 @@ public final class UserResource
      @Path("/isPermitted")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Check whether specified permission matches a permission "
-                           + "assigned to the user, either directly or transitively.\n\n"
-                           + ""
-                           + "This request is authorized if the requestor is a user that has "
-                           + "access to the specified tenant or if the requestor is a service."
-                           + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqUserIsPermitted.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Check completed.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response isPermitted(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                  InputStream payloadStream)
      {
@@ -1492,34 +1000,6 @@ public final class UserResource
      @Path("/isPermittedAny")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Check whether a user's permissions satisfy any of the "
-                           + "permission specifications contained in the request body.\n\n"
-                           + ""
-                           + "This request is authorized if the requestor is a user that has "
-                           + "access to the specified tenant or if the requestor is a service."
-                           + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqUserIsPermittedMulti.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Check completed.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response isPermittedAny(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                     InputStream payloadStream)
      {
@@ -1541,34 +1021,6 @@ public final class UserResource
      @Path("/isPermittedAll")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Check whether a user's permissions satisfy all of the "
-                           + "permission specifications contained in the request body.\n\n"
-                           + ""
-                           + "This request is authorized if the requestor is a user that has "
-                           + "access to the specified tenant or if the requestor is a service."
-                           + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             requestBody = 
-                 @RequestBody(
-                     required = true,
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.security.api.requestBody.ReqUserIsPermittedMulti.class))),
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Check completed.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response isPermittedAll(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                     InputStream payloadStream)
      {
@@ -1589,30 +1041,6 @@ public final class UserResource
      @GET
      @Path("/withRole/{roleName}")
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = "Get all users assigned a role.  The role must exist in the tenant.\n\n"
-            		 + "This request is authorized if the requestor is a user that has access "
-            		 + "to the specified tenant or if the requestor is a service."
-             		+ "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Sorted list of users assigned a role.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "404", description = "Named role not found.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response getUsersWithRole(@PathParam("roleName") String roleName,
                                       @QueryParam("tenant") String tenant,
                                       @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
@@ -1664,47 +1092,6 @@ public final class UserResource
      @GET
      @Path("/withPermission/{permSpec}")
      @Produces(MediaType.APPLICATION_JSON)
-     @Operation(
-             description = 
-               "Get all users in a tenant assigned a permission.  " +
-               "The permSpec parameter is a permission specification " +
-               "that uses colons as separators, the asterisk as a wildcard character and " +
-               "commas to define lists.  Here are examples of permission specifications:\n\n" +
-               "" +
-               "    system:mytenant:read:mysystem\n" +
-               "    system:mytenant:*:mysystem\n" +
-               "    system:mytenant\n" +
-               "    files:mytenant:read,write:mysystems\n" +
-               "" +
-               "This method recognizes the percent sign (%) as a string wildcard only " + 
-               "in the context of database searching.  If a percent sign (%) appears in the " +
-               "permSpec it is interpreted as a zero or more character wildcard.  For example, " +
-               "the following specification would match the first three of the above " +
-               "example specifications but not the fourth:\n\n" +
-               "" +
-               "    system:mytenant:%\n\n"
-               + ""
-               + "The wildcard character cannot appear as the first character in the permSpec.\n\n"
-               + ""
-      		   + "This request is authorized if the requestor is a user that has access "
-      		   + "to the specified tenant or if the requestor is a service."
-               + "",
-             tags = "user",
-             security = {@SecurityRequirement(name = "TapisJWT")},
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "Sorted list of users assigned a permission.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response getUsersWithPermission(@PathParam("permSpec") String permSpec,
                                             @QueryParam("tenant") String tenant,
                                             @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
@@ -1757,30 +1144,6 @@ public final class UserResource
      @Path("/defaultRole/{user}")
      @Produces(MediaType.APPLICATION_JSON)
      @PermitAll
-     @Operation(
-             description = 
-               "Get a user's default role. The default role is implicitly created by the system "
-               + "when needed if it doesn't already exist. No authorization required.\n\n"
-               + ""
-               + "A user's default role is constructed by prepending '$$' to the "
-               + "user's name.  This implies the maximum length of a user name is 58 since "
-               + "role names are limited to 60 characters."
-               + "",
-             tags = "user",
-             responses = 
-                 {@ApiResponse(responseCode = "200", description = "The user's default role name.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespName.class))),
-                  @ApiResponse(responseCode = "400", description = "Input error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "401", description = "Not authorized.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-                  @ApiResponse(responseCode = "500", description = "Server error.",
-                     content = @Content(schema = @Schema(
-                         implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class)))}
-         )
      public Response getDefaultUserRole(@PathParam("user") String user,
                                         @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
      {

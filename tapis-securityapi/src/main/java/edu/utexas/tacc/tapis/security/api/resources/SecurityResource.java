@@ -30,10 +30,6 @@ import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.shared.utils.CallSiteToggle;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @Path("/")
 public final class SecurityResource
@@ -112,19 +108,12 @@ public final class SecurityResource
   /* ---------------------------------------------------------------------------- */
   /* hello:                                                                       */
   /* ---------------------------------------------------------------------------- */
+  // Will be removed with next major release version
+  @Deprecated
   @GET
   @Path("/hello")
   @Produces(MediaType.APPLICATION_JSON)
   @PermitAll
-  @Operation(
-          description = "Logged connectivity test. No authorization required.",
-          tags = "general",
-          responses = 
-              {@ApiResponse(responseCode = "200", description = "Message received.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.sharedapi.responses.RespBasic.class))),
-               @ApiResponse(responseCode = "500", description = "Server error.")}
-      )
   public Response sayHello(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
   {
       // Trace this request.
@@ -170,51 +159,32 @@ public final class SecurityResource
   @Path("/healthcheck")
   @Produces(MediaType.APPLICATION_JSON)
   @PermitAll
-  @Operation(
-          description = "Lightwieght health check for liveness. No authorization required.",
-          tags = "general",
-          responses = 
-              {@ApiResponse(responseCode = "200", description = "Message received.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class))),
-               @ApiResponse(responseCode = "503", description = "Service unavailable.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class)))}
-      )
   public Response checkHealth()
   {
-      // Assign the current check count to the probe result object.
-      var skProbe = new SkProbe();
+      var skProbe = new SkHealthProbe();
       skProbe.checkNum = _healthChecks.incrementAndGet();
-      
-      // Check the database.
-      if (queryDB(DB_HEALTH_TIMEOUT_MS)) skProbe.databaseAccess = true; 
-      
-      // Check the tenant manager.
-      if (queryTenants()) skProbe.tenantsAccess = true;
-      
-      // Check the health of vault.
-      var vaultMgr = VaultManager.getInstance(true);
-      if (vaultMgr != null && vaultMgr.isHealthy()) skProbe.vaultAccess = true;
-      
+
       // Create the response object.
       RespProbe r = new RespProbe(skProbe);
-      
-      // Failure case.
-      if (skProbe.failed()) {
-        String msg = MsgUtils.getMsg("TAPIS_NOT_HEALTHY", "Security Kernel");
-        return Response.status(Status.SERVICE_UNAVAILABLE).
-            entity(TapisRestUtils.createErrorResponse(msg, false, r)).build();
-      }
-      
-      // ---------------------------- Success ------------------------------- 
+
+      // ---------------------------- Success -------------------------------
       // Create the response payload.
       return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-          MsgUtils.getMsg("TAPIS_HEALTHY", "Security Kernel"), false, r)).build();
+              MsgUtils.getMsg("TAPIS_HEALTHY", "Security Kernel"), false, r)).build();
   }
 
+  // Will be removed with next major release version
+  @Deprecated
+  @GET
+  @Path("/ready")
+  @Produces(MediaType.APPLICATION_JSON)
+  @PermitAll
+    public Response ready() {
+      return readycheck();
+    }
+
   /* ---------------------------------------------------------------------------- */
-  /* ready:                                                                       */
+  /* readycheck:                                                                       */
   /* ---------------------------------------------------------------------------- */
   /** This method does no logging and is expected to be as lightwieght as possible.
    * It's intended as the endpoint that monitoring applications can use to check
@@ -237,26 +207,15 @@ public final class SecurityResource
    * @return a success response if all is ok
    */
   @GET
-  @Path("/ready")
+  @Path("/readycheck")
   @Produces(MediaType.APPLICATION_JSON)
   @PermitAll
-  @Operation(
-          description = "Lightwieght readiness check. No authorization required.",
-          tags = "general",
-          responses = 
-              {@ApiResponse(responseCode = "200", description = "Service ready.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class))),
-               @ApiResponse(responseCode = "503", description = "Service unavailable.",
-                   content = @Content(schema = @Schema(
-                       implementation = edu.utexas.tacc.tapis.security.api.responses.RespProbe.class)))}
-      )
-  public Response ready()
+  public Response readycheck()
   {
       // Assign the current check count to the probe result object.
-      var skProbe = new SkProbe();
+      var skProbe = new SkReadyProbe();
       skProbe.checkNum = _readyChecks.incrementAndGet();
-      
+
       // Check the database.
       if (queryDB(DB_READY_TIMEOUT_MS)) skProbe.databaseAccess = true; 
       
@@ -369,9 +328,14 @@ public final class SecurityResource
   /*                                    Fields                                    */
   /* **************************************************************************** */
   // Simple class to collect probe results.
-  public final static class SkProbe
-  {
-      public long    checkNum;
+  public static class SkProbe {
+      public long checkNum;
+  }
+
+  public final static class SkHealthProbe extends SkProbe {
+  }
+
+  public final static class SkReadyProbe extends SkProbe {
       public boolean databaseAccess;
       public boolean vaultAccess;
       public boolean tenantsAccess;

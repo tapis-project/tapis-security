@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.security.api.resources;
 
 import java.io.InputStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -62,7 +62,7 @@ class AbstractResource
     {
         // There better be a payload.
         String json = null;
-        try {json = IOUtils.toString(payloadStream, Charset.forName("UTF-8"));}
+        try {json = IOUtils.toString(payloadStream, StandardCharsets.UTF_8);}
           catch (Exception e) {
             String msg = MsgUtils.getMsg("TAPIS_IO_ERROR", e.getMessage());
             _log.error(msg, e);

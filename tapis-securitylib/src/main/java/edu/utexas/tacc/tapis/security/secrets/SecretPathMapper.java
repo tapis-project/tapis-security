@@ -44,7 +44,9 @@ import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
  *  /tapis/tenant/<tenantId>/system/<systemId>/dynamicUserId/sshkey/<secretName>
  *  /tapis/tenant/<tenantId>/system/<systemId>/user/<user>/password/<secretName>
  *  /tapis/tenant/<tenantId>/system/<systemId>/user/<user>/accesskey/<secretName>
- * </pre> 
+ *  /tapis/tenant/<tenantId>/system/<systemId>/user/<user>/token/<secretName>
+ *  /tapis/tenant/<tenantId>/system/<systemId>/user/<user>/tmskey/<secretName>
+ * </pre>
  * 
  * <p>user:
  * 
@@ -72,7 +74,7 @@ public final class SecretPathMapper
     /*                                 Enums                                  */
     /* ********************************************************************** */
     // The valid types as expected on input.
-    public enum KeyType {sshkey, password, accesskey, token, cert}
+    public enum KeyType {sshkey, password, accesskey, token, tmskey, cert}
     
     /* ********************************************************************** */
     /*                                 Fields                                 */
@@ -203,6 +205,8 @@ public final class SecretPathMapper
      *  /tapis/tenant/<tenantId>/system/<systemId>/dynamicUserId/sshkey/<secretName>
      *  /tapis/tenant/<tenantId>/system/<systemId>/user/<user>/password/<secretName>
      *  /tapis/tenant/<tenantId>/system/<systemId>/user/<user>/accesskey/<secretName>
+     *  /tapis/tenant/<tenantId>/system/<systemId>/user/<user>/token/<secretName>
+     *  /tapis/tenant/<tenantId>/system/<systemId>/user/<user>/tmskey/<secretName>
      * </pre>
      * 
      * @param tenant the request tenant
@@ -260,6 +264,11 @@ public final class SecretPathMapper
           return "secret/tapis/tenant/" + tenant + "/system/" + _parms.getSysId() +
                   "/user/" + _parms.getSysUser() + "/token/" +
                   _parms.getSecretName();
+        } else if (keyType == KeyType.tmskey) {
+            // Access and refresh TMS keypair case.
+            return "secret/tapis/tenant/" + tenant + "/system/" + _parms.getSysId() +
+                    "/user/" + _parms.getSysUser() + "/tmskey/" +
+                    _parms.getSecretName();
         } else if (keyType == KeyType.cert){
             // Trusted CA case.
             return "secret/tapis/tenant/" + tenant + "/system/" + _parms.getSysId() +
