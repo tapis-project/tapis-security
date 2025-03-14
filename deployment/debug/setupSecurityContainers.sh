@@ -250,6 +250,12 @@ function doInit() {
   doUp
 }
 
+function doPrintRoleInfo() {
+  readConfig
+  announce "Docker compose restart"
+  getRoleAndSecretIds
+}
+
 SCRIPT_DIR=$(dirname $0)
 SERVICE_CODE="security"
 CONFIG_TEMPLATE=${SCRIPT_DIR}/security.conf
@@ -283,6 +289,9 @@ case $COMMAND in
     ;;
   vault)
     doVault
+    ;;
+  printRoleInfo)
+    doPrintRoleInfo
     ;;
   *)
     echo "Unknown command '$COMMAND'"

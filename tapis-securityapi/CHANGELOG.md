@@ -9,6 +9,12 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 -----------------------
+## 1.8.2 - 2025-01-12
+
+### New Features:
+1. Release number change.
+
+-----------------------
 ## 1.8.1 - 2024-12-19
 
 ### New Features:

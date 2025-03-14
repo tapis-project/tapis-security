@@ -64,17 +64,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class SecurityApplication 
  extends ResourceConfig
 {
-    public SecurityApplication()
-    {
+    public SecurityApplication() {
         // ------------------ Unrecoverable Errors ------------------
         // Log our existence.
         System.out.println("**** Starting tapis-securityapi ****");
-        
+
         // Register the swagger resources that allow the 
         // documentation endpoints to be automatically generated.
         register(OpenApiResource.class);
         register(AcceptHeaderOpenApiResource.class);
-        
+
         // We specify what packages JAX-RS should recursively scan
         // to find annotations.  By setting the value to the top-level
         // aloe directory in all projects, we can use JAX-RS annotations
@@ -82,54 +81,59 @@ public class SecurityApplication
         // tapis-sharedapi will be discovered whenever that project is
         // included as a maven dependency.
         packages("edu.utexas.tacc.tapis");
-        setApplicationName("security"); 
-        
+        setApplicationName("security");
+
         // Initialize our parameters.  A failure here is unrecoverable.
         RuntimeParameters parms = null;
-        try {parms = RuntimeParameters.getInstance();}
-            catch (Exception e) {
-                // We don't depend on the logging subsystem.
-                System.out.println("**** FAILURE TO INITIALIZE: tapis-securityapi RuntimeParameters [ABORTING] ****");
-                e.printStackTrace();
-                System.exit(1);
-            }
+        try {
+            parms = RuntimeParameters.getInstance();
+        } catch (Exception e) {
+            // We don't depend on the logging subsystem.
+            System.out.println("**** FAILURE TO INITIALIZE: tapis-securityapi RuntimeParameters [ABORTING] ****");
+            e.printStackTrace();
+            System.exit(1);
+        }
         System.out.println("**** SUCCESS:  RuntimeParameters read ****");
-        
+
         // Initialize local error list.
         var errors = new ArrayList<String>(); // cumulative error count
-        
+
         // ---------------- Initialize Security Filter --------------
         // Required to process any requests.
         JWTValidateRequestFilter.setService(TapisConstants.SERVICE_NAME_SECURITY);
         JWTValidateRequestFilter.setSiteId(parms.getSiteId());
-        
+
         // ------------------- Recoverable Errors -------------------
         // ------- Vault Initialization
         // Force runtime initialization of vault.
         boolean success = false;
-        try {VaultManager.getInstance(parms); success = true;}
-            catch (Exception e) {
-                // We don't depend on the logging subsystem.
-                errors.add("**** FAILURE TO INITIALIZE: tapis-securityapi VaultManager ****\n" + e.getMessage());
-                e.printStackTrace();
-            }
+        try {
+            VaultManager.getInstance(parms);
+            success = true;
+        } catch (Exception e) {
+            // We don't depend on the logging subsystem.
+            errors.add("**** FAILURE TO INITIALIZE: tapis-securityapi VaultManager ****\n" + e.getMessage());
+            e.printStackTrace();
+        }
         if (success) System.out.println("**** SUCCESS:  VaultManager initialized ****");
-        
+
         // ------- Database Initialization
         success = false;
-        try {RoleImpl.getInstance().queryDB("sk_role"); success = true;}
-         catch (Exception e) {
-             errors.add("**** FAILURE TO INITIALIZE: tapis-securitysapi Database ****\n" + e.getMessage());
-             e.printStackTrace();
-         }
+        try {
+            RoleImpl.getInstance().queryDB("sk_role");
+            success = true;
+        } catch (Exception e) {
+            errors.add("**** FAILURE TO INITIALIZE: tapis-securitysapi Database ****\n" + e.getMessage());
+            e.printStackTrace();
+        }
         if (success) System.out.println("**** SUCCESS:  PostgreSQL Database initialized ****");
-        
+
         // ------- Tenants Initialization
         // Force runtime initialization of the tenant manager.  This creates the
         // singleton instance of the TenantManager that can then be accessed by
         // all subsequent application code--including filters--without reference
         // to the tenant service base url parameter.
-        Map<String,Tenant> tenantMap = null;
+        Map<String, Tenant> tenantMap = null;
         try {
             // The base url of the tenants service is a required input parameter.
             // We actually retrieve the tenant list from the tenant service now
@@ -146,23 +150,25 @@ public class SecurityApplication
             String s = "Tenants:\n";
             for (String tenant : tenantMap.keySet()) s += "  " + tenant + "\n";
             System.out.println(s);
-            
+
             System.out.println("\nLocal site: " + parms.getSiteId());
             System.out.println("Primary site: " + TenantManager.getInstance().getPrimarySiteId());
         } else
-        	System.out.println("**** FAILURE TO INITIALIZE: tapis-securityapi TenantManager - No Tenants ****");
-        
+            System.out.println("**** FAILURE TO INITIALIZE: tapis-securityapi TenantManager - No Tenants ****");
+
         // ------- Authorization Initialization
         // Initialize tenant roles and administrators.
         success = false;
-        try {TenantInit.initializeTenants(tenantMap); success = true;}
-            catch (Exception e) {
-                // We don't depend on the logging subsystem.
-                errors.add("**** FAILURE TO INITIALIZE: tapis-securityapi TenantInit ****\n" + e.getMessage());
-                e.printStackTrace();
-            }
+        try {
+            TenantInit.initializeTenants(tenantMap);
+            success = true;
+        } catch (Exception e) {
+            // We don't depend on the logging subsystem.
+            errors.add("**** FAILURE TO INITIALIZE: tapis-securityapi TenantInit ****\n" + e.getMessage());
+            e.printStackTrace();
+        }
         if (success) System.out.println("**** SUCCESS:  Tenant admins initialized ****");
-        
+
         // We're done.
         System.out.println("\n**************************************************");
         System.out.println("**** tapis-securityapi Initialized [errors=" + errors.size() + "] ****");
@@ -174,5 +180,5 @@ public class SecurityApplication
             for (var s : errors) System.out.println(s);
             System.exit(1);
         }
-}
+    }
 }
