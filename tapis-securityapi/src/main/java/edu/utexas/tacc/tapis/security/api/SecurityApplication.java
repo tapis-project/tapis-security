@@ -1,10 +1,17 @@
 package edu.utexas.tacc.tapis.security.api;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.ApplicationPath;
 
+import edu.utexas.tacc.tapis.security.api.utils.PrimarySiteInit;
+import edu.utexas.tacc.tapis.security.authz.impl.UserImpl;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisNotFoundException;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.shared.utils.SkConstants;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import edu.utexas.tacc.tapis.security.api.utils.TenantInit;
@@ -167,6 +174,19 @@ public class SecurityApplication
             errors.add("**** FAILURE TO INITIALIZE: tapis-securityapi TenantInit ****\n" + e.getMessage());
             e.printStackTrace();
         }
+
+        // make sure we have a primary site admin role, and primary site admin
+        try {
+            //TODO:  Only for the primary site, right?
+            PrimarySiteInit.initializePrimarySite();
+        } catch (Exception e) {
+            // We don't depend on the logging subsystem.
+            errors.add("**** FAILURE TO INITIALIZE: tapis-securityapi PrimarySiteAdmin ****\n" + e.getMessage());
+            e.printStackTrace();
+        }
+
+
+
         if (success) System.out.println("**** SUCCESS:  Tenant admins initialized ****");
 
         // We're done.
@@ -180,5 +200,7 @@ public class SecurityApplication
             for (var s : errors) System.out.println(s);
             System.exit(1);
         }
+
     }
+
 }

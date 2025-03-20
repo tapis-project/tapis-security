@@ -1,10 +1,12 @@
 package edu.utexas.tacc.tapis.security.api.resources;
 
-import edu.utexas.tacc.tapis.security.api.requestBody.ReqAdminReinitialize;
+import edu.utexas.tacc.tapis.security.api.utils.SKCheckAuthz;
 import edu.utexas.tacc.tapis.security.api.utils.TenantInit;
 import edu.utexas.tacc.tapis.security.config.RuntimeParameters;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
+import edu.utexas.tacc.tapis.shared.utils.SkConstants;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.slf4j.Logger;
@@ -12,8 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.POST;
+import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Application;
@@ -23,16 +24,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.InputStream;
 import java.util.Map;
 
 @Path("/admin")
 public class AdminResource extends AbstractResource {
     private static final Logger _log = LoggerFactory.getLogger(AdminResource.class);
-    private static final String FILE_SK_GRANT_TENANT_ADMIN_ROLE =
-            "/edu/utexas/tacc/tapis/security/api/jsonschema/GrantTenantAdminRole.json";
-    private static final String FILE_SK_REVOKE_TENANT_ADMIN_ROLE =
-            "/edu/utexas/tacc/tapis/security/api/jsonschema/RevokeTenantAdminRole.json";
     @Context
     private HttpHeaders _httpHeaders;
 
@@ -51,12 +47,12 @@ public class AdminResource extends AbstractResource {
     @Context
     private HttpServletRequest _request;
 
+    private static final String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
 
-    @POST
+    @GET
     @Path("reinitialize")
-    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response reinitialize(InputStream payloadStream) {
+    public Response reinitialize() {
         // Trace this request.
         if (_log.isTraceEnabled()) {
             String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(),
@@ -64,55 +60,32 @@ public class AdminResource extends AbstractResource {
             _log.trace(msg);
         }
 
-        // ------------------------- Input Processing -------------------------
-        // Parse and validate the json in the request payload, which must exist.
-        ReqAdminReinitialize reinitializeRequest = null;
-        try {reinitializeRequest = getPayload(payloadStream, FILE_SK_GRANT_TENANT_ADMIN_ROLE,
-                ReqAdminReinitialize.class);
-        }
-        catch (Exception e) {
-            String msg = MsgUtils.getMsg("NET_REQUEST_PAYLOAD_ERROR",
-                    "grantTenantAdminRole", e.getMessage());
-            _log.error(msg, e);
-            return Response.status(Response.Status.BAD_REQUEST).
-                    entity(TapisRestUtils.createErrorResponse(msg, true)).build();
+        // TODO:  Is this correct?  Check for oboUser different and error?
+        // ignore oboUser - only the jwt user matters for admin stuff
+        String jwtUser = TapisThreadLocal.tapisThreadContext.get().getJwtUser();
+
+        // TODO:  Should this be the admin tenant?
+        Response resp = SKCheckAuthz.configure(primarySiteAdminTenantId, jwtUser)
+                .addRequiredRole(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE).check(true);
+        if(resp != null) {
+            return resp;
         }
 
-        if(reinitializeRequest.doReinitialize) {
+        try {
             var tenantMap = getTenantMap();
-            try {
-                TenantInit.initializeTenants(tenantMap);
-            } catch (Exception e) {
-                // TODO: make this something reasonable - log message or whatever
-                _log.error("**** FAILURE TO INITIALIZE: tapis-securityapi TenantInit ****\n" + e.getMessage());
-
-                // TODO: return an HTTP error
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-            }
-            // TODO: return HTTP success
-            return Response.status(Response.Status.OK).build();
+            TenantInit.initializeTenants(tenantMap);
+        } catch (Exception e) {
+            String msg = MsgUtils.getMsg("SK_SITE_ADMIN_REINIT_ERROR", jwtUser, e.getMessage());
+            return getExceptionResponse(e, msg, true);
         }
-        // TODO: return HTTP sucess ... or error? Or maybe remove the doReinitialize payload
-
-
-
-        // TODO: Temporary
-        return Response.status(Response.Status.OK).build();
+        return Response.status(Response.Status.OK)
+                .entity(TapisRestUtils.createSuccessResponse("Reinitialized Successfully", true))
+                .build();
     }
 
-    private static Map<String, Tenant> getTenantMap() {
+    private static Map<String, Tenant> getTenantMap() throws Exception {
         Map<String, Tenant> tenantMap = null;
-        try {
-            // The base url of the tenants service is a required input parameter.
-            // We actually retrieve the tenant list from the tenant service now
-            // to fail fast if we can't access the list.
-            String url = RuntimeParameters.getInstance().getTenantBaseUrl();
-            tenantMap = TenantManager.getInstance(url).getTenants();
-        } catch (Exception e) {
-            // We don't depend on the logging subsystem.
-            errors.add("**** FAILURE TO INITIALIZE: tapis-securityapi TenantManager ****\n" + e.getMessage());
-            e.printStackTrace();
-        }
+        tenantMap = TenantManager.getInstance().getTenants();
         if (tenantMap != null) {
             System.out.println("**** SUCCESS:  " + tenantMap.size() + " tenants retrieved ****");
             String s = "Tenants:\n";

@@ -263,6 +263,13 @@ CONFIG_FILE=${SCRIPT_DIR}/security.conf.current
 
 if [[ ! $#  -eq 1 ]] ; then
   echo must provide a command
+  echo     init - install/initialize docker containers
+  echo     up - bring up docker containers 
+  echo     down - bring down docker containers 
+  echo     start - bring up docker containers after a stop command
+  echo     stop - bring down docker containers without destroying them
+  echo     restart - restart docker containers
+  echo     printRoleInfo - print out role information from vault container
   exit  1
 fi
 
