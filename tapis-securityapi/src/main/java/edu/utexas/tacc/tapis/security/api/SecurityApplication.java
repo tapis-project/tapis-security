@@ -177,7 +177,6 @@ public class SecurityApplication
 
         // make sure we have a primary site admin role, and primary site admin
         try {
-            //TODO:  Only for the primary site, right?
             PrimarySiteInit.initializePrimarySite();
         } catch (Exception e) {
             // We don't depend on the logging subsystem.

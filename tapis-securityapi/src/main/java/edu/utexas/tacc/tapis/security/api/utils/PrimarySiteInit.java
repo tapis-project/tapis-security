@@ -33,6 +33,7 @@ public final class PrimarySiteInit {
             String msg = MsgUtils.getMsg("SK_GET_USERS_WITH_ROLE_ERROR", primarySiteAdminTenantId,
                     roleName, e.getMessage());
             _log.error(msg, e);
+            throw e;
         }
 
         if ((primarySiteAdmins == null) || (primarySiteAdmins.isEmpty())) {

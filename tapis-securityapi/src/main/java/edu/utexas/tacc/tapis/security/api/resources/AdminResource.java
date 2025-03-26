@@ -60,11 +60,8 @@ public class AdminResource extends AbstractResource {
             _log.trace(msg);
         }
 
-        // TODO:  Is this correct?  Check for oboUser different and error?
-        // ignore oboUser - only the jwt user matters for admin stuff
         String jwtUser = TapisThreadLocal.tapisThreadContext.get().getJwtUser();
 
-        // TODO:  Should this be the admin tenant?
         Response resp = SKCheckAuthz.configure(primarySiteAdminTenantId, jwtUser)
                 .addRequiredRole(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE).check(true);
         if(resp != null) {
@@ -85,7 +82,7 @@ public class AdminResource extends AbstractResource {
 
     private static Map<String, Tenant> getTenantMap() throws Exception {
         Map<String, Tenant> tenantMap = null;
-        tenantMap = TenantManager.getInstance().getTenants();
+        tenantMap = TenantManager.getInstance().refreshTenants();
         if (tenantMap != null) {
             System.out.println("**** SUCCESS:  " + tenantMap.size() + " tenants retrieved ****");
             String s = "Tenants:\n";
