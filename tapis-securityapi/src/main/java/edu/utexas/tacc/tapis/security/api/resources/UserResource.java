@@ -147,8 +147,7 @@ public final class UserResource
      /* ---------------------------------------------------------------------------- */
      @GET
      @Produces(MediaType.APPLICATION_JSON)
-     public Response getUserNames(@QueryParam("tenant") String tenant,
-                                  @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+     public Response getUserNames(@QueryParam("tenant") String tenant)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -162,12 +161,12 @@ public final class UserResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null).check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -175,7 +174,7 @@ public final class UserResource
          List<String> users = null;
          try {users = getUserImpl().getUserNames(tenant);}
              catch (Exception e) {
-                 return getExceptionResponse(e, null, prettyPrint);
+                 return getExceptionResponse(e, null);
              }
          
          // Populate response.
@@ -188,7 +187,7 @@ public final class UserResource
          // Success means we found the tenant's role names.
          int cnt = names.names.length;
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_FOUND", "Users", cnt + " users"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_FOUND", "Users", cnt + " users"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -198,8 +197,7 @@ public final class UserResource
      @Path("/roles/{user}")
      @Produces(MediaType.APPLICATION_JSON)
      public Response getUserRoles(@PathParam("user") String user,
-                                  @QueryParam("tenant") String tenant,
-                                  @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+                                  @QueryParam("tenant") String tenant)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -213,12 +211,12 @@ public final class UserResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null).check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -226,7 +224,7 @@ public final class UserResource
          List<String> roles = null;
          try {roles = getUserImpl().getUserRoleNames(tenant, user);}
              catch (Exception e) {
-                 return getExceptionResponse(e, null, prettyPrint);
+                 return getExceptionResponse(e, null);
              }
          
          // Populate response.
@@ -239,7 +237,7 @@ public final class UserResource
          // Success means we found the tenant's role names.
          int cnt = names.names.length;
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_FOUND", "Roles", cnt + " roles"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_FOUND", "Roles", cnt + " roles"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -251,8 +249,7 @@ public final class UserResource
      public Response getUserPerms(@PathParam("user") String user,
                                   @QueryParam("tenant") String tenant,
                                   @DefaultValue("") @QueryParam("implies") String implies,
-                                  @DefaultValue("") @QueryParam("impliedBy") String impliedBy,
-                                  @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+                                  @DefaultValue("") @QueryParam("impliedBy") String impliedBy)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -266,12 +263,12 @@ public final class UserResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null).check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -281,7 +278,7 @@ public final class UserResource
              perms = getUserImpl().getUserPerms(tenant, user, implies, impliedBy);
          }
          catch (Exception e) {
-             return getExceptionResponse(e, null, prettyPrint);
+             return getExceptionResponse(e, null);
          }
          
          // Populate response.
@@ -294,7 +291,7 @@ public final class UserResource
          // Success means we found the tenant's role names.
          int cnt = names.names.length;
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_FOUND", "Permissions", cnt + " permissions"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_FOUND", "Permissions", cnt + " permissions"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -304,8 +301,7 @@ public final class UserResource
      @Path("/grantRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response grantRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                               InputStream payloadStream)
+     public Response grantRole(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -325,7 +321,7 @@ public final class UserResource
                                           "grantRole", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
              
          // Fill in the parameter fields.
@@ -339,7 +335,7 @@ public final class UserResource
                              .setCheckIsAdmin()
                              .addOwnedRole(roleName)
                              .setPreventAdminRole(roleName)
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -351,7 +347,7 @@ public final class UserResource
          int rows = 0;
          try {rows = getUserImpl().grantRole(tenant, user, roleName, requestor, requestorTenant);}
              catch (Exception e) {
-                 return getExceptionResponse(e, null, prettyPrint, "Role", roleName);
+                 return getExceptionResponse(e, null, "Role", roleName);
              }
          
          // Populate the response.
@@ -362,7 +358,7 @@ public final class UserResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " roles assigned"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " roles assigned"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -372,8 +368,7 @@ public final class UserResource
      @Path("/revokeUserRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response revokeUserRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                    InputStream payloadStream)
+     public Response revokeUserRole(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -393,7 +388,7 @@ public final class UserResource
                                           "revokeUserRole", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
              
          // Fill in the parameter fields.
@@ -407,7 +402,7 @@ public final class UserResource
                              .setCheckIsAdmin()
                              .addOwnedRole(roleName)
                              .setPreventAdminRole(roleName)
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -422,7 +417,7 @@ public final class UserResource
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_REMOVE_USER_ROLE_ERROR",  
                                               tenant, roleName, user, e.getMessage());
-                 return getExceptionResponse(e, msg, prettyPrint);
+                 return getExceptionResponse(e, msg);
              }
          
          // Populate the response.
@@ -433,7 +428,7 @@ public final class UserResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " roles revoked"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " roles revoked"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -447,8 +442,7 @@ public final class UserResource
      @Path("/grantAdminRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response grantAdminRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                    InputStream payloadStream)
+     public Response grantAdminRole(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -468,7 +462,7 @@ public final class UserResource
                                           "grantRole", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
              
          // Fill in the parameter fields.
@@ -479,7 +473,7 @@ public final class UserResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
                              .setCheckIsAdmin()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -490,7 +484,7 @@ public final class UserResource
          int rows = 0;
          try {rows = getUserImpl().grantAdminRoleInternal(user, tenant, requestor, tenant);}
              catch (Exception e) {
-                 return getExceptionResponse(e, null, prettyPrint, "Role", UserImpl.ADMIN_ROLE_NAME);
+                 return getExceptionResponse(e, null, "Role", UserImpl.ADMIN_ROLE_NAME);
              }
          
          // Populate the response.
@@ -501,7 +495,7 @@ public final class UserResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " roles assigned"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " roles assigned"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -515,8 +509,7 @@ public final class UserResource
      @Path("/revokeAdminRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response revokeAdminRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                    InputStream payloadStream)
+     public Response revokeAdminRole(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -536,7 +529,7 @@ public final class UserResource
                                           "revokeUserRole", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
              
          // Fill in the parameter fields.
@@ -547,7 +540,7 @@ public final class UserResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
                              .setCheckIsAdmin()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -566,7 +559,7 @@ public final class UserResource
                  String msg = MsgUtils.getMsg("SK_REMOVE_USER_ROLE_ERROR",  
                                               tenant, UserImpl.ADMIN_ROLE_NAME, 
                                               user, e.getMessage());
-                 return getExceptionResponse(e, msg, prettyPrint);
+                 return getExceptionResponse(e, msg);
              }
          
          // Populate the response.
@@ -577,7 +570,7 @@ public final class UserResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " roles revoked"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " roles revoked"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -587,8 +580,7 @@ public final class UserResource
      @Path("/isAdmin")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response isAdmin(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                             InputStream payloadStream)
+     public Response isAdmin(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -608,7 +600,7 @@ public final class UserResource
                                           "hasRole", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // Repackage into a multi-role request.
@@ -618,7 +610,7 @@ public final class UserResource
          multi.roleNames = new String[] {UserImpl.ADMIN_ROLE_NAME};
          
          // Call the real method.
-         return hasRoleMulti(payloadStream, prettyPrint, AuthOperation.ANY, multi);
+         return hasRoleMulti(payloadStream, AuthOperation.ANY, multi);
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -627,8 +619,7 @@ public final class UserResource
      @GET
      @Path("/admins/{tenant}")
      @Produces(MediaType.APPLICATION_JSON)
-     public Response getAdmins(@PathParam("tenant") String tenant,
-                               @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+     public Response getAdmins(@PathParam("tenant") String tenant)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -638,7 +629,7 @@ public final class UserResource
          }
          
          // Call the real method.
-         return getUsersWithRole(UserImpl.ADMIN_ROLE_NAME, tenant, prettyPrint);
+         return getUsersWithRole(UserImpl.ADMIN_ROLE_NAME, tenant);
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -648,8 +639,7 @@ public final class UserResource
      @Path("/grantUserPermission")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response grantUserPermission(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                         InputStream payloadStream)
+     public Response grantUserPermission(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -669,7 +659,7 @@ public final class UserResource
                                           "grantUserPermission", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
              }
              
          // Fill in the parameter fields.
@@ -683,7 +673,7 @@ public final class UserResource
                              .setCheckIsAdmin()
                              .setCheckIsService()
                              .setPreventForeignTenantUpdate()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -701,7 +691,7 @@ public final class UserResource
                  // We assume a bad request for all other errors.
                  String msg = MsgUtils.getMsg("SK_ADD_USER_PERMISSION_ERROR", 
                                               grantor, grantorTenant, grantee, granteeTenant, permSpec);
-                 return getExceptionResponse(e, msg, prettyPrint);
+                 return getExceptionResponse(e, msg);
              }
 
          // Populate the response.
@@ -712,7 +702,7 @@ public final class UserResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " changes"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " changes"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -722,8 +712,7 @@ public final class UserResource
      @Path("/revokeUserPermission")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response revokeUserPermission(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                          InputStream payloadStream)
+     public Response revokeUserPermission(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -743,7 +732,7 @@ public final class UserResource
                                           "revokeUserPermission", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
              }
              
          // Fill in the parameter fields.
@@ -761,7 +750,7 @@ public final class UserResource
                              .setCheckIsService()
                              .setCheckMatchesJwtIdentity()
                              .setPreventForeignTenantUpdate()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------        
@@ -777,7 +766,7 @@ public final class UserResource
              String requestorTenant = TapisThreadLocal.tapisThreadContext.get().getJwtTenantId();
              String msg = MsgUtils.getMsg("SK_REMOVE_PERMISSION_ERROR", requestor,
             		                      requestorTenant, permSpec, roleName, tenant);
-             return getExceptionResponse(e, msg, prettyPrint, "Role", roleName);
+             return getExceptionResponse(e, msg, "Role", roleName);
          }
     
          // Populate the response.
@@ -788,7 +777,7 @@ public final class UserResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " changes"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " changes"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -798,8 +787,7 @@ public final class UserResource
      @Path("/grantRoleWithPerm")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response grantRoleWithPermission(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                             InputStream payloadStream)
+     public Response grantRoleWithPermission(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -819,7 +807,7 @@ public final class UserResource
                                           "grantRoleWithPermission", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
              }
              
          // Fill in the parameter fields.
@@ -834,7 +822,7 @@ public final class UserResource
                              .setCheckIsAdmin()
                              .addOwnedRole(roleName)
                              .setPreventAdminRole(roleName)
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------        
@@ -853,7 +841,7 @@ public final class UserResource
                  // We assume a bad request for all other errors.
                  String msg = MsgUtils.getMsg("SK_ADD_PERMISSION_ERROR", requestor,
                                               requestorTenant, permSpec, roleName, tenant);
-                 return getExceptionResponse(e, msg, prettyPrint, "Role", roleName);
+                 return getExceptionResponse(e, msg, "Role", roleName);
              }
 
          // Populate the response.
@@ -864,7 +852,7 @@ public final class UserResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " changes"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "User", rows + " changes"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -874,8 +862,7 @@ public final class UserResource
      @Path("/hasRole")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response hasRole(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                             InputStream payloadStream)
+     public Response hasRole(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -895,7 +882,7 @@ public final class UserResource
                                           "hasRole", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // Repackage into a multi-role request.
@@ -906,7 +893,7 @@ public final class UserResource
          multi.orAdmin = payload.orAdmin;
          
          // Call the real method.
-         return hasRoleMulti(payloadStream, prettyPrint, AuthOperation.ANY, multi);
+         return hasRoleMulti(payloadStream, AuthOperation.ANY, multi);
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -916,8 +903,7 @@ public final class UserResource
      @Path("/hasRoleAny")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response hasRoleAny(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                InputStream payloadStream)
+     public Response hasRoleAny(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -927,7 +913,7 @@ public final class UserResource
          }
          
          // Call the real method.
-         return hasRoleMulti(payloadStream, prettyPrint, AuthOperation.ANY, null);
+         return hasRoleMulti(payloadStream, AuthOperation.ANY, null);
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -937,8 +923,7 @@ public final class UserResource
      @Path("/hasRoleAll")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response hasRoleAll(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                InputStream payloadStream)
+     public Response hasRoleAll(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -948,7 +933,7 @@ public final class UserResource
          }
          
          // Call the real method.
-         return hasRoleMulti(payloadStream, prettyPrint, AuthOperation.ALL, null);
+         return hasRoleMulti(payloadStream, AuthOperation.ALL, null);
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -958,8 +943,7 @@ public final class UserResource
      @Path("/isPermitted")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response isPermitted(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                 InputStream payloadStream)
+     public Response isPermitted(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -979,7 +963,7 @@ public final class UserResource
                                           "isPermitted", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
              
          // Transfer to a new payload object.
@@ -990,7 +974,7 @@ public final class UserResource
          multi.orAdmin   = payload.orAdmin;
          
          // Call the real method.
-         return isPermittedMulti(payloadStream, prettyPrint, AuthOperation.ANY, multi);
+         return isPermittedMulti(payloadStream, AuthOperation.ANY, multi);
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -1000,8 +984,7 @@ public final class UserResource
      @Path("/isPermittedAny")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response isPermittedAny(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                    InputStream payloadStream)
+     public Response isPermittedAny(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -1011,7 +994,7 @@ public final class UserResource
          }
 
          // Call the real method.
-         return isPermittedMulti(payloadStream, prettyPrint, AuthOperation.ANY, null);
+         return isPermittedMulti(payloadStream, AuthOperation.ANY, null);
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -1021,8 +1004,7 @@ public final class UserResource
      @Path("/isPermittedAll")
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
-     public Response isPermittedAll(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                    InputStream payloadStream)
+     public Response isPermittedAll(InputStream payloadStream)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -1032,7 +1014,7 @@ public final class UserResource
          }
 
          // Call the real method.
-         return isPermittedMulti(payloadStream, prettyPrint, AuthOperation.ALL, null);
+         return isPermittedMulti(payloadStream, AuthOperation.ALL, null);
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -1042,8 +1024,7 @@ public final class UserResource
      @Path("/withRole/{roleName}")
      @Produces(MediaType.APPLICATION_JSON)
      public Response getUsersWithRole(@PathParam("roleName") String roleName,
-                                      @QueryParam("tenant") String tenant,
-                                      @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+                                      @QueryParam("tenant") String tenant)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -1057,12 +1038,12 @@ public final class UserResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null).check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -1070,7 +1051,7 @@ public final class UserResource
          List<String> users = null;
          try {users = getUserImpl().getUsersWithRole(tenant, roleName);}
              catch (Exception e) {
-                 return getExceptionResponse(e, null, prettyPrint, "Role");
+                 return getExceptionResponse(e, null, "Role");
              }
          
          // Fill in the response.
@@ -1083,7 +1064,7 @@ public final class UserResource
          // Success means we found the tenant's role names.
          int cnt = names.names.length;
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_FOUND", "Users", cnt + " items"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_FOUND", "Users", cnt + " items"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -1093,8 +1074,7 @@ public final class UserResource
      @Path("/withPermission/{permSpec}")
      @Produces(MediaType.APPLICATION_JSON)
      public Response getUsersWithPermission(@PathParam("permSpec") String permSpec,
-                                            @QueryParam("tenant") String tenant,
-                                            @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+                                            @QueryParam("tenant") String tenant)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -1108,12 +1088,12 @@ public final class UserResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null).check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -1121,7 +1101,7 @@ public final class UserResource
          List<String> users = null;
          try {users = getUserImpl().getUsersWithPermission(tenant, permSpec);}
              catch (Exception e) {
-                 return getExceptionResponse(e, null, prettyPrint);
+                 return getExceptionResponse(e, null);
              }
          
          // Fill in the response.
@@ -1134,7 +1114,7 @@ public final class UserResource
          // Success means we found the tenant's role names.
          int cnt = names.names.length;
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_FOUND", "Users", cnt + " items"), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_FOUND", "Users", cnt + " items"), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -1144,8 +1124,7 @@ public final class UserResource
      @Path("/defaultRole/{user}")
      @Produces(MediaType.APPLICATION_JSON)
      @PermitAll
-     public Response getDefaultUserRole(@PathParam("user") String user,
-                                        @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+     public Response getDefaultUserRole(@PathParam("user") String user)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -1160,14 +1139,14 @@ public final class UserResource
              String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getDefaultUserRole", "user");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          if (user.length() > UserImpl.MAX_USER_NAME_LEN) {
              String msg = MsgUtils.getMsg("SK_USER_NAME_LEN", "anyTenant", 
                                           user, UserImpl.MAX_USER_NAME_LEN);
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // ------------------------ Request Processing ------------------------
@@ -1175,7 +1154,7 @@ public final class UserResource
          String name = null;
          try {name = getUserImpl().getUserDefaultRolename(user);}
          catch (Exception e) {
-             return getExceptionResponse(e, null, prettyPrint);
+             return getExceptionResponse(e, null);
          }
          
          // Fill in the response.
@@ -1186,7 +1165,7 @@ public final class UserResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the tenant's role names.
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_FOUND", "Role", name), prettyPrint, r)).build();
+             MsgUtils.getMsg("TAPIS_FOUND", "Role", name), r)).build();
      }
 
      /* **************************************************************************** */
@@ -1203,12 +1182,11 @@ public final class UserResource
       * specified tenant or if the jwt requestor is a service.
       * 
       * @param payloadStream the stream to fill in parameters if payload is null
-      * @param prettyPrint format output
       * @param op ANY or ALL
       * @param payload parameters already filled in
       * @return the user response
       */
-     private Response hasRoleMulti(InputStream payloadStream, boolean prettyPrint, 
+     private Response hasRoleMulti(InputStream payloadStream,
                                    AuthOperation op, ReqUserHasRoleMulti payload)
      {
          // ------------------------- Input Processing -------------------------
@@ -1222,7 +1200,7 @@ public final class UserResource
                                               "hasRoleMulti", e.getMessage());
                  _log.error(msg, e);
                  return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
              }
          }
          
@@ -1234,7 +1212,7 @@ public final class UserResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null).check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -1250,7 +1228,7 @@ public final class UserResource
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                               tenant, user, e.getMessage());
-                 return getExceptionResponse(e, msg, prettyPrint);
+                 return getExceptionResponse(e, msg);
              }
          
          // When authorization fails, check for admin role in the ALL operation case.
@@ -1261,7 +1239,7 @@ public final class UserResource
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                               tenant, user, e.getMessage());
-                 return getExceptionResponse(e, msg, prettyPrint);
+                 return getExceptionResponse(e, msg);
              }
          }
          
@@ -1279,7 +1257,7 @@ public final class UserResource
          // Success means we found the role.
          String respMsg = user + " authorized: " + authorized;
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg(resultCode, "User", respMsg), prettyPrint, r)).build();
+             MsgUtils.getMsg(resultCode, "User", respMsg), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -1293,12 +1271,11 @@ public final class UserResource
       * specified tenant or if the jwt requestor is a service.
       * 
       * @param payloadStream the stream to fill in parameters if payload is null
-      * @param prettyPrint format output
       * @param op ANY or ALL
       * @param payload parameters already filled in
       * @return the user response
       */
-     private Response isPermittedMulti(InputStream payloadStream, boolean prettyPrint, 
+     private Response isPermittedMulti(InputStream payloadStream,
                                        AuthOperation op, ReqUserIsPermittedMulti payload)
      {
          // ------------------------- Input Processing -------------------------
@@ -1312,7 +1289,7 @@ public final class UserResource
                                               "isPermittedMulti", e.getMessage());
                  _log.error(msg, e);
                  return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
              }
          }
          
@@ -1324,7 +1301,7 @@ public final class UserResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check(prettyPrint);
+         Response resp = SKCheckAuthz.configure(tenant, null).check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -1333,7 +1310,7 @@ public final class UserResource
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_PERMISSIONS_ERROR", 
                                               tenant, user, e.getMessage());
-                 return getExceptionResponse(e, msg, prettyPrint);
+                 return getExceptionResponse(e, msg);
              }
          
          // When authorization fails check is user is an admin.
@@ -1344,7 +1321,7 @@ public final class UserResource
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                               tenant, user, e.getMessage());
-                 return getExceptionResponse(e, msg, prettyPrint);
+                 return getExceptionResponse(e, msg);
              }
          }
          
@@ -1362,6 +1339,6 @@ public final class UserResource
          // Success means we found the role.
          String respMsg = user + " authorized: " + authorized;
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg(resultCode, "User", respMsg), prettyPrint, r)).build();
+             MsgUtils.getMsg(resultCode, "User", respMsg), r)).build();
      }
 }

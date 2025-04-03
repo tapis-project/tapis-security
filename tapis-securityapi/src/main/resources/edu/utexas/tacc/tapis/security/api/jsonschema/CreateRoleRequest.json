@@ -11,6 +11,16 @@
           "roleName": {
             "type": "string"
           },
+          "roleType": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "USER_DEFAULT",
+              "TENANT_ADMIN",
+              "SITE_ADMIN",
+              "RESTRICTED_SERVICE"
+            ]
+          },
           "description": {
             "type": "string"
           }

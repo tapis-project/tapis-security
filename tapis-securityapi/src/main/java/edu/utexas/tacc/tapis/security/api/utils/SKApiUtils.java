@@ -4,6 +4,7 @@ import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response.Status;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRole;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.shared.exceptions.TapisImplException.Condition;
@@ -47,7 +48,25 @@ public class SKApiUtils
         if (name == null) return false;
         return _namePattern.matcher(name).matches();
     }
-    
+
+    /* ---------------------------------------------------------------------------- */
+    /* isValidRoleType:                                                                 */
+    /* ---------------------------------------------------------------------------- */
+    /** Check a candidate name against the name regex.
+     *
+     * @param name the name to validate
+     * @return true if matches regex, false otherwise
+     */
+    public static boolean isValidRoleType(String roleType)
+    {
+        try {
+            SkRole.Type type = SkRole.Type.valueOf(roleType);
+            return type != null;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
     /* ---------------------------------------------------------------------------- */
     /* constructTenantURL:                                                          */
     /* ---------------------------------------------------------------------------- */

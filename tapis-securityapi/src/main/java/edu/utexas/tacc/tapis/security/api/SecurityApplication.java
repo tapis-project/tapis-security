@@ -1,17 +1,11 @@
 package edu.utexas.tacc.tapis.security.api;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.ApplicationPath;
 
 import edu.utexas.tacc.tapis.security.api.utils.PrimarySiteInit;
-import edu.utexas.tacc.tapis.security.authz.impl.UserImpl;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisNotFoundException;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
-import edu.utexas.tacc.tapis.shared.utils.SkConstants;
-import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import edu.utexas.tacc.tapis.security.api.utils.TenantInit;

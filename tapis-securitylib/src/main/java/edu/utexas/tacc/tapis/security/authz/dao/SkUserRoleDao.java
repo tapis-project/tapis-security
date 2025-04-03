@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRole;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
@@ -861,6 +862,18 @@ public final class SkUserRoleDao
   /* ---------------------------------------------------------------------------- */
   /* createAndAssignRole:                                                         */
   /* ---------------------------------------------------------------------------- */
+    // TODO: fix this - temporary overload
+  public int createAndAssignRole(String roleName, String roleTenant, String description,
+                                 String grantee, String granteeTenant,
+                                 String grantor, String grantorTenant, boolean strict)
+          throws TapisException
+  {
+      SkRole.Type roleType = SkRole.Type.getRoleTypeFromRoleName(roleName);
+
+      return createAndAssignRole(roleName, roleType, roleTenant, description,
+          grantee, granteeTenant, grantor, grantorTenant, strict);
+  }
+
   /** Create a role and assign it to a user in one atomic operation.  The role is
    * not expected to exist and the method will fail if it does.
    * 
@@ -875,8 +888,8 @@ public final class SkUserRoleDao
    * @return the number of changed db records
    * @throws TapisImplException on error
    */
-  public int createAndAssignRole(String roleName, String roleTenant, String description,
-		                         String grantee, String granteeTenant,
+  public int createAndAssignRole(String roleName, SkRole.Type roleType, String roleTenant, String description,
+                                 String grantee, String granteeTenant,
                                  String grantor, String grantorTenant, boolean strict)
    throws TapisException
   {
@@ -943,7 +956,8 @@ public final class SkUserRoleDao
           pstmt.setString(7, grantorTenant);
           pstmt.setString(8, grantor);
           pstmt.setString(9, grantorTenant);
-          
+          pstmt.setString(10, roleType.name());
+
           // Issue the call which will fail if the role already exists
           // and strict is set.
           rows = pstmt.executeUpdate();

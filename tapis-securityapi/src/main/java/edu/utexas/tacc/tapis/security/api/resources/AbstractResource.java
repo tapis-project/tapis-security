@@ -169,12 +169,11 @@ class AbstractResource
      * 
      * @param e the thrown exception
      * @param message a message to log or null
-     * @param prettyPrint whether the response should be pretty printed
      * @param parms 0 or more exception-specific string parameters
      * @return a response
      */
     protected Response getExceptionResponse(Exception e, String message, 
-                                            boolean prettyPrint, String... parms)
+                                            String... parms)
     {
         // Select and print a message and the caller's stack frame info.
         String msg = message == null ? e.getMessage() : message;
@@ -196,20 +195,19 @@ class AbstractResource
             String missingValue = parms.length > 1 ? parms[1] : missingName.name;
             
             return Response.status(Status.NOT_FOUND).entity(TapisRestUtils.createSuccessResponse(
-                MsgUtils.getMsg("TAPIS_NOT_FOUND", missingType, missingValue), 
-                                prettyPrint, r)).build();
+                MsgUtils.getMsg("TAPIS_NOT_FOUND", missingType, missingValue), r)).build();
         }
         else if (e instanceof TapisImplException) {
             return Response.status(SKApiUtils.toHttpStatus(((TapisImplException)e).condition)).
-                entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                entity(TapisRestUtils.createErrorResponse(msg)).build();
         } 
         else if (e instanceof VaultException) {
             return Response.status(((VaultException)e).getHttpStatusCode()).
-                entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                entity(TapisRestUtils.createErrorResponse(msg)).build();
         } 
         else {
             return Response.status(Status.INTERNAL_SERVER_ERROR).
-                entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                entity(TapisRestUtils.createErrorResponse(msg)).build();
         }
     }
 }

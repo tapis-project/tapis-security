@@ -14,6 +14,9 @@
           "roleName": {
             "type": "string"
           },
+          "roleType": {
+            "type": "string"
+          },
           "oldSystemId": {
             "type": "string"
           },

@@ -63,7 +63,7 @@ public class AdminResource extends AbstractResource {
         String jwtUser = TapisThreadLocal.tapisThreadContext.get().getJwtUser();
 
         Response resp = SKCheckAuthz.configure(primarySiteAdminTenantId, jwtUser)
-                .addRequiredRole(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE).check(true);
+                .addRequiredRole(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE).check();
         if(resp != null) {
             return resp;
         }
@@ -73,7 +73,7 @@ public class AdminResource extends AbstractResource {
             TenantInit.initializeTenants(tenantMap);
         } catch (Exception e) {
             String msg = MsgUtils.getMsg("SK_SITE_ADMIN_REINIT_ERROR", jwtUser, e.getMessage());
-            return getExceptionResponse(e, msg, true);
+            return getExceptionResponse(e, msg);
         }
         return Response.status(Response.Status.OK)
                 .entity(TapisRestUtils.createSuccessResponse("Reinitialized Successfully", true))

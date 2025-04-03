@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRole;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,7 +161,7 @@ public final class SKCheckAuthz
      * 
      * @return null for authorized, a response object for failed authorization
      */
-    public Response check(boolean prettyPrint)
+    public Response check()
     {
         // Perform the actual checks.
         String emsg = checkMsg();              // At least 1 check must succeed.
@@ -176,7 +177,7 @@ public final class SKCheckAuthz
         
         // Return an error response.
         return Response.status(status).
-          entity(TapisRestUtils.createErrorResponse(emsg, prettyPrint)).build();
+          entity(TapisRestUtils.createErrorResponse(emsg)).build();
     }
     
     /* **************************************************************************** */
@@ -435,7 +436,7 @@ public final class SKCheckAuthz
             for (String roleName : _ownedRoles) {
                 // The request and role tenants are guaranteed to be the same
             	// because we use the request tenant in the retrieval.
-                var skRole = roleImpl.getRoleByName(_reqTenant, roleName);
+                var skRole = roleImpl.getRoleByName(_reqTenant, roleName, SkRole.ALL_TYPES);
                 
                 // Bad news.
                 if (skRole == null) {authorized = false; break;}

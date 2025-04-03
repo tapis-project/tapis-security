@@ -26,22 +26,23 @@ public class SqlStatements
   // Role statements.
   public static final String ROLE_SELECT_BY_NAME = 
       "SELECT id, tenant, name, description FROM sk_role where tenant = ? AND name = ?";
-  public static final String ROLE_SELECT_EXTENDED_BY_NAME = 
+  public static final String ROLE_SELECT_EXTENDED_BY_NAME_AND_TYPE =
       "SELECT id, tenant, name, description, owner, owner_tenant, created, createdby, createdby_tenant, "
-      + "updated, updatedby, updatedby_tenant, has_children FROM sk_role where tenant = ? AND name = ?";
-  public static final String ROLE_SELECT_NAMES = 
-      "SELECT name FROM sk_role where tenant = ? ORDER BY name";
+      + "updated, updatedby, updatedby_tenant, has_children, type FROM sk_role where tenant = ? AND name = ? AND type = ANY (?)";
+
+  public static final String ROLE_SELECT_NAMES =
+      "SELECT name FROM sk_role where tenant = ? AND type = ANY (?) ORDER BY name";
   public static final String ROLE_SELECT_ID_BY_NAME =
       "SELECT id FROM sk_role where tenant = ? AND name = ?";
   public static final String ROLE_INSERT = 
-      "INSERT INTO sk_role (tenant, name, description, owner, owner_tenant, createdby, createdby_tenant, updatedby, updatedby_tenant) "
-      + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING";
+      "INSERT INTO sk_role (tenant, name, description, owner, owner_tenant, createdby, createdby_tenant, updatedby, updatedby_tenant, type) "
+      + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING";
   public static final String ROLE_DELETE_BY_ID =
       "DELETE FROM sk_role where tenant = ? AND id = ?";
-  public static final String ROLE_DELETE_BY_NAME =
-      "DELETE FROM sk_role where tenant = ? AND name = ?";
+  public static final String ROLE_DELETE_BY_NAME_AND_TYPE =
+      "DELETE FROM sk_role where tenant = ? AND name = ? AND type = ?";
   public static final String ROLE_UPDATE_ROLENAME = 
-      "UPDATE sk_role SET name = ?, updated = ?, updatedby = ?, updatedby_tenant = ? WHERE tenant = ? AND name = ?";
+      "UPDATE sk_role SET name = ?, updated = ?, updatedby = ?, updatedby_tenant = ? WHERE tenant = ? AND name = ? AND type = ?";
   public static final String ROLE_UPDATE_OWNER = 
       "UPDATE sk_role SET owner = ?, updated = ?, updatedby = ?, updatedby_tenant = ? WHERE tenant = ? AND name = ?";
   public static final String ROLE_UPDATE_OWNER_AND_TENANT = 

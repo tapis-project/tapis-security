@@ -1,7 +1,10 @@
 package edu.utexas.tacc.tapis.security.authz.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -34,8 +37,7 @@ import edu.utexas.tacc.tapis.shareddb.TapisDBUtils;
  * @author rcardone
  */
 public final class RoleImpl 
- extends BaseImpl
-{
+ extends BaseImpl {
     /* ********************************************************************** */
     /*                               Constants                                */
     /* ********************************************************************** */
@@ -47,23 +49,23 @@ public final class RoleImpl
     /* ********************************************************************** */
     // Singleton instance of this class.
     private static RoleImpl _instance;
-    
+
     /* ********************************************************************** */
     /*                             Constructors                               */
     /* ********************************************************************** */
     /* ---------------------------------------------------------------------- */
     /* constructor:                                                           */
     /* ---------------------------------------------------------------------- */
-    private RoleImpl() {}
-    
+    private RoleImpl() {
+    }
+
     /* ********************************************************************** */
     /*                             Public Methods                             */
     /* ********************************************************************** */
     /* ---------------------------------------------------------------------- */
     /* getInstance:                                                           */
     /* ---------------------------------------------------------------------- */
-    public static RoleImpl getInstance()
-    {
+    public static RoleImpl getInstance() {
         // Create the singleton instance if necessary.
         if (_instance == null) {
             synchronized (RoleImpl.class) {
@@ -72,38 +74,43 @@ public final class RoleImpl
         }
         return _instance;
     }
-    
+
     /* ---------------------------------------------------------------------- */
     /* getRoleNames:                                                          */
     /* ---------------------------------------------------------------------- */
-    public List<String> getRoleNames(String tenant) throws TapisImplException
-    {
+    public List<String> getRoleNames(String tenant, Set<SkRole.Type> types) throws TapisImplException {
         // Get the dao.
         SkRoleDao dao = null;
-        try {dao = getSkRoleDao();}
-            catch (Exception e) {
-                String msg = MsgUtils.getMsg("DB_DAO_ERROR", "roles");
-                _log.error(msg, e);
-                throw new TapisImplException(msg, e, Condition.INTERNAL_SERVER_ERROR); 
-            }
-        
+        try {
+            dao = getSkRoleDao();
+        } catch (Exception e) {
+            String msg = MsgUtils.getMsg("DB_DAO_ERROR", "roles");
+            _log.error(msg, e);
+            throw new TapisImplException(msg, e, Condition.INTERNAL_SERVER_ERROR);
+        }
+
         // Create the role.
         List<String> list = null;
-        try {list = dao.getRoleNames(tenant);} 
-            catch (Exception e) {
-                String msg = MsgUtils.getMsg("SK_ROLE_GET_NAMES_ERROR", 
-                                             tenant, "<unknown>");
-                _log.error(msg, e);
-                throw new TapisImplException(msg, e, Condition.BAD_REQUEST);     
-            }
-        
+        try {
+            list = dao.getRoleNames(tenant, types);
+        } catch (Exception e) {
+            String msg = MsgUtils.getMsg("SK_ROLE_GET_NAMES_ERROR",
+                    tenant, "<unknown>");
+            _log.error(msg, e);
+            throw new TapisImplException(msg, e, Condition.BAD_REQUEST);
+        }
+
         return list;
     }
 
     /* ---------------------------------------------------------------------- */
     /* getRoleByName:                                                         */
     /* ---------------------------------------------------------------------- */
-    public SkRole getRoleByName(String tenant, String roleName) throws TapisImplException
+    public SkRole getRoleByName(String tenant, String roleName, SkRole.Type ... type) throws TapisImplException {
+        return getRoleByName(tenant, roleName, Set.of(type));
+    }
+
+    public SkRole getRoleByName(String tenant, String roleName, Set<SkRole.Type> types) throws TapisImplException
     {
         // Get the dao.
         SkRoleDao dao = null;
@@ -116,7 +123,7 @@ public final class RoleImpl
         
         // Create the role.
         SkRole role = null;
-        try {role = dao.getRole(tenant, roleName);}
+        try {role = dao.getRole(tenant, roleName, types);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_ROLE_GET_ERROR", tenant, "<unknown>", 
                                              roleName);
@@ -130,7 +137,7 @@ public final class RoleImpl
     /* ---------------------------------------------------------------------- */
     /* createRole:                                                            */
     /* ---------------------------------------------------------------------- */
-    public int createRole(String roleName, String roleTenant, String description,
+    public int createRole(String roleName, SkRole.Type roleType, String roleTenant, String description,
     		              String owner, String ownerTenant) 
      throws TapisImplException
     {
@@ -148,7 +155,7 @@ public final class RoleImpl
         try {rows = dao.createRole(roleName, roleTenant, description, owner, ownerTenant);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_ROLE_CREATE_ERROR", 
-                                             roleName, roleTenant, owner, ownerTenant);
+                                             roleName, roleType, roleTenant, owner, ownerTenant);
                 _log.error(msg, e);
                 throw new TapisImplException(msg, e, Condition.BAD_REQUEST);         
             }
@@ -159,7 +166,7 @@ public final class RoleImpl
     /* ---------------------------------------------------------------------- */
     /* deleteRoleByName:                                                      */
     /* ---------------------------------------------------------------------- */
-    public int deleteRoleByName(String tenant, String roleName) throws TapisImplException
+    public int deleteRoleByNameAndType(String tenant, String roleName, SkRole.Type roleType) throws TapisImplException
     {
         // Get the dao.
         SkRoleDao dao = null;
@@ -172,7 +179,7 @@ public final class RoleImpl
         
         // Create the role.
         int rows = 0;
-        try {rows = dao.deleteRole(tenant, roleName);}
+        try {rows = dao.deleteRole(tenant, roleName, roleType);}
         catch (Exception e) {
             String msg = MsgUtils.getMsg("SK_ROLE_DELETE_ERROR", tenant, "<unknown>", 
                                          roleName);
@@ -197,8 +204,7 @@ public final class RoleImpl
      * @return the non-null list
      * @throws TapisImplException on error
      */
-    public List<String> getRolePermissions(String tenant, String roleName, 
-                                           boolean immediate) 
+    public List<String> getRolePermissions(String tenant, String roleName, SkRole.Type type, boolean immediate)
      throws TapisImplException, TapisNotFoundException
     {
         // Get the dao.
@@ -212,7 +218,7 @@ public final class RoleImpl
         
         // Create the role.
         SkRole role = null;
-        try {role = dao.getRole(tenant, roleName);}
+        try {role = dao.getRole(tenant, roleName, type);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_ROLE_GET_ERROR", tenant, "<unknown>", 
                                              roleName);
@@ -247,7 +253,7 @@ public final class RoleImpl
     /* ---------------------------------------------------------------------- */
     /* updateRoleName:                                                        */
     /* ---------------------------------------------------------------------- */
-    public int updateRoleName(String roleTenant, String roleName, String newRoleName,
+    public int updateRoleName(String roleTenant, String roleName, SkRole.Type roleType, String newRoleName,
     		                  String requestor, String requestorTenant) 
      throws TapisImplException, TapisNotFoundException
     {
@@ -262,7 +268,7 @@ public final class RoleImpl
         
         // Create the role.
         int rows = 0;
-        try {rows = dao.updateRoleName(roleTenant, roleName, newRoleName, requestor, requestorTenant);}
+        try {rows = dao.updateRoleName(roleTenant, roleName, roleType, newRoleName, requestor, requestorTenant);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_ROLE_UPDATE_ERROR", roleTenant, roleName, 
 	                                         requestor, requestorTenant);
@@ -599,7 +605,7 @@ public final class RoleImpl
     public List<Transformation> previewPathPrefix(String schema, String roleName, 
                                                   String oldSystemId, String newSystemId, 
                                                   String oldPrefix, String newPrefix,
-                                                  String tenant)
+                                                  String tenant, SkRole.Type roleType)
      throws TapisImplException
     {
         // Make sure the schema is one that we know uses extended path semantics.
@@ -617,7 +623,7 @@ public final class RoleImpl
         SkRole role = null;
         int roleId  = -1;
         if (!StringUtils.isBlank(roleName)) {
-            role = getRoleByName(tenant, roleName);
+            role = getRoleByName(tenant, roleName, roleType);
             if (role == null) {
                 String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, roleName);
                 _log.error(msg);
@@ -688,15 +694,15 @@ public final class RoleImpl
     public int replacePathPrefix(String schema, String roleName, 
                                  String oldSystemId, String newSystemId, 
                                  String oldPrefix, String newPrefix,
-                                 String tenant)
+                                 String tenant, SkRole.Type roleType)
      throws TapisImplException
     {
         // Get the list of transformation to apply.
         List<Transformation> transList = previewPathPrefix(schema, roleName, 
                                                            oldSystemId, newSystemId, 
                                                            oldPrefix, newPrefix, 
-                                                           tenant);
-        
+                                                           tenant, roleType);
+
         // Update the selected permissions.
         int rows = updatePermissions(tenant, transList);
         return rows;

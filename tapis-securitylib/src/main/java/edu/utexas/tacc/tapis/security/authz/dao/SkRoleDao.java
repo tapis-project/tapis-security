@@ -1,12 +1,18 @@
 package edu.utexas.tacc.tapis.security.authz.dao;
 
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -33,10 +39,10 @@ public final class SkRoleDao
   /* ********************************************************************** */
   // Tracing.
   private static final Logger _log = LoggerFactory.getLogger(SkRoleDao.class);
-  
+
   // Keep track of the last monitoring outcome.
   private static final CallSiteToggle _lastQueryDBSucceeded = new CallSiteToggle();
-  
+
   /* ********************************************************************** */
   /*                              Constructors                              */
   /* ********************************************************************** */
@@ -44,18 +50,18 @@ public final class SkRoleDao
   /* constructor:                                                           */
   /* ---------------------------------------------------------------------- */
   /** The superclass initializes the datasource.
-   * 
+   *
    * @throws TapisException on database errors
    */
   public SkRoleDao() throws TapisException {}
-  
+
   /* ********************************************************************** */
   /*                             Public Methods                             */
   /* ********************************************************************** */
   /* ---------------------------------------------------------------------- */
   /* getRoles:                                                              */
   /* ---------------------------------------------------------------------- */
-  public List<SkRole> getRoles() 
+  public List<SkRole> getRoles()
     throws TapisException
   {
       // Initialize result.
@@ -67,13 +73,13 @@ public final class SkRoleDao
       {
           // Get a database connection.
           conn = getConnection();
-          
+
           // Get the select command.
           String sql = SqlStatements.SELECT_SKROLE;
-          
+
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
-                      
+
           // Issue the call for the 1 row result set.
           ResultSet rs = pstmt.executeQuery();
           SkRole obj = populateSkRole(rs);
@@ -81,11 +87,11 @@ public final class SkRoleDao
             list.add(obj);
             obj = populateSkRole(rs);
           }
-          
+
           // Close the result and statement.
           rs.close();
           pstmt.close();
-    
+
           // Commit the transaction.
           conn.commit();
       }
@@ -94,7 +100,7 @@ public final class SkRoleDao
           // Rollback transaction.
           try {if (conn != null) conn.rollback();}
               catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
-          
+
           String msg = MsgUtils.getMsg("DB_SELECT_UUID_ERROR", "SkRoles", "all", e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
@@ -102,15 +108,15 @@ public final class SkRoleDao
       finally {
           // Always return the connection back to the connection pool.
           try {if (conn != null) conn.close();}
-            catch (Exception e) 
+            catch (Exception e)
             {
-              // If commit worked, we can swallow the exception.  
+              // If commit worked, we can swallow the exception.
               // If not, the commit exception will be thrown.
               String msg = MsgUtils.getMsg("DB_FAILED_CONNECTION_CLOSE");
               _log.error(msg, e);
             }
       }
-      
+
       return list;
   }
 
@@ -118,12 +124,12 @@ public final class SkRoleDao
   /* getRoleNames:                                                          */
   /* ---------------------------------------------------------------------- */
   /** Get all role names in a tenant in alphabetic order.
-   * 
+   *
    * @param tenant the tenant id
    * @return the a non-null but possibly empty list of role names
    * @throws TapisException on error
    */
-  public List<String> getRoleNames(String tenant) 
+  public List<String> getRoleNames(String tenant, Set<SkRole.Type> types)
     throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -133,7 +139,7 @@ public final class SkRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      
+
       // ------------------------- Call SQL ----------------------------
       Connection conn = null;
       ArrayList<String> names = new ArrayList<>(); // result
@@ -141,22 +147,23 @@ public final class SkRoleDao
       {
           // Get a database connection.
           conn = getConnection();
-          
+
           // Get the select command.
           String sql = SqlStatements.ROLE_SELECT_NAMES;
-          
+
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
-                      
+          pstmt.setArray(2, getTypeNamesArrayFromTypeSet(conn, types));
+
           // Issue the call for the N row result set.
           ResultSet rs = pstmt.executeQuery();
           while (rs.next()) names.add(rs.getString(1));
-          
+
           // Close the result and statement.
           rs.close();
           pstmt.close();
-    
+
           // Commit the transaction.
           conn.commit();
       }
@@ -165,7 +172,7 @@ public final class SkRoleDao
           // Rollback transaction.
           try {if (conn != null) conn.rollback();}
               catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
-          
+
           String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "tenant", tenant, e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
@@ -173,29 +180,47 @@ public final class SkRoleDao
       finally {
           // Always return the connection back to the connection pool.
           try {if (conn != null) conn.close();}
-            catch (Exception e) 
+            catch (Exception e)
             {
-              // If commit worked, we can swallow the exception.  
+              // If commit worked, we can swallow the exception.
               // If not, the commit exception will be thrown.
               String msg = MsgUtils.getMsg("DB_FAILED_CONNECTION_CLOSE");
               _log.error(msg, e);
             }
       }
-      
+
       return names;
   }
 
   /* ---------------------------------------------------------------------- */
   /* getRole:                                                               */
   /* ---------------------------------------------------------------------- */
+    // TODO:  Fix this - temporary code
+    /*
+  public SkRole getRole(String tenant, String name)
+          throws TapisException {
+      return getRole(tenant, name, null);
+  }
+     */
+    /** Get a role by tenant and name.
+     *
+     * @param tenant the role's tenant id
+     * @param name the role's name
+     * @return the role if found or null
+     * @throws TapisException on error
+     */
+    public SkRole getRole(String tenant, String name, SkRole.Type type)
+            throws TapisException {
+        return getRole(tenant, name, EnumSet.of(type));
+    }
   /** Get a role by tenant and name.
-   * 
+   *
    * @param tenant the role's tenant id
    * @param name the role's name
    * @return the role if found or null
    * @throws TapisException on error
    */
-  public SkRole getRole(String tenant, String name) 
+  public SkRole getRole(String tenant, String name, Set<SkRole.Type> types)
     throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -210,7 +235,7 @@ public final class SkRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      
+
       // ------------------------- Call SQL ----------------------------
       Connection conn = null;
       SkRole role = null; // result
@@ -218,23 +243,26 @@ public final class SkRoleDao
       {
           // Get a database connection.
           conn = getConnection();
-          
+
           // Get the select command.
-          String sql = SqlStatements.ROLE_SELECT_EXTENDED_BY_NAME;
-          
+          String sql = SqlStatements.ROLE_SELECT_EXTENDED_BY_NAME_AND_TYPE;
+
+
+
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
           pstmt.setString(2, name);
-                      
+          pstmt.setArray(3, getTypeNamesArrayFromTypeSet(conn, types));
+
           // Issue the call for the 1 row result set.
           ResultSet rs = pstmt.executeQuery();
           role = populateSkRole(rs);
-          
+
           // Close the result and statement.
           rs.close();
           pstmt.close();
-    
+
           // Commit the transaction.
           conn.commit();
       }
@@ -243,7 +271,7 @@ public final class SkRoleDao
           // Rollback transaction.
           try {if (conn != null) conn.rollback();}
               catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
-          
+
           String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkRole", name, e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
@@ -251,15 +279,15 @@ public final class SkRoleDao
       finally {
           // Always return the connection back to the connection pool.
           try {if (conn != null) conn.close();}
-            catch (Exception e) 
+            catch (Exception e)
             {
-              // If commit worked, we can swallow the exception.  
+              // If commit worked, we can swallow the exception.
               // If not, the commit exception will be thrown.
               String msg = MsgUtils.getMsg("DB_FAILED_CONNECTION_CLOSE");
               _log.error(msg, e);
             }
       }
-      
+
       return role;
   }
 
@@ -267,13 +295,13 @@ public final class SkRoleDao
   /* getRoleId:                                                             */
   /* ---------------------------------------------------------------------- */
   /** Get a role's id by tenant and name.
-   * 
+   *
    * @param tenant the role's tenant id
    * @param name the role's name
    * @return the role id if found or null
    * @throws TapisException on error
    */
-  public Integer getRoleId(String tenant, String name) 
+  public Integer getRoleId(String tenant, String name)
     throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -288,7 +316,7 @@ public final class SkRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      
+
       // ------------------------- Call SQL ----------------------------
       Connection conn = null;
       Integer id = null; // result
@@ -296,23 +324,23 @@ public final class SkRoleDao
       {
           // Get a database connection.
           conn = getConnection();
-          
+
           // Get the select command.
           String sql = SqlStatements.ROLE_SELECT_ID_BY_NAME;
-          
+
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
           pstmt.setString(2, name);
-                      
+
           // Issue the call for the 1 row result set.
           ResultSet rs = pstmt.executeQuery();
           if (rs.next()) id = rs.getInt(1);
-          
+
           // Close the result and statement.
           rs.close();
           pstmt.close();
-    
+
           // Commit the transaction.
           conn.commit();
       }
@@ -321,7 +349,7 @@ public final class SkRoleDao
           // Rollback transaction.
           try {if (conn != null) conn.rollback();}
               catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
-          
+
           String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkRole", name, e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
@@ -329,21 +357,29 @@ public final class SkRoleDao
       finally {
           // Always return the connection back to the connection pool.
           try {if (conn != null) conn.close();}
-            catch (Exception e) 
+            catch (Exception e)
             {
-              // If commit worked, we can swallow the exception.  
+              // If commit worked, we can swallow the exception.
               // If not, the commit exception will be thrown.
               String msg = MsgUtils.getMsg("DB_FAILED_CONNECTION_CLOSE");
               _log.error(msg, e);
             }
       }
-      
+
       return id;
   }
 
   /* ---------------------------------------------------------------------- */
   /* createRole:                                                            */
   /* ---------------------------------------------------------------------- */
+    // TODO:  figure this out - make everyone specify type.  This is temporary.
+  public int createRole(String roleName, String roleTenant, String description,
+                        String owner, String ownerTenant)
+          throws TapisException {
+      SkRole.Type roleType = SkRole.Type.getRoleTypeFromRoleName(roleName);
+      return createRole(roleName, roleType, roleTenant, description, owner, ownerTenant);
+  }
+
   /** Create a new role.
    * 
    * If the record already exists in the database, this method becomes a no-op
@@ -357,8 +393,8 @@ public final class SkRoleDao
    * @return number of rows affected (0 or 1)
    * @throws TapisException if the role is not created for any reason
    */
-  public int createRole(String roleName, String roleTenant, String description,
-		                String owner, String ownerTenant) 
+  public int createRole(String roleName, SkRole.Type roleType, String roleTenant, String description,
+                        String owner, String ownerTenant)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -411,6 +447,7 @@ public final class SkRoleDao
           pstmt.setString(7, ownerTenant);
           pstmt.setString(8, owner);
           pstmt.setString(9, ownerTenant);
+          pstmt.setString(10, roleType.name());
 
           // Issue the call. 0 rows will be returned when a duplicate
           // key conflict occurs--this is not considered an error.
@@ -460,7 +497,7 @@ public final class SkRoleDao
    * @return number of rows affected (0 or 1)
    * @throws TapisException on error
    */
-  public int updateRoleName(String roleTenant, String roleName, String newRoleName,
+  public int updateRoleName(String roleTenant, String roleName, SkRole.Type roleType, String newRoleName,
 		                    String requestor, String requestorTenant) 
    throws TapisException
   {
@@ -511,6 +548,7 @@ public final class SkRoleDao
           pstmt.setString(4, requestorTenant);
           pstmt.setString(5, roleTenant);
           pstmt.setString(6, roleName);
+          pstmt.setString(7, roleType.name());
 
           // Issue the call. 0 rows will be returned when a duplicate
           // key conflict occurs--this is not considered an error.
@@ -772,7 +810,7 @@ public final class SkRoleDao
    * @return number of rows affected by the delete
    * @throws TapisException on error
    */
-  public int deleteRole(String tenant, String roleName) 
+  public int deleteRole(String tenant, String roleName, SkRole.Type roleType)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -797,12 +835,13 @@ public final class SkRoleDao
           conn = getConnection();
 
           // Set the sql command.
-          String sql = SqlStatements.ROLE_DELETE_BY_NAME;
+          String sql = SqlStatements.ROLE_DELETE_BY_NAME_AND_TYPE;
 
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
           pstmt.setString(2, roleName);
+          pstmt.setString(3, roleType.name());
 
           // Issue the call.
           rows = pstmt.executeUpdate();
@@ -1263,7 +1302,8 @@ public final class SkRoleDao
         obj.setUpdatedby(rs.getString(11));
         obj.setUpdatedbyTenant(rs.getString(12));
         obj.setHasChildren(rs.getBoolean(13));
-    } 
+        obj.setType(SkRole.Type.valueOf(rs.getString(14)));
+    }
     catch (Exception e) {
       String msg = MsgUtils.getMsg("DB_TYPE_CAST_ERROR", e.getMessage());
       _log.error(msg, e);
@@ -1271,6 +1311,14 @@ public final class SkRoleDao
     }
       
     return obj;
+  }
+
+  private String[] getTypeNamesFromTypeSet(Set<SkRole.Type> roleTypes) {
+      return roleTypes.stream().map(roleType ->{ return roleType.name(); }).toArray(String[]::new);
+  }
+
+  private Array getTypeNamesArrayFromTypeSet(Connection connection, Set<SkRole.Type> types) throws SQLException {
+      return connection.createArrayOf("varchar", getTypeNamesFromTypeSet(types));
   }
   
 }

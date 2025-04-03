@@ -10,6 +10,7 @@ public final class ReqUpdateRoleName
 {
     public String roleTenant;
     public String newRoleName;
+    public String roleType;
 
     /** Return a user-appropriate error message on failed validation
      *  and return null if validation succeeds.
@@ -18,13 +19,19 @@ public final class ReqUpdateRoleName
     public String validate() 
     {
         // Final checks.
-        if (StringUtils.isBlank(roleTenant)) 
+        if (StringUtils.isBlank(roleTenant)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleName", "roleTenant");
-        if (StringUtils.isBlank(newRoleName)) 
+        }
+        if (StringUtils.isBlank(roleType)) {
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleName", "roleType");
+        }
+        if (StringUtils.isBlank(newRoleName)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleName", "newRoleName");
-        if (!SKApiUtils.isValidName(newRoleName)) 
+        }
+        if (!SKApiUtils.isValidName(newRoleName)) {
             return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "updateRoleName", "newRoleName",
-                                   newRoleName);
+                    newRoleName);
+        }
 
         // Success.
         return null;

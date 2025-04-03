@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRole;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.security.api.utils.SKApiUtils;
@@ -11,7 +12,8 @@ public final class ReqCreateRole
     public String roleTenant;
     public String roleName;
     public String description;
-    
+    public String roleType = SkRole.Type.USER.name();
+
     /** Return a user-appropriate error message on failed validation
      *  and return null if validation succeeds.
      */ 
@@ -27,7 +29,8 @@ public final class ReqCreateRole
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "createRole", "description");
         if (!SKApiUtils.isValidName(roleName))
             return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "createRole", "roleName", roleName);
-        
+        if (!SKApiUtils.isValidRoleType(roleName))
+            return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "createRole", "roleType", roleType);
         // Success.
         return null;
     }
