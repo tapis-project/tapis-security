@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +128,7 @@ public final class TenantInit
         // Designate the tenants service identifiers.
         final String primaryTenant = TapisConstants.PRIMARY_SITE_TENANT;
         final String tenantService = TapisConstants.SERVICE_NAME_TENANTS;
-        final String roleName = UserImpl.TENANT_CREATOR_ROLE;
+        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(UserImpl.TENANT_CREATOR_ROLE, true);
         
         // Associate sites do not need to assign the tenant creator role
         // since they cannot create JWTs in the primary site admin tenant.
@@ -134,17 +136,17 @@ public final class TenantInit
         
         // Get the list of all users with the tenant creator role.
         List<String> creators = null;
-        try {creators = UserImpl.getInstance().getUsersWithRole(primaryTenant, roleName);}
+        try {creators = UserImpl.getInstance().getUsersWithRole(primaryTenant, roleDescriptor);}
         catch (TapisNotFoundException e) {
             String msg = MsgUtils.getMsg("SK_TENANT_INIT_WARN", primaryTenant, 
-                                          roleName, e.getMessage());
+                                          roleDescriptor.getRoleFullName(), e.getMessage());
             _log.warn(msg);
         }
         catch (Exception e) {
             // This should not happen even if the tenant and role don't exist.
             // We log the problem but proceed.
             String msg = MsgUtils.getMsg("SK_GET_USERS_WITH_ROLE_ERROR", primaryTenant, 
-                                        roleName, e.getMessage());
+                                        roleDescriptor.getRoleFullName(), e.getMessage());
             _log.error(msg, e);
         } 
         
@@ -158,10 +160,10 @@ public final class TenantInit
             // the role if necessary.  This calls the internal grant method 
             // that does not check whether the requestor is an administrator.
             String desc = "Tenants service creator role";
-            UserImpl.getInstance().grantRoleInternal(roleName, primaryTenant, desc, 
+            UserImpl.getInstance().grantRoleInternal(roleDescriptor, primaryTenant, desc,
             		                                 tenantService, primaryTenant,
             		                                 SK_USER, siteAdminTenant);
-            String msg = MsgUtils.getMsg("SK_TENANT_CREATOR_ASSIGNED", primaryTenant, tenantService, roleName);
+            String msg = MsgUtils.getMsg("SK_TENANT_CREATOR_ASSIGNED", primaryTenant, tenantService, roleDescriptor.getRoleFullName());
             _log.info(msg);
         } catch (Exception e) {
             // Log the error and continue on.
@@ -179,13 +181,14 @@ public final class TenantInit
     {
         // Get the list of admins in the tenant.
         List<String> admins = null;
+        SkRoleDescriptor adminRoleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true);
         try {
             admins = UserImpl.getInstance().getUsersWithRole(tenant, 
-                                                UserImpl.ADMIN_ROLE_NAME);
+                                                adminRoleDescriptor);
         }
         catch (TapisNotFoundException e) {
             String msg = MsgUtils.getMsg("SK_TENANT_INIT_WARN", tenant, 
-                                          UserImpl.ADMIN_ROLE_NAME, e.getMessage());
+                                          adminRoleDescriptor.getRoleFullName(), e.getMessage());
             _log.warn(msg);
         }
         catch (Exception e) {
@@ -246,7 +249,7 @@ public final class TenantInit
         final String tokgenRoleTenant = siteAdminTenant;
         final String tokgenOwner = "tokens";
         final String tokgenOwnerTenant = siteAdminTenant;
-        final String roleName = UserImpl.getInstance().makeTenantTokenGeneratorRolename(tenant);
+        final SkRoleDescriptor roleDescriptor = UserImpl.getInstance().makeTenantTokenGeneratorRolename(tenant);
         final String desc = "Tenant token generator role";
         
         // Create and assign the authenticator role to the tenant's auth service.
@@ -257,18 +260,18 @@ public final class TenantInit
             //
             // Assign each service.
             for (String tokgenService : tokgenServices) { 
-            	UserImpl.getInstance().grantRoleInternal(roleName, tokgenRoleTenant, desc,
+            	UserImpl.getInstance().grantRoleInternal(roleDescriptor, tokgenRoleTenant, desc,
             			                                 tokgenService, tokgenRoleTenant,
             			                                 tokgenOwner, tokgenOwnerTenant);
             	String msg = MsgUtils.getMsg("SK_TENANT_TOKEN_GEN_ASSIGNED", tokgenRoleTenant,
-                                         	 tokgenService, roleName);
+                                         	 tokgenService, roleDescriptor.getRoleFullName());
             	_log.info(msg);
             }
         } catch (Exception e) {
             // Log the error and continue on.
         	String s = tokgenServices.stream().collect(Collectors.joining(", "));
             String msg = MsgUtils.getMsg("SK_TENANT_INIT_TOKGEN_ERROR", tokgenRoleTenant, 
-                                         s, roleName, e.getMessage());
+                                         s, roleDescriptor.getRoleFullName(), e.getMessage());
             _log.error(msg, e);
         }
     }
@@ -305,7 +308,8 @@ public final class TenantInit
 			// and assigned to tokens@admin.
 			final boolean strict = false;
 			int rows = 0;
-			rows = UserImpl.getInstance().createAndAssignRole(SK_TENANT_UPDATER_ROLE, siteAdminTenant,
+            SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(SK_TENANT_UPDATER_ROLE, SkRoleType.USER);
+			rows = UserImpl.getInstance().createAndAssignRole(roleDescriptor, siteAdminTenant,
 					SK_TENANT_UPDATER_DESC, "tokens", siteAdminTenant, "tenants", siteAdminTenant, strict);
 			_log.info(MsgUtils.getMsg("SK_TENANT_UPDATER_ASSIGNED", siteAdminTenant,
 	                                  tokenSvc, SK_TENANT_UPDATER_ROLE, rows));

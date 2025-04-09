@@ -8,12 +8,12 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,7 +129,7 @@ public final class SkRoleDao
    * @return the a non-null but possibly empty list of role names
    * @throws TapisException on error
    */
-  public List<String> getRoleNames(String tenant, Set<SkRole.Type> types)
+  public List<String> getRoleNames(String tenant, Set<SkRoleType> types)
     throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -195,43 +195,36 @@ public final class SkRoleDao
   /* ---------------------------------------------------------------------- */
   /* getRole:                                                               */
   /* ---------------------------------------------------------------------- */
-    // TODO:  Fix this - temporary code
-    /*
-  public SkRole getRole(String tenant, String name)
-          throws TapisException {
-      return getRole(tenant, name, null);
-  }
-     */
+
     /** Get a role by tenant and name.
      *
      * @param tenant the role's tenant id
      * @param name the role's name
+     * @param type the role's type
      * @return the role if found or null
      * @throws TapisException on error
      */
-    public SkRole getRole(String tenant, String name, SkRole.Type type)
+    public SkRole getRole(String tenant, SkRoleDescriptor roleDescriptor)
             throws TapisException {
-        return getRole(tenant, name, EnumSet.of(type));
-    }
-  /** Get a role by tenant and name.
-   *
-   * @param tenant the role's tenant id
-   * @param name the role's name
-   * @return the role if found or null
-   * @throws TapisException on error
-   */
-  public SkRole getRole(String tenant, String name, Set<SkRole.Type> types)
-    throws TapisException
-  {
       // ------------------------- Check Input -------------------------
       // Exceptions can be throw from here.
+      if (roleDescriptor == null) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getRole", "roleDescriptor");
+          _log.error(msg);
+          throw new TapisException(msg);
+      }
       if (StringUtils.isBlank(tenant)) {
           String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getRole", "tenant");
           _log.error(msg);
           throw new TapisException(msg);
       }
-      if (StringUtils.isBlank(name)) {
-          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getRole", "name");
+      if (StringUtils.isBlank(roleDescriptor.getRoleFullName())) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getRole", "roleDescriptor.name");
+          _log.error(msg);
+          throw new TapisException(msg);
+      }
+      if (roleDescriptor.getRoleType() == null) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getRole", "roleDescriptor.type");
           _log.error(msg);
           throw new TapisException(msg);
       }
@@ -252,8 +245,8 @@ public final class SkRoleDao
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
-          pstmt.setString(2, name);
-          pstmt.setArray(3, getTypeNamesArrayFromTypeSet(conn, types));
+          pstmt.setString(2, roleDescriptor.getRoleFullName());
+          pstmt.setArray(3, getTypeNamesArrayFromTypeSet(conn, EnumSet.of(roleDescriptor.getRoleType())));
 
           // Issue the call for the 1 row result set.
           ResultSet rs = pstmt.executeQuery();
@@ -272,7 +265,7 @@ public final class SkRoleDao
           try {if (conn != null) conn.rollback();}
               catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
 
-          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkRole", name, e.getMessage());
+          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkRole", roleDescriptor.getRoleFullName(), e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
       }
@@ -301,7 +294,7 @@ public final class SkRoleDao
    * @return the role id if found or null
    * @throws TapisException on error
    */
-  public Integer getRoleId(String tenant, String name)
+  public Integer getRoleId(String tenant, SkRoleDescriptor roleDescriptor)
     throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -311,8 +304,8 @@ public final class SkRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      if (StringUtils.isBlank(name)) {
-          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getRole", "name");
+      if (!SkRoleDescriptor.descriptorIsValid(roleDescriptor)) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getRole", "roleDescriptor");
           _log.error(msg);
           throw new TapisException(msg);
       }
@@ -331,7 +324,8 @@ public final class SkRoleDao
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
-          pstmt.setString(2, name);
+          pstmt.setString(2, roleDescriptor.getRoleFullName());
+          pstmt.setString(3, roleDescriptor.getRoleTypeName());
 
           // Issue the call for the 1 row result set.
           ResultSet rs = pstmt.executeQuery();
@@ -350,7 +344,7 @@ public final class SkRoleDao
           try {if (conn != null) conn.rollback();}
               catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
 
-          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkRole", name, e.getMessage());
+          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkRole", roleDescriptor.getRoleFullName(), e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
       }
@@ -372,14 +366,6 @@ public final class SkRoleDao
   /* ---------------------------------------------------------------------- */
   /* createRole:                                                            */
   /* ---------------------------------------------------------------------- */
-    // TODO:  figure this out - make everyone specify type.  This is temporary.
-  public int createRole(String roleName, String roleTenant, String description,
-                        String owner, String ownerTenant)
-          throws TapisException {
-      SkRole.Type roleType = SkRole.Type.getRoleTypeFromRoleName(roleName);
-      return createRole(roleName, roleType, roleTenant, description, owner, ownerTenant);
-  }
-
   /** Create a new role.
    * 
    * If the record already exists in the database, this method becomes a no-op
@@ -393,14 +379,14 @@ public final class SkRoleDao
    * @return number of rows affected (0 or 1)
    * @throws TapisException if the role is not created for any reason
    */
-  public int createRole(String roleName, SkRole.Type roleType, String roleTenant, String description,
+  public int createRole(SkRoleDescriptor roleDescriptor, String roleTenant, String description,
                         String owner, String ownerTenant)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
       // Exceptions can be throw from here.
-      if (StringUtils.isBlank(roleName)) {
-          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "createRole", "roleName");
+      if ((roleDescriptor == null) || (!roleDescriptor.isValid())) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "createRole", "roleDescriptor");
           _log.error(msg);
           throw new TapisException(msg);
       }
@@ -439,7 +425,7 @@ public final class SkRoleDao
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, roleTenant);
-          pstmt.setString(2, roleName);
+          pstmt.setString(2, roleDescriptor.getRoleFullName());
           pstmt.setString(3, description);
           pstmt.setString(4, owner);
           pstmt.setString(5, ownerTenant);
@@ -447,7 +433,7 @@ public final class SkRoleDao
           pstmt.setString(7, ownerTenant);
           pstmt.setString(8, owner);
           pstmt.setString(9, ownerTenant);
-          pstmt.setString(10, roleType.name());
+          pstmt.setString(10, roleDescriptor.getRoleTypeName());
 
           // Issue the call. 0 rows will be returned when a duplicate
           // key conflict occurs--this is not considered an error.
@@ -497,8 +483,8 @@ public final class SkRoleDao
    * @return number of rows affected (0 or 1)
    * @throws TapisException on error
    */
-  public int updateRoleName(String roleTenant, String roleName, SkRole.Type roleType, String newRoleName,
-		                    String requestor, String requestorTenant) 
+  public int updateRoleName(String roleTenant, SkRoleDescriptor roleDescriptor, String newRoleName,
+                            String requestor, String requestorTenant)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -508,8 +494,8 @@ public final class SkRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      if (StringUtils.isBlank(roleName)) {
-          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleName", "roleName");
+      if (!SkRoleDescriptor.descriptorIsValid(roleDescriptor)) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleName", "roleDescriptor");
           _log.error(msg);
           throw new TapisException(msg);
       }
@@ -547,8 +533,8 @@ public final class SkRoleDao
           pstmt.setString(3, requestor);
           pstmt.setString(4, requestorTenant);
           pstmt.setString(5, roleTenant);
-          pstmt.setString(6, roleName);
-          pstmt.setString(7, roleType.name());
+          pstmt.setString(6, roleDescriptor.getRoleFullName());
+          pstmt.setString(7, roleDescriptor.getRoleTypeName());
 
           // Issue the call. 0 rows will be returned when a duplicate
           // key conflict occurs--this is not considered an error.
@@ -564,7 +550,7 @@ public final class SkRoleDao
           try {if (conn != null) conn.rollback();}
           catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
           
-          String msg = MsgUtils.getMsg("DB_UPDATE_FAILURE", "sk_role", roleName);
+          String msg = MsgUtils.getMsg("DB_UPDATE_FAILURE", "sk_role", roleDescriptor.getRoleFullName());
           _log.error(msg, e);
           throw new TapisException(msg, e);
       }
@@ -599,7 +585,7 @@ public final class SkRoleDao
    * @return number of rows affected (0 or 1)
    * @throws TapisException on error
    */
-  public int updateRoleOwner(String roleTenant, String roleName, String newOwner,
+  public int updateRoleOwner(String roleTenant, SkRoleDescriptor roleDescriptor, String newOwner,
                              String newTenant, String requestor, String requestorTenant) 
    throws TapisException
   {
@@ -610,8 +596,8 @@ public final class SkRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      if (StringUtils.isBlank(roleName)) {
-          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleOwner", "roleName");
+      if (!SkRoleDescriptor.descriptorIsValid(roleDescriptor)) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleOwner", "roleDescriptor");
           _log.error(msg);
           throw new TapisException(msg);
       }
@@ -656,14 +642,16 @@ public final class SkRoleDao
               pstmt.setString(4, requestor);
               pstmt.setString(5, requestorTenant);
               pstmt.setString(6, roleTenant);
-              pstmt.setString(7, roleName);
+              pstmt.setString(7, roleDescriptor.getRoleFullName());
+              pstmt.setString(8, roleDescriptor.getRoleTypeName());
           } else {
               pstmt.setString(1, newOwner);
               pstmt.setTimestamp(2, ts);
               pstmt.setString(3, requestor);
               pstmt.setString(4, requestorTenant);
               pstmt.setString(5, roleTenant);
-              pstmt.setString(6, roleName);
+              pstmt.setString(6, roleDescriptor.getRoleFullName());
+              pstmt.setString(7, roleDescriptor.getRoleFullName());
           }
           
           // Issue the call. 0 rows will be returned when a duplicate
@@ -680,7 +668,7 @@ public final class SkRoleDao
           try {if (conn != null) conn.rollback();}
           catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
           
-          String msg = MsgUtils.getMsg("DB_UPDATE_FAILURE", "sk_role", roleName);
+          String msg = MsgUtils.getMsg("DB_UPDATE_FAILURE", "sk_role", roleDescriptor.getRoleFullName());
           _log.error(msg, e);
           throw new TapisException(msg, e);
       }
@@ -714,7 +702,7 @@ public final class SkRoleDao
    * @return number of rows affected (0 or 1)
    * @throws TapisException on error
    */
-  public int updateRoleDescription(String roleTenant, String roleName, String newDescription,
+  public int updateRoleDescription(String roleTenant, SkRoleDescriptor roleDescriptor, String newDescription,
                                    String requestor, String requestorTenant) 
    throws TapisException
   {
@@ -725,8 +713,8 @@ public final class SkRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      if (StringUtils.isBlank(roleName)) {
-          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleDescription", "roleName");
+      if (!SkRoleDescriptor.descriptorIsValid(roleDescriptor)) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleDescription", "roleDescriptor");
           _log.error(msg);
           throw new TapisException(msg);
       }
@@ -764,7 +752,8 @@ public final class SkRoleDao
           pstmt.setString(3, requestor);
           pstmt.setString(4, requestorTenant);
           pstmt.setString(5, roleTenant);
-          pstmt.setString(6, roleName);
+          pstmt.setString(6, roleDescriptor.getRoleFullName());
+          pstmt.setString(7, roleDescriptor.getRoleTypeName());
 
           // Issue the call. 0 rows will be returned when a duplicate
           // key conflict occurs--this is not considered an error.
@@ -780,7 +769,7 @@ public final class SkRoleDao
           try {if (conn != null) conn.rollback();}
           catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
           
-          String msg = MsgUtils.getMsg("DB_UPDATE_FAILURE", "sk_role", roleName);
+          String msg = MsgUtils.getMsg("DB_UPDATE_FAILURE", "sk_role", roleDescriptor.getRoleFullName());
           _log.error(msg, e);
           throw new TapisException(msg, e);
       }
@@ -810,7 +799,7 @@ public final class SkRoleDao
    * @return number of rows affected by the delete
    * @throws TapisException on error
    */
-  public int deleteRole(String tenant, String roleName, SkRole.Type roleType)
+  public int deleteRole(String tenant, SkRoleDescriptor roleDescriptor)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -820,12 +809,11 @@ public final class SkRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      if (StringUtils.isBlank(roleName)) {
-          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "deleteRole", "roleName");
+      if ((roleDescriptor == null) || (!roleDescriptor.isValid())) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "deleteRole", "descriptor");
           _log.error(msg);
           throw new TapisException(msg);
       }
-      
       // ------------------------- Call SQL ----------------------------
       Connection conn = null;
       int rows = 0;
@@ -840,8 +828,8 @@ public final class SkRoleDao
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
-          pstmt.setString(2, roleName);
-          pstmt.setString(3, roleType.name());
+          pstmt.setString(2, roleDescriptor.getRoleFullName());
+          pstmt.setString(3, roleDescriptor.getRoleTypeName());
 
           // Issue the call.
           rows = pstmt.executeUpdate();
@@ -956,17 +944,17 @@ public final class SkRoleDao
    * @return the non-null list of ancestor role names
    * @throws TapisException on error including role not found
    */
-  public List<String> getAncestorRoleNames(String tenant, String roleName) 
+  public List<String> getAncestorRoleNames(String tenant, SkRoleDescriptor roleDescriptor)
    throws TapisException, TapisNotFoundException
   {
       // Get the role id.
-      Integer roleId = getRoleId(tenant, roleName);
+      Integer roleId = getRoleId(tenant, roleDescriptor);
       
       // Make sure we found the role.
       if (roleId == null) {
-          String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, roleName);
+          String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, roleDescriptor.getRoleFullName());
           _log.error(msg);
-          throw new TapisNotFoundException(msg, roleName);
+          throw new TapisNotFoundException(msg, roleDescriptor.getRoleFullName());
       }
       
       // Find the role's ancestors.
@@ -1302,7 +1290,7 @@ public final class SkRoleDao
         obj.setUpdatedby(rs.getString(11));
         obj.setUpdatedbyTenant(rs.getString(12));
         obj.setHasChildren(rs.getBoolean(13));
-        obj.setType(SkRole.Type.valueOf(rs.getString(14)));
+        obj.setType(SkRoleType.valueOf(rs.getString(14)));
     }
     catch (Exception e) {
       String msg = MsgUtils.getMsg("DB_TYPE_CAST_ERROR", e.getMessage());
@@ -1313,11 +1301,11 @@ public final class SkRoleDao
     return obj;
   }
 
-  private String[] getTypeNamesFromTypeSet(Set<SkRole.Type> roleTypes) {
+  private String[] getTypeNamesFromTypeSet(Set<SkRoleType> roleTypes) {
       return roleTypes.stream().map(roleType ->{ return roleType.name(); }).toArray(String[]::new);
   }
 
-  private Array getTypeNamesArrayFromTypeSet(Connection connection, Set<SkRole.Type> types) throws SQLException {
+  private Array getTypeNamesArrayFromTypeSet(Connection connection, Set<SkRoleType> types) throws SQLException {
       return connection.createArrayOf("varchar", getTypeNamesFromTypeSet(types));
   }
   

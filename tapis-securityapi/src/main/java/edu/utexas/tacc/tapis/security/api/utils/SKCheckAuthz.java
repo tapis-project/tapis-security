@@ -7,7 +7,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRole;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +60,7 @@ public final class SKCheckAuthz
     
     // Roles that the jwt user@tenant has some level of access.
     private ArrayList<String> _requiredRoles;
-    private ArrayList<String> _ownedRoles;
+    private ArrayList<SkRoleDescriptor> _ownedRoles;
     
     // Prevention switches.
     private boolean _preventForeignTenantUpdate;
@@ -112,10 +115,14 @@ public final class SKCheckAuthz
         _requiredRoles.add(roleName);
         return this;
     }
-    public SKCheckAuthz addOwnedRole(String roleName) 
+    public SKCheckAuthz addOwnedRole(String roleName, SkRoleType roleType) {
+        return addOwnedRole(SkRoleDescriptor.newSkRoleDescriptor(roleName, roleType));
+    }
+
+    public SKCheckAuthz addOwnedRole(SkRoleDescriptor roleDescriptor)
     {
         if (_ownedRoles == null) _ownedRoles = new ArrayList<>();
-        _ownedRoles.add(roleName);
+        _ownedRoles.add(roleDescriptor);
         return this;
     }
     
@@ -433,10 +440,10 @@ public final class SKCheckAuthz
         try {
         	// This block checks the role owner identity.
             var roleImpl = RoleImpl.getInstance();
-            for (String roleName : _ownedRoles) {
+            for (SkRoleDescriptor roleDescriptor : _ownedRoles) {
                 // The request and role tenants are guaranteed to be the same
             	// because we use the request tenant in the retrieval.
-                var skRole = roleImpl.getRoleByName(_reqTenant, roleName, SkRole.ALL_TYPES);
+                var skRole = roleImpl.getRoleByName(_reqTenant,  roleDescriptor);
                 
                 // Bad news.
                 if (skRole == null) {authorized = false; break;}

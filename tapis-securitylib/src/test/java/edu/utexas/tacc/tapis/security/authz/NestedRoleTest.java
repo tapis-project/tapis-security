@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.security.authz;
 import java.util.Arrays;
 import java.util.List;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -88,10 +90,10 @@ public class NestedRoleTest
     private void deleteRoles() throws TapisException
     {
         SkRoleDao dao = new SkRoleDao();
-        dao.deleteRole(tenant, "NestedTestRole1", SkRole.Type.USER);
-        dao.deleteRole(tenant, "NestedTestRole2", SkRole.Type.USER);
-        dao.deleteRole(tenant, "NestedTestRole3", SkRole.Type.USER);
-        dao.deleteRole(tenant, "NestedTestRole4", SkRole.Type.USER);
+        dao.deleteRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER));
+        dao.deleteRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER));
+        dao.deleteRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole3", SkRoleType.USER));
+        dao.deleteRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole4", SkRoleType.USER));
     }
     
     /* ---------------------------------------------------------------------- */
@@ -101,10 +103,10 @@ public class NestedRoleTest
     {
         SkRoleDao dao = new SkRoleDao();
         String creator = "NestedRoleTest";
-        int rows = dao.createRole("NestedTestRole1", tenant, "Role created by NestedRoleTest", creator, tenant);
-        rows = dao.createRole("NestedTestRole2", tenant, "Role created by NestedRoleTest", creator, tenant);
-        rows = dao.createRole("NestedTestRole3", tenant, "Role created by NestedRoleTest", creator, tenant);
-        rows = dao.createRole("NestedTestRole4", tenant, "Role created by NestedRoleTest", creator, tenant);
+        int rows = dao.createRole(SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER), tenant, "Role created by NestedRoleTest", creator, tenant);
+        rows = dao.createRole(SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER), tenant, "Role created by NestedRoleTest", creator, tenant);
+        rows = dao.createRole(SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole3", SkRoleType.USER), tenant, "Role created by NestedRoleTest", creator, tenant);
+        rows = dao.createRole(SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole4", SkRoleType.USER), tenant, "Role created by NestedRoleTest", creator, tenant);
     }
     
     /* ---------------------------------------------------------------------- */
@@ -114,8 +116,8 @@ public class NestedRoleTest
     {
         // Get the roles.
         SkRoleDao dao = new SkRoleDao();
-        SkRole role1 = dao.getRole(tenant, "NestedTestRole1", SkRole.Type.USER);
-        SkRole role2 = dao.getRole(tenant, "NestedTestRole2", SkRole.Type.USER);
+        SkRole role1 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER));
+        SkRole role2 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER));
         
         // Create the role hierarchy with roles 3 and 4 as leaves.
         int rows = role1.addChildRole(user, tenant, "NestedTestRole2");
@@ -130,10 +132,10 @@ public class NestedRoleTest
     {
         // Get the roles.
         SkRoleDao dao = new SkRoleDao();
-        SkRole role1 = dao.getRole(tenant, "NestedTestRole1", SkRole.Type.USER);
-        SkRole role2 = dao.getRole(tenant, "NestedTestRole2", SkRole.Type.USER);
-        SkRole role3 = dao.getRole(tenant, "NestedTestRole3", SkRole.Type.USER);
-        SkRole role4 = dao.getRole(tenant, "NestedTestRole4", SkRole.Type.USER);
+        SkRole role1 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER));
+        SkRole role2 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER));
+        SkRole role3 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole3", SkRoleType.USER));
+        SkRole role4 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole4", SkRoleType.USER));
         
         // Get the descendants of each role.
         System.out.println();
@@ -166,10 +168,10 @@ public class NestedRoleTest
     {
         // Get the roles.
         SkRoleDao dao = new SkRoleDao();
-        SkRole role1 = dao.getRole(tenant, "NestedTestRole1", SkRole.Type.USER);
-        SkRole role2 = dao.getRole(tenant, "NestedTestRole2", SkRole.Type.USER);
-        SkRole role3 = dao.getRole(tenant, "NestedTestRole3", SkRole.Type.USER);
-        SkRole role4 = dao.getRole(tenant, "NestedTestRole4", SkRole.Type.USER);
+        SkRole role1 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER));
+        SkRole role2 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER));
+        SkRole role3 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole3", SkRoleType.USER));
+        SkRole role4 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole4", SkRoleType.USER));
         
         // Get the descendants of each role.
         System.out.println();
@@ -201,13 +203,13 @@ public class NestedRoleTest
     private void assignRolePermissions() throws TapisException
     {
         SkRoleDao dao = new SkRoleDao();
-        SkRole role1 = dao.getRole(tenant, "NestedTestRole1", SkRole.Type.USER);
+        SkRole role1 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER));
         int rows = role1.addPermission(user, tenant, "fake:*:read");
-        SkRole role2 = dao.getRole(tenant, "NestedTestRole2", SkRole.Type.USER);
+        SkRole role2 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER));
         rows = role2.addPermission(user, tenant, "fake:a:read");
-        SkRole role3 = dao.getRole(tenant, "NestedTestRole3", SkRole.Type.USER);
+        SkRole role3 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole3", SkRoleType.USER));
         rows = role3.addPermission(user, tenant, "fake:b:read");
-        SkRole role4 = dao.getRole(tenant, "NestedTestRole4", SkRole.Type.USER);
+        SkRole role4 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole4", SkRoleType.USER));
         rows = role4.addPermission(user, tenant, "fake:c:read");
     }
     
@@ -218,10 +220,10 @@ public class NestedRoleTest
     {
         // Get the roles.
         SkRoleDao dao = new SkRoleDao();
-        SkRole role1 = dao.getRole(tenant, "NestedTestRole1", SkRole.Type.USER);
-        SkRole role2 = dao.getRole(tenant, "NestedTestRole2", SkRole.Type.USER);
-        SkRole role3 = dao.getRole(tenant, "NestedTestRole3", SkRole.Type.USER);
-        SkRole role4 = dao.getRole(tenant, "NestedTestRole4", SkRole.Type.USER);
+        SkRole role1 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER));
+        SkRole role2 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER));
+        SkRole role3 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole3", SkRoleType.USER));
+        SkRole role4 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole4", SkRoleType.USER));
         
         // Get the descendants of each role.
         System.out.println();
@@ -258,10 +260,10 @@ public class NestedRoleTest
     {
         // Get the roles.
         SkRoleDao dao = new SkRoleDao();
-        SkRole role1 = dao.getRole(tenant, "NestedTestRole1", SkRole.Type.USER);
-        SkRole role2 = dao.getRole(tenant, "NestedTestRole2", SkRole.Type.USER);
-        SkRole role3 = dao.getRole(tenant, "NestedTestRole3", SkRole.Type.USER);
-        SkRole role4 = dao.getRole(tenant, "NestedTestRole4", SkRole.Type.USER);
+        SkRole role1 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER));
+        SkRole role2 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER));
+        SkRole role3 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole3", SkRoleType.USER));
+        SkRole role4 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole4", SkRoleType.USER));
         
         // Get the descendants of each role.
         System.out.println();
@@ -297,13 +299,13 @@ public class NestedRoleTest
     private void assignUserRoles() throws TapisException
     {
         SkRoleDao dao = new SkRoleDao();
-        SkRole role1 = dao.getRole(tenant, "NestedTestRole1", SkRole.Type.USER);
+        SkRole role1 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole1", SkRoleType.USER));
         int rows = role1.addUser(user, tenant, user1, tenant);
-        SkRole role2 = dao.getRole(tenant, "NestedTestRole2", SkRole.Type.USER);
+        SkRole role2 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole2", SkRoleType.USER));
         rows = role2.addUser(user, tenant, user2, tenant);
-        SkRole role3 = dao.getRole(tenant, "NestedTestRole3", SkRole.Type.USER);
+        SkRole role3 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole3", SkRoleType.USER));
         rows = role3.addUser(user, tenant, user3, tenant);
-        SkRole role4 = dao.getRole(tenant, "NestedTestRole4", SkRole.Type.USER);
+        SkRole role4 = dao.getRole(tenant, SkRoleDescriptor.newSkRoleDescriptor("NestedTestRole4", SkRoleType.USER));
         rows = role4.addUser(user, tenant, user4, tenant);
     }
     

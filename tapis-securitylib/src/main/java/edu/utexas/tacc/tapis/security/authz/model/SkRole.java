@@ -25,64 +25,6 @@ public final class SkRole
     public static final String PREFIX_TENANT_ADMIN = "$!";
     public static final String PREFIX_SITE_ADMIN = "$~";
 
-    public static enum Type {
-        USER,
-        USER_DEFAULT,   //  prefix: "$$"
-        RESTRICTED_SVC, //  prefix: "$#"
-        TENANT_ADMIN,   //  prefix: "$!"
-        SITE_ADMIN;     //  prefix: "$~"
-
-        public static Type getRoleTypeFromRoleName(String roleName) {
-            if(roleName.startsWith(PREFIX_USER_DEFAULT)) {
-                return USER_DEFAULT;
-            } else if (roleName.startsWith(PREFIX_RESTRICTED_SVC)) {
-                return RESTRICTED_SVC;
-            } else if (roleName.startsWith(PREFIX_TENANT_ADMIN)) {
-                return TENANT_ADMIN;
-            } else if (roleName.startsWith(PREFIX_SITE_ADMIN)) {
-                return SITE_ADMIN;
-            }
-
-            return USER;
-        }
-
-        public static String getRoleFullName(String roleName, Type roleType) {
-            String fullRoleName = roleName;
-            switch (roleType) {
-                case USER_DEFAULT -> {
-                    fullRoleName = PREFIX_USER_DEFAULT + roleName;
-                }
-                case RESTRICTED_SVC -> {
-                    fullRoleName = PREFIX_RESTRICTED_SVC + roleName;
-                }
-                case TENANT_ADMIN -> {
-                    fullRoleName = PREFIX_TENANT_ADMIN + roleName;
-                }
-                case SITE_ADMIN -> {
-                    fullRoleName = PREFIX_SITE_ADMIN + roleName;
-                }
-            }
-
-            return fullRoleName;
-        }
-
-        public static String getRoleShortName(String roleName) {
-            if(roleName.startsWith(PREFIX_USER_DEFAULT)) {
-                return roleName.substring(PREFIX_USER_DEFAULT.length());
-            } else if (roleName.startsWith(PREFIX_RESTRICTED_SVC)) {
-                return roleName.substring(PREFIX_RESTRICTED_SVC.length());
-            } else if (roleName.startsWith(PREFIX_TENANT_ADMIN)) {
-                return roleName.substring(PREFIX_TENANT_ADMIN.length());
-            } else if (roleName.startsWith(PREFIX_SITE_ADMIN)) {
-                return roleName.substring(PREFIX_SITE_ADMIN.length());
-            }
-
-            return roleName;
-        }
-    }
-
-    public static final EnumSet<Type> ALL_TYPES = EnumSet.allOf(Type.class);
-
     private int     id;
     private String  tenant;
     private String  name;
@@ -95,7 +37,7 @@ public final class SkRole
     private Instant updated;
     private String  updatedby;
     private String  updatedbyTenant;
-    private Type type;
+    private SkRoleType type;
     private boolean hasChildren;
 
     @Override
@@ -403,11 +345,11 @@ public final class SkRole
 		this.hasChildren = hasChildren;
 	}
 
-    public Type getType() {
+    public SkRoleType getType() {
         return type;
     }
 
-    public void setType(Type type) {
+    public void setType(SkRoleType type) {
         this.type = type;
     }
 }

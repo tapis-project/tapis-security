@@ -8,7 +8,8 @@ import java.util.List;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import edu.utexas.tacc.tapis.security.authz.model.SkRole;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
@@ -663,7 +664,7 @@ public final class SkUserRoleDao
    * @return a non-null, sorted list of all users assigned the role
    * @throws TapisException on error
    */
-  public List<String> getUsersWithRole(String tenant, String roleName) 
+  public List<String> getUsersWithRole(String tenant, SkRoleDescriptor roleDescriptor)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -673,8 +674,8 @@ public final class SkUserRoleDao
           _log.error(msg);
           throw new TapisException(msg);
       }
-      if (StringUtils.isBlank(roleName)) {
-          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getUsersWithRole", "roleName");
+      if (!SkRoleDescriptor.descriptorIsValid(roleDescriptor)) {
+          String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "getUsersWithRole", "roleDescriptor");
           _log.error(msg);
           throw new TapisException(msg);
       }
@@ -682,15 +683,15 @@ public final class SkUserRoleDao
       // ------------------------- Get Ancestors -----------------------
       // Get the ancestors of the role of which there might be 0 or more.
       List<String> roleNames = null;
-      try {roleNames = getAncestorRoleNames(tenant, roleName);}
+      try {roleNames = getAncestorRoleNames(tenant, roleDescriptor);}
           catch (Exception e) {
-              String msg = MsgUtils.getMsg("SK_ANCESTOR_ROLE_ERROR", tenant, roleName);
+              String msg = MsgUtils.getMsg("SK_ANCESTOR_ROLE_ERROR", tenant, roleDescriptor.getRoleFullName());
               _log.error(msg, e);
               throw TapisUtils.tapisify(e);  // preserve TapisNotFoundException
           }
       
       // Always add the original role name to the list.
-      roleNames.add(roleName);
+      roleNames.add(roleDescriptor.getRoleFullName());
 
       // Initialize final result.
       ArrayList<String> users = new ArrayList<>();
@@ -730,7 +731,7 @@ public final class SkUserRoleDao
           try {if (conn != null) conn.rollback();}
               catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
           
-          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkUserRole", roleName, e.getMessage());
+          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkUserRole", roleDescriptor.getRoleFullName(), e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
       }
@@ -862,18 +863,6 @@ public final class SkUserRoleDao
   /* ---------------------------------------------------------------------------- */
   /* createAndAssignRole:                                                         */
   /* ---------------------------------------------------------------------------- */
-    // TODO: fix this - temporary overload
-  public int createAndAssignRole(String roleName, String roleTenant, String description,
-                                 String grantee, String granteeTenant,
-                                 String grantor, String grantorTenant, boolean strict)
-          throws TapisException
-  {
-      SkRole.Type roleType = SkRole.Type.getRoleTypeFromRoleName(roleName);
-
-      return createAndAssignRole(roleName, roleType, roleTenant, description,
-          grantee, granteeTenant, grantor, grantorTenant, strict);
-  }
-
   /** Create a role and assign it to a user in one atomic operation.  The role is
    * not expected to exist and the method will fail if it does.
    * 
@@ -888,14 +877,14 @@ public final class SkUserRoleDao
    * @return the number of changed db records
    * @throws TapisImplException on error
    */
-  public int createAndAssignRole(String roleName, SkRole.Type roleType, String roleTenant, String description,
+  public int createAndAssignRole(SkRoleDescriptor roleDescriptor, String roleTenant, String description,
                                  String grantee, String granteeTenant,
                                  String grantor, String grantorTenant, boolean strict)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
       // Exceptions can be throw from here.
-      if (StringUtils.isBlank(roleName)) {
+      if (!SkRoleDescriptor.descriptorIsValid(roleDescriptor)){
           String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "createAndAssignRole", "roleName");
           _log.error(msg);
           throw new TapisException(msg);
@@ -948,7 +937,7 @@ public final class SkUserRoleDao
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, roleTenant);
-          pstmt.setString(2, roleName);
+          pstmt.setString(2, roleDescriptor.getRoleFullName());
           pstmt.setString(3, description);
           pstmt.setString(4, grantor);
           pstmt.setString(5, grantorTenant);
@@ -956,7 +945,7 @@ public final class SkUserRoleDao
           pstmt.setString(7, grantorTenant);
           pstmt.setString(8, grantor);
           pstmt.setString(9, grantorTenant);
-          pstmt.setString(10, roleType.name());
+          pstmt.setString(10, roleDescriptor.getRoleTypeName());
 
           // Issue the call which will fail if the role already exists
           // and strict is set.
@@ -972,8 +961,9 @@ public final class SkUserRoleDao
           // Prepare the statement and fill in the placeholders.
           pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, roleTenant);
-          pstmt.setString(2, roleName);
-                      
+          pstmt.setString(2, roleDescriptor.getRoleFullName());
+          pstmt.setString(3, roleDescriptor.getRoleTypeName());
+
           // Issue the call for the 1 row result set.
           ResultSet rs = pstmt.executeQuery();
           int id = 0;
@@ -985,7 +975,7 @@ public final class SkUserRoleDao
           
           // Make sure we got an id.
           if (id == 0) {
-              String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", roleTenant, roleName);
+              String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", roleTenant, roleDescriptor.getRoleFullName());
               _log.error(msg);
               throw new TapisException(msg);
           }
@@ -1022,7 +1012,7 @@ public final class SkUserRoleDao
           catch (Exception e1){_log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);}
           
           String msg = MsgUtils.getMsg("SK_CREATE_ASSIGN_ROLE_ERROR", granteeTenant,  
-                                       grantee, roleName, e.getMessage());
+                                       grantee, roleDescriptor.getRoleFullName(), e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
       }
@@ -1113,12 +1103,12 @@ public final class SkUserRoleDao
    *         the input roleName
    * @throws TapisException on error
    */
-  private List<String> getAncestorRoleNames(String tenant, String roleName) 
+  private List<String> getAncestorRoleNames(String tenant, SkRoleDescriptor roleDescriptor)
    throws TapisException, TapisNotFoundException
   {
       // Get all the role's ancestors.
       SkRoleDao dao = new SkRoleDao();
-      List<String> list = dao.getAncestorRoleNames(tenant, roleName);
+      List<String> list = dao.getAncestorRoleNames(tenant, roleDescriptor);
       
       // Return result list.
       return list;

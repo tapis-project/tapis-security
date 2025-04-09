@@ -24,6 +24,8 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -327,14 +329,14 @@ public final class UserResource
          // Fill in the parameter fields.
          String tenant = payload.tenant;
          String user   = payload.user;
-         String roleName = payload.roleName;
-         
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, payload.roleType);
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
-                             .setPreventAdminRole(roleName)
+                             .addOwnedRole(roleDescriptor)
+                             .setPreventAdminRole(roleDescriptor.getRoleFullName())
                              .check();
          if (resp != null) return resp;
          
@@ -345,9 +347,9 @@ public final class UserResource
          
          // Assign the role to the user.
          int rows = 0;
-         try {rows = getUserImpl().grantRole(tenant, user, roleName, requestor, requestorTenant);}
+         try {rows = getUserImpl().grantRole(tenant, user, roleDescriptor, requestor, requestorTenant);}
              catch (Exception e) {
-                 return getExceptionResponse(e, null, "Role", roleName);
+                 return getExceptionResponse(e, null, "Role", roleDescriptor.getRoleFullName());
              }
          
          // Populate the response.
@@ -394,21 +396,21 @@ public final class UserResource
          // Fill in the parameter fields.
          String tenant = payload.tenant;
          String user   = payload.user;
-         String roleName = payload.roleName;
-         
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, payload.roleType);
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
-                             .setPreventAdminRole(roleName)
+                             .addOwnedRole(roleDescriptor)
+                             .setPreventAdminRole(roleDescriptor.getRoleFullName())
                              .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
          // Remove the role from the user.
          int rows = 0;
-         try {rows = getUserImpl().revokeUserRole(tenant, user, roleName);}
+         try {rows = getUserImpl().revokeUserRole(tenant, user, roleDescriptor);}
              catch (TapisNotFoundException e) {
                  // Remove calls are idempotent so we simply log the
                  // occurrence and let normal processing take place.
@@ -416,7 +418,7 @@ public final class UserResource
              }
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_REMOVE_USER_ROLE_ERROR",  
-                                              tenant, roleName, user, e.getMessage());
+                                              tenant, roleDescriptor.getRoleFullName(), user, e.getMessage());
                  return getExceptionResponse(e, msg);
              }
          
@@ -629,7 +631,7 @@ public final class UserResource
          }
          
          // Call the real method.
-         return getUsersWithRole(UserImpl.ADMIN_ROLE_NAME, tenant);
+         return getUsersWithRole(SkRoleType.getRoleShortName(UserImpl.ADMIN_ROLE_NAME), SkRoleType.TENANT_ADMIN.name(), tenant);
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -741,7 +743,7 @@ public final class UserResource
          String permSpec = payload.permSpec;
          
          // Construct the user's default role name.
-         String roleName = getRoleImpl().getUserDefaultRolename(user);
+         SkRoleDescriptor roleDescriptor = getRoleImpl().getUserDefaultRolename(user);
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
@@ -757,7 +759,7 @@ public final class UserResource
          // Remove the permission from the role.
          int rows = 0;
          try {
-             rows = getRoleImpl().removeRolePermission(tenant, roleName, permSpec);
+             rows = getRoleImpl().removeRolePermission(tenant, roleDescriptor, permSpec);
          } catch (TapisNotFoundException e) {
              // Default role not found is not considered an error.
          } catch (Exception e) {
@@ -765,8 +767,8 @@ public final class UserResource
              String requestor = TapisThreadLocal.tapisThreadContext.get().getJwtUser();
              String requestorTenant = TapisThreadLocal.tapisThreadContext.get().getJwtTenantId();
              String msg = MsgUtils.getMsg("SK_REMOVE_PERMISSION_ERROR", requestor,
-            		                      requestorTenant, permSpec, roleName, tenant);
-             return getExceptionResponse(e, msg, "Role", roleName);
+            		                      requestorTenant, permSpec, roleDescriptor.getRoleFullName(), tenant);
+             return getExceptionResponse(e, msg, "Role", roleDescriptor.getRoleFullName());
          }
     
          // Populate the response.
@@ -813,15 +815,15 @@ public final class UserResource
          // Fill in the parameter fields.
          String tenant     = payload.tenant;
          String user       = payload.user;
-         String roleName   = payload.roleName;
          String permSpec   = payload.permSpec;
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, true);
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
-                             .setPreventAdminRole(roleName)
+                             .addOwnedRole(roleDescriptor)
+                             .setPreventAdminRole(roleDescriptor.getRoleFullName())
                              .check();
          if (resp != null) return resp;
          
@@ -833,15 +835,15 @@ public final class UserResource
          // Create the role and/or permission.
          int rows = 0;
          try {
-             rows = getUserImpl().grantRoleWithPermission(roleName, tenant, permSpec, 
+             rows = getUserImpl().grantRoleWithPermission(roleDescriptor, tenant, permSpec,
                                                           user, tenant, 
                                                           requestor, requestorTenant);
          } 
              catch (Exception e) {
                  // We assume a bad request for all other errors.
                  String msg = MsgUtils.getMsg("SK_ADD_PERMISSION_ERROR", requestor,
-                                              requestorTenant, permSpec, roleName, tenant);
-                 return getExceptionResponse(e, msg, "Role", roleName);
+                                              requestorTenant, permSpec, roleDescriptor.getRoleFullName(), tenant);
+                 return getExceptionResponse(e, msg, "Role", roleDescriptor.getRoleFullName());
              }
 
          // Populate the response.
@@ -1024,6 +1026,7 @@ public final class UserResource
      @Path("/withRole/{roleName}")
      @Produces(MediaType.APPLICATION_JSON)
      public Response getUsersWithRole(@PathParam("roleName") String roleName,
+                                      @DefaultValue("USER") @QueryParam("roleType") String roleTypeName,
                                       @QueryParam("tenant") String tenant)
      {
          // Trace this request.
@@ -1048,8 +1051,9 @@ public final class UserResource
          
          // ------------------------ Request Processing ------------------------
          // Assign the role to the user.
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName);
          List<String> users = null;
-         try {users = getUserImpl().getUsersWithRole(tenant, roleName);}
+         try {users = getUserImpl().getUsersWithRole(tenant, roleDescriptor);}
              catch (Exception e) {
                  return getExceptionResponse(e, null, "Role");
              }
@@ -1151,21 +1155,23 @@ public final class UserResource
          
          // ------------------------ Request Processing ------------------------
          // Construct the role name.
-         String name = null;
-         try {name = getUserImpl().getUserDefaultRolename(user);}
+         SkRoleDescriptor roleDescriptor = null;
+         try {
+             roleDescriptor = getUserImpl().getUserDefaultRolename(user);
+         }
          catch (Exception e) {
              return getExceptionResponse(e, null);
          }
          
          // Fill in the response.
          ResultName dftName = new ResultName();
-         dftName.name = name;
+         dftName.name = roleDescriptor.getRoleFullName();
          RespName r = new RespName(dftName);
          
          // ---------------------------- Success ------------------------------- 
          // Success means we found the tenant's role names.
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_FOUND", "Role", name), r)).build();
+             MsgUtils.getMsg("TAPIS_FOUND", "Role", roleDescriptor.getRoleFullName()), r)).build();
      }
 
      /* **************************************************************************** */

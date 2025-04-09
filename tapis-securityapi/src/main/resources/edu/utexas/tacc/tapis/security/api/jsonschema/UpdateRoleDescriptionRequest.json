@@ -8,6 +8,9 @@
           "roleTenant": {
             "type": "string"
           },
+          "roleType": {
+            "type": "string"
+          },
           "newDescription": {
             "type": "string"
           }

@@ -25,6 +25,8 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -149,7 +151,7 @@ public final class RoleResource
      public Response getRoleNames(@QueryParam("tenant") String tenant,
                                   @DefaultValue("USER") @QueryParam("roleType") String roleTypeName)
        {
-         SkRole.Type type = getRoleTypeFromStringIgnoreCase(roleTypeName);
+         SkRoleType type = SkRoleType.getRoleTypeFromStringIgnoreCase(roleTypeName);
 
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -184,7 +186,7 @@ public final class RoleResource
          
          // Assign result.
          ResultNameArray names = new ResultNameArray();
-         names.names = list.stream().map( name -> SkRole.Type.getRoleShortName(name)).toArray(String[]::new);
+         names.names = list.stream().map( name -> SkRoleType.getRoleShortName(name)).toArray(String[]::new);
          RespNameArray r = new RespNameArray(names);
 
          // ---------------------------- Success ------------------------------- 
@@ -204,9 +206,7 @@ public final class RoleResource
                                    @QueryParam("tenant") String tenant,
                                    @QueryParam("roleType") String roleTypeName)
      {
-         Pair<String, SkRole.Type> nameAndType = inferNameAndType(roleName, roleTypeName);
-         roleName = nameAndType.getLeft();
-         SkRole.Type type = nameAndType.getRight();
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName, true);
 
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -228,13 +228,11 @@ public final class RoleResource
          Response resp = SKCheckAuthz.configure(tenant, null).check();
          if (resp != null) return resp;
 
-         String fullRoleName = SkRole.Type.getRoleFullName(roleName, type);
-
                  // ------------------------ Request Processing ------------------------
          // Get the role.
          SkRole role = null;
          try {
-             role = getRoleImpl().getRoleByName(tenant, fullRoleName, type);
+             role = getRoleImpl().getRoleByName(tenant, roleDescriptor);
          } catch (Exception e) {
              String msg = MsgUtils.getMsg("SK_ROLE_GET_ERROR", tenant,
                                           TapisThreadLocal.tapisThreadContext.get().getJwtUser(), 
@@ -289,9 +287,8 @@ public final class RoleResource
              
          // Fill in the parameter fields.
          String roleTenant  = payload.roleTenant;
-         String roleName    = payload.roleName;
          String description = payload.description;
-         SkRole.Type roleType = SkRole.Type.getRoleTypeFromRoleName(payload.roleType);
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, payload.roleType);
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
@@ -309,26 +306,26 @@ public final class RoleResource
 
          // Create the role.
          int rows = 0;
-         try {rows = getRoleImpl().createRole(roleName, roleType, roleTenant, description, owner, ownerTenant);}
+         try {rows = getRoleImpl().createRole(roleDescriptor, roleTenant, description, owner, ownerTenant);}
          catch (Exception e) {
-             String msg = MsgUtils.getMsg("SK_ROLE_CREATE_ERROR", roleName, roleType, roleTenant, owner, ownerTenant);
+             String msg = MsgUtils.getMsg("SK_ROLE_CREATE_ERROR", roleDescriptor.getRoleName(), roleDescriptor.getRoleType(), roleTenant, owner, ownerTenant);
              return getExceptionResponse(e, msg);
          }
          
          // NOTE: We need to assign a location header as well.
          //       See https://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.5.
          ResultResourceUrl respUrl = new ResultResourceUrl();
-         respUrl.url = SKApiUtils.constructTenantURL(roleTenant, _request.getRequestURI(), roleName);
+         respUrl.url = SKApiUtils.constructTenantURL(roleTenant, _request.getRequestURI(), roleDescriptor.getRoleFullName());
          RespResourceUrl r = new RespResourceUrl(respUrl);
          
          // ---------------------------- Success ------------------------------- 
          // No new rows means the role exists. 
          if (rows == 0)
              return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-                 MsgUtils.getMsg("TAPIS_EXISTED", "Role", roleName+"@"+roleTenant), false, r)).build();
+                 MsgUtils.getMsg("TAPIS_EXISTED", "Role", roleDescriptor.getRoleFullName()+"@"+roleTenant), false, r)).build();
          else 
              return Response.status(Status.CREATED).entity(TapisRestUtils.createSuccessResponse(
-                 MsgUtils.getMsg("TAPIS_CREATED", "Role", roleName+"@"+roleTenant), false, r)).build();
+                 MsgUtils.getMsg("TAPIS_CREATED", "Role", roleDescriptor.getRoleFullName()+"@"+roleTenant), false, r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -341,7 +338,7 @@ public final class RoleResource
                                       @QueryParam("tenant") String tenant,
                                       @DefaultValue("USER") @QueryParam("roleType") String roleTypeName)
      {
-         SkRole.Type roleType = getRoleTypeFromStringIgnoreCase(roleTypeName);
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName);
          // Trace this request.
          if (_log.isTraceEnabled()) {
              String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(), 
@@ -361,14 +358,14 @@ public final class RoleResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
+                             .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
          // Delete the role.
          int rows = 0;
-         try {rows =  getRoleImpl().deleteRoleByNameAndType(tenant, roleName, roleType);}
+         try {rows =  getRoleImpl().deleteRoleByNameAndType(tenant, roleDescriptor);}
          catch (Exception e) {
         	 // The threadlocal value has been validated.
              String msg = MsgUtils.getMsg("SK_ROLE_DELETE_ERROR", tenant, 
@@ -399,9 +396,7 @@ public final class RoleResource
                                         @QueryParam("roleType") String roleTypeName,
                                         @DefaultValue("false") @QueryParam("immediate") boolean immediate)
      {
-         Pair<String, SkRole.Type> nameAndType = inferNameAndType(roleName, roleTypeName);
-         roleName = nameAndType.getLeft();
-         SkRole.Type type = nameAndType.getRight();
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName, true);
 
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -427,7 +422,7 @@ public final class RoleResource
          // Create the role.
          List<String> list = null;
          try {
-             list = getRoleImpl().getRolePermissions(tenant, roleName, type, immediate);
+             list = getRoleImpl().getRolePermissions(tenant, SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName), immediate);
          } catch (Exception e) {
              String msg = MsgUtils.getMsg("SK_ROLE_GET_PERMISSIONS_ERROR",tenant, 
                                           TapisThreadLocal.tapisThreadContext.get().getJwtUser(), 
@@ -490,13 +485,13 @@ public final class RoleResource
          // Fill in the parameter fields.
          String roleTenant  = payload.roleTenant;
          String newRoleName = payload.newRoleName;
-         SkRole.Type roleType = SkRole.Type.getRoleTypeFromRoleName(payload.roleType);
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, payload.roleType);
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
+                             .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
          
@@ -508,7 +503,7 @@ public final class RoleResource
          // Create the role.
          int rows = 0;
          try {
-             rows = getRoleImpl().updateRoleName(roleTenant, roleName, roleType, newRoleName,
+             rows = getRoleImpl().updateRoleName(roleTenant, roleDescriptor, newRoleName,
             		                             requestor, requestorTenant);
          } catch (Exception e) {
              String msg = MsgUtils.getMsg("SK_ROLE_UPDATE_ERROR", roleTenant, roleName, 
@@ -566,12 +561,14 @@ public final class RoleResource
          String roleTenant = payload.roleTenant;
          String newOwner   = payload.newOwner;
          String newTenant  = payload.newTenant; // optional, can be null or empty
+
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, payload.roleType);
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
+                             .addOwnedRole(roleDescriptor)
                              .setPreventInvalidOwnerAssignment(newTenant)
                              .check();
          if (resp != null) return resp;
@@ -585,7 +582,7 @@ public final class RoleResource
          int rows = 0;
          try {
         	 // The new tenant can be null.
-             rows = getRoleImpl().updateRoleOwner(roleTenant, roleName, newOwner, newTenant,
+             rows = getRoleImpl().updateRoleOwner(roleTenant, roleDescriptor, newOwner, newTenant,
             		                              requestor, requestorTenant);
          } catch (Exception e) {
              String msg = MsgUtils.getMsg("SK_ROLE_UPDATE_ERROR", roleTenant, roleName, 
@@ -643,12 +640,13 @@ public final class RoleResource
          // Fill in the parameter fields.
          String roleTenant     = payload.roleTenant;
          String newDescription = payload.newDescription;
-         
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, payload.roleType);
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
+                             .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
          
@@ -660,10 +658,10 @@ public final class RoleResource
          // Create the role.
          int rows = 0;
          try {
-             rows = getRoleImpl().updateRoleDescription(roleTenant, roleName, newDescription,
+             rows = getRoleImpl().updateRoleDescription(roleTenant, roleDescriptor, newDescription,
             		                                    requestor, requestorTenant);
          } catch (Exception e) {
-             String msg = MsgUtils.getMsg("SK_ROLE_UPDATE_ERROR", roleTenant, roleName, 
+             String msg = MsgUtils.getMsg("SK_ROLE_UPDATE_ERROR", roleTenant, roleDescriptor.getRoleFullName(),
                                           requestor, requestorTenant);
              return getExceptionResponse(e, msg, "Role");
          }
@@ -706,14 +704,14 @@ public final class RoleResource
              
          // Fill in the parameter fields.
          String roleTenant = payload.roleTenant;
-         String roleName   = payload.roleName;
          String permSpec   = payload.permSpec;
-         
-         // ------------------------- Check Authz ------------------------------
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, SkRoleType.USER);
+
+                 // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
+                             .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
          
@@ -725,12 +723,12 @@ public final class RoleResource
          // Add permission to role.
          int rows = 0;
          try {
-             rows = getRoleImpl().addRolePermission(roleTenant, roleName, permSpec, requestor, requestorTenant);
+             rows = getRoleImpl().addRolePermission(roleTenant, roleDescriptor, permSpec, requestor, requestorTenant);
          } catch (Exception e) {
              // This only occurs when the role name is not found.
              String msg = MsgUtils.getMsg("SK_ADD_PERMISSION_ERROR", requestor, requestorTenant, permSpec, 
-            		                      roleName, roleTenant);
-             return getExceptionResponse(e, msg, "Role", roleName);
+            		                      roleDescriptor.getRoleFullName(), roleTenant);
+             return getExceptionResponse(e, msg, "Role", roleDescriptor.getRoleFullName());
          }
 
          // Report the number of rows changed.
@@ -741,7 +739,7 @@ public final class RoleResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "Role", roleName), r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "Role", roleDescriptor.getRoleFullName()), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -776,28 +774,28 @@ public final class RoleResource
              
          // Fill in the parameter fields.
          String roleTenant = payload.roleTenant;
-         String roleName   = payload.roleName;
          String permSpec   = payload.permSpec;
-         
+         SkRoleDescriptor roleDescriptor   = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, SkRoleType.USER);
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
-                             .addOwnedRole(roleName)
+                             .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
          // Remove the permission from the role.
          int rows = 0;
-         try {rows = getRoleImpl().removeRolePermission(roleTenant, roleName, permSpec);} 
+         try {rows = getRoleImpl().removeRolePermission(roleTenant, roleDescriptor, permSpec);}
          catch (Exception e) {
              // Role not found is an error in this case.
              String requestor = TapisThreadLocal.tapisThreadContext.get().getJwtUser();
              String requestorTenant = TapisThreadLocal.tapisThreadContext.get().getJwtTenantId();
              String msg = MsgUtils.getMsg("SK_REMOVE_PERMISSION_ERROR", requestor,
-            		                      requestorTenant, permSpec, roleName, roleTenant);
-             return getExceptionResponse(e, msg, "Role", roleName);
+            		                      requestorTenant, permSpec, roleDescriptor.getRoleFullName(), roleTenant);
+             return getExceptionResponse(e, msg, "Role", roleDescriptor.getRoleFullName());
          }
 
          // Report the number of rows changed.
@@ -808,7 +806,7 @@ public final class RoleResource
          // ---------------------------- Success ------------------------------- 
          // Success means we found the role. 
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_UPDATED", "Role", roleName), r)).build();
+             MsgUtils.getMsg("TAPIS_UPDATED", "Role", roleDescriptor.getRoleFullName()), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -850,8 +848,8 @@ public final class RoleResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
-                             .addOwnedRole(parentRoleName)
-                             .addOwnedRole(childRoleName)
+                             .addOwnedRole(parentRoleName, SkRoleType.USER)
+                             .addOwnedRole(childRoleName, SkRoleType.USER)
                              .check();
          if (resp != null) return resp;
          
@@ -920,7 +918,7 @@ public final class RoleResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsAdmin()
-                             .addOwnedRole(parentRoleName)
+                             .addOwnedRole(parentRoleName, SkRoleType.USER)
                              .check();
          if (resp != null) return resp;
          
@@ -981,12 +979,11 @@ public final class RoleResource
          // Fill in the parameter fields.
          String tenant = payload.tenant;
          String schema = payload.schema;
-         String roleName = payload.roleName;
-         SkRole.Type roleType = getRoleTypeFromStringIgnoreCase(payload.roleType);
          String oldSystemId = payload.oldSystemId;
          String newSystemId = payload.newSystemId;
          String oldPrefix = payload.oldPrefix;
          String newPrefix = payload.newPrefix;
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, payload.roleType);
 
          // Canonicalize blank prefix values.
          if (StringUtils.isBlank(oldPrefix)) oldPrefix = "";
@@ -1001,13 +998,13 @@ public final class RoleResource
          // Get the list of transformations that would be appled by replacePathPrefix.
          List<Transformation> transList = null;
          try {
-                 transList = getRoleImpl().previewPathPrefix(schema, roleName, 
+                 transList = getRoleImpl().previewPathPrefix(schema, roleDescriptor,
                                                              oldSystemId, newSystemId, 
                                                              oldPrefix, newPrefix, 
-                                                             tenant, roleType);
+                                                             tenant);
              }
              catch (Exception e) {
-                 String msg = MsgUtils.getMsg("SK_PERM_TRANSFORM_FAILED", schema, roleName,
+                 String msg = MsgUtils.getMsg("SK_PERM_TRANSFORM_FAILED", schema, roleDescriptor.getRoleFullName(),
                                               oldSystemId, oldPrefix, newSystemId, newPrefix,
                                               tenant);
                  _log.error(msg);
@@ -1059,13 +1056,12 @@ public final class RoleResource
              
          // Fill in the parameter fields.
          String tenant = payload.tenant;
-         SkRole.Type roleType = getRoleTypeFromStringIgnoreCase(payload.roleType);
          String schema = payload.schema;
-         String roleName = payload.roleName;
          String oldSystemId = payload.oldSystemId;
          String newSystemId = payload.newSystemId;
          String oldPrefix = payload.oldPrefix;
          String newPrefix = payload.newPrefix;
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, payload.roleType);
          
          // Canonicalize blank prefix values.
          if (StringUtils.isBlank(oldPrefix)) oldPrefix = "";
@@ -1083,13 +1079,13 @@ public final class RoleResource
          // Calculate the permissions that need to change and apply changes.
          int rows = 0;
          try {
-                 rows = getRoleImpl().replacePathPrefix(schema, roleName, 
+                 rows = getRoleImpl().replacePathPrefix(schema, roleDescriptor,
                                                         oldSystemId, newSystemId, 
                                                         oldPrefix, newPrefix, 
-                                                        tenant, roleType);
+                                                        tenant);
              }
              catch (Exception e) {
-                 String msg = MsgUtils.getMsg("SK_PERM_UPDATE_FAILED", schema, roleName,
+                 String msg = MsgUtils.getMsg("SK_PERM_UPDATE_FAILED", schema, roleDescriptor.getRoleFullName(),
                                               oldSystemId, oldPrefix, newSystemId, newPrefix,
                                               tenant, e.getMessage());
                  _log.error(msg);
@@ -1141,21 +1137,22 @@ public final class RoleResource
          
          // ------------------------ Request Processing ------------------------
          // Construct the role name.
-         String name = null;
-         try {name = getUserImpl().getUserDefaultRolename(user);}
-         catch (Exception e) {
+         SkRoleDescriptor roleDescriptor = null;
+         try {
+             roleDescriptor = getUserImpl().getUserDefaultRolename(user);
+         } catch (Exception e) {
              return getExceptionResponse(e, null);
          }
          
          // Fill in the response.
          ResultName dftName = new ResultName();
-         dftName.name = name;
+         dftName.name = roleDescriptor.getRoleFullName();
          RespName r = new RespName(dftName);
          
          // ---------------------------- Success ------------------------------- 
          // Success means we found the tenant's role names.
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-             MsgUtils.getMsg("TAPIS_FOUND", "Role", name), r)).build();
+             MsgUtils.getMsg("TAPIS_FOUND", "Role", roleDescriptor.getRoleFullName()), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
@@ -1298,15 +1295,18 @@ public final class RoleResource
      * @param typeGiven
      * @return
      */
-     private Pair<String, SkRole.Type> inferNameAndType(String roleName, String typeGiven) {
+    /*
+     private Pair<String, SkRoleType> inferNameAndType(String roleName, String typeGiven) {
          if(StringUtils.isBlank(typeGiven)) {
-             return Pair.of(SkRole.Type.getRoleShortName(roleName), SkRole.Type.getRoleTypeFromRoleName(roleName));
+             return Pair.of(SkRoleType.getRoleShortName(roleName), SkRoleType.getRoleTypeFromRoleName(roleName));
          }
 
          return Pair.of(roleName, getRoleTypeFromStringIgnoreCase(typeGiven));
      }
 
-     private SkRole.Type getRoleTypeFromStringIgnoreCase(String typeName) {
-         return SkRole.Type.valueOf(typeName.toUpperCase());
+     private SkRoleType getRoleTypeFromStringIgnoreCase(String typeName) {
+         return SkRoleType.valueOf(typeName.toUpperCase());
      }
+
+     */
 }

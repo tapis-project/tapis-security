@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.security.authz.dao;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRole;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -22,13 +24,14 @@ public class RoleDaoTest {
     @Test
     public void createRoleTest() throws Exception {
         String roleName = "RoleOne";
-        SkRole.Type roleType = SkRole.Type.TENANT_ADMIN;
+        SkRoleType roleType = SkRoleType.TENANT_ADMIN;
         String roleTenant = "TestTenant";
         String roleDescription = "Test Role Description";
         String roleOwner = "TestRoleOwner";
         String roleOwnerTenant = "TestRoleOwnerTenant";
+        SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleType);
 
-        int rolesCreated = dao.createRole(roleName, roleType, roleTenant, roleDescription, roleOwner, roleOwnerTenant);
+        int rolesCreated = dao.createRole(roleDescriptor, roleTenant, roleDescription, roleOwner, roleOwnerTenant);
         Assert.assertEquals(rolesCreated, 1);
 
         SkRole createdRole = new SkRole();
@@ -39,7 +42,7 @@ public class RoleDaoTest {
         createdRole.setOwner(roleOwner);
         createdRole.setOwnerTenant(roleOwnerTenant);
 
-        SkRole retrievedRole = dao.getRole(roleTenant, roleName, roleType);
+        SkRole retrievedRole = dao.getRole(roleTenant, SkRoleDescriptor.newSkRoleDescriptor(roleName, roleType));
         compareRoles(retrievedRole, createdRole);
     }
 

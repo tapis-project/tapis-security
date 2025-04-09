@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.security.api.utils.SKApiUtils;
@@ -11,6 +12,8 @@ public class ReqGrantUserRole
     public String tenant;
     public String user;
     public String roleName;
+    // default to user role
+    public String roleType=SkRoleType.USER.name();
 
     /** Return a user-appropriate error message on failed validation
      *  and return null if validation succeeds.
@@ -21,7 +24,9 @@ public class ReqGrantUserRole
         // Final checks.
         if (StringUtils.isBlank(tenant)) 
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "grantUserRole", "tenant");
-        if (StringUtils.isBlank(user)) 
+        if (StringUtils.isBlank(roleType))
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "grantUserRole", "tenant");
+        if (StringUtils.isBlank(user))
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "grantUserRole", "user");
         if (StringUtils.isBlank(roleName)) 
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "grantUserRole", "roleName");

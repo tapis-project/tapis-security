@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,8 +177,8 @@ public final class SkRoleTreeDao
           conn = getConnection();
           
           // Get the ids for each of the roles. Not found throws an exception.
-          int parentRoleId = getRoleId(conn, tenant, user, roleTenant, parentRoleName);
-          int childRoleId  = getRoleId(conn, tenant, user, roleTenant, childRoleName);
+          int parentRoleId = getRoleId(conn, tenant, user, roleTenant, SkRoleDescriptor.newSkRoleDescriptor(parentRoleName, SkRoleType.USER));
+          int childRoleId  = getRoleId(conn, tenant, user, roleTenant, SkRoleDescriptor.newSkRoleDescriptor(childRoleName, SkRoleType.USER));
           
           // Make sure adding this parent/child relationship will not cause a cycle.
           detectCycle(conn, tenant, user, parentRoleName, parentRoleId, childRoleName);
@@ -260,7 +262,7 @@ public final class SkRoleTreeDao
       SkRoleDao dao = new SkRoleDao();
       
       // The parent must exist in the tenant.
-      Integer parentRoleId = dao.getRoleId(tenant, parentRoleName);
+      Integer parentRoleId = dao.getRoleId(tenant, SkRoleDescriptor.newSkRoleDescriptor(parentRoleName, SkRoleType.USER));
       if (parentRoleId == null) {
           String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, parentRoleName);
           _log.error(msg);
@@ -268,7 +270,7 @@ public final class SkRoleTreeDao
       }
       
       // The child must exist in the tenant.
-      Integer childRoleId = dao.getRoleId(tenant, childRoleName);
+      Integer childRoleId = dao.getRoleId(tenant, SkRoleDescriptor.newSkRoleDescriptor(childRoleName, SkRoleType.USER));
       if (childRoleId == null) {
           String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, childRoleName);
           _log.error(msg);
@@ -521,8 +523,8 @@ public final class SkRoleTreeDao
    * @return the id
    * @throws TapisException if the id is not acquired for any reason
    */
-  private int getRoleId(Connection conn, String tenant, String user, 
-		                String roleTenant, String roleName) 
+  private int getRoleId(Connection conn, String tenant, String user,
+                        String roleTenant, SkRoleDescriptor roleDescriptor)
    throws TapisException
   {
       Integer roleId = null; // result
@@ -534,26 +536,27 @@ public final class SkRoleTreeDao
           // Prepare the statement and fill in the placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, roleTenant);
-          pstmt.setString(2, roleName);
-                      
+          pstmt.setString(2, roleDescriptor.getRoleFullName());
+          pstmt.setString(3, roleDescriptor.getRoleTypeName());
+
           // Issue the call for the 1 row result set.
           ResultSet rs = pstmt.executeQuery();
           if (rs.next()) roleId = rs.getInt(1);
-          
+
           // Close the result and statement.
           rs.close();
           pstmt.close();
       }
       catch (Exception e)
       {
-          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkRoleTree", roleName, e.getMessage());
+          String msg = MsgUtils.getMsg("DB_SELECT_ID_ERROR", "SkRoleTree", roleDescriptor.getRoleFullName(), e.getMessage());
           _log.error(msg, e);
           throw new TapisException(msg, e);
       }
       
       // Make sure we found the role id.
       if (roleId == null) {
-          String msg = MsgUtils.getMsg("SK_ROLE_GET_ERROR", tenant, user, roleTenant, roleName);
+          String msg = MsgUtils.getMsg("SK_ROLE_GET_ERROR", tenant, user, roleTenant, roleDescriptor.getRoleFullName());
           _log.error(msg);
           throw new TapisException(msg);
       }

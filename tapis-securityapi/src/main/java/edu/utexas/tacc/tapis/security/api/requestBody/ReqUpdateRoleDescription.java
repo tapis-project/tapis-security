@@ -8,6 +8,8 @@ public final class ReqUpdateRoleDescription
  implements IReqBody
 {
     public String roleTenant;
+
+    public String roleType;
     public String newDescription;
 
     /** Return a user-appropriate error message on failed validation
@@ -19,7 +21,9 @@ public final class ReqUpdateRoleDescription
         // Final checks.
         if (StringUtils.isBlank(roleTenant)) 
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleDescription", "roleTenant");
-        if (StringUtils.isBlank(newDescription)) 
+        if (StringUtils.isBlank(roleType))
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleDescription", "roleType");
+        if (StringUtils.isBlank(newDescription))
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "updateRoleDescription", "newDescription");
         
         // Success.

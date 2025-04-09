@@ -4,7 +4,7 @@ import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response.Status;
 
-import edu.utexas.tacc.tapis.security.authz.model.SkRole;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.shared.exceptions.TapisImplException.Condition;
@@ -60,7 +60,7 @@ public class SKApiUtils
     public static boolean isValidRoleType(String roleType)
     {
         try {
-            SkRole.Type type = SkRole.Type.valueOf(roleType);
+            SkRoleType type = SkRoleType.valueOf(roleType);
             return type != null;
         } catch (IllegalArgumentException ex) {
             return false;
