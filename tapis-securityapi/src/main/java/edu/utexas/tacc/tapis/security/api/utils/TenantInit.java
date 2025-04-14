@@ -293,7 +293,7 @@ public final class TenantInit
     	try {
         	// Query for the assignment of tenant_definition_updater to tokens.
         	List<Triple<Integer,String,Boolean>> roleRecs = null;
-			roleRecs = UserImpl.getInstance().getUserRoleIdsAndNames(siteAdminTenant, tokenSvc);
+			roleRecs = UserImpl.getInstance().getUserRoleIdsAndNames(siteAdminTenant, tokenSvc, SkRoleType.USER);
     	
 			// Determine if the tokens service is already assigned the updater role.
 			// If the role is already assigned directly to tokens, there's no work to do.

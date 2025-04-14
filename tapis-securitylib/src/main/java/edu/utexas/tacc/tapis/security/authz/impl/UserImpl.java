@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
@@ -397,7 +398,7 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* getUserRoleNames:                                                      */
     /* ---------------------------------------------------------------------- */
-    public List<String> getUserRoleNames(String tenant, String user) 
+    public List<String> getUserRoleNames(String tenant, String user, SkRoleType roleType)
      throws TapisImplException
     {
         // Get the dao.
@@ -410,7 +411,7 @@ public final class UserImpl
 
         // Get the user's role names including those assigned transitively.
         List<String> roles = null;
-        try {roles = dao.getUserRoleNames(tenant, user);}
+        try {roles = dao.getUserRoleNames(tenant, user, roleType);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                              tenant, user, e.getMessage());
@@ -432,7 +433,7 @@ public final class UserImpl
      * @return pairs of <roleId, roleName> for each role directly assigned to user
      * @throws TapisImplException
      */
-    public List<Triple<Integer,String,Boolean>> getUserRoleIdsAndNames(String tenant, String user) 
+    public List<Triple<Integer,String,Boolean>> getUserRoleIdsAndNames(String tenant, String user, SkRoleType roleType)
      throws TapisImplException
     {
         // Get the dao.
@@ -445,7 +446,7 @@ public final class UserImpl
 
         // Get the user's role names including those assigned transitively.
         List<Triple<Integer,String,Boolean>> triples = null;
-        try {triples = dao.getUserRoleIdsAndNames(tenant, user);}
+        try {triples = dao.getUserRoleIdsAndNames(tenant, user, roleType);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                              tenant, user, e.getMessage());
@@ -514,7 +515,7 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* hasRole:                                                               */
     /* ---------------------------------------------------------------------- */
-    public boolean hasRole(String tenant, String user, String[] roleNames, AuthOperation op) 
+    public boolean hasRole(String tenant, String user, SkRoleDescriptor[] roleDescriptors, AuthOperation op)
      throws TapisImplException
     {
         // Check inputs not checked by called routines.
@@ -523,23 +524,35 @@ public final class UserImpl
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST);            
         }
-        if (roleNames == null || (roleNames.length == 0)) {
+        if (roleDescriptors == null || (roleDescriptors.length == 0)) {
             String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "hasRole", "roleNames");
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST);  
         }
-        
-        // Get the user's roles.  An exception can be thrown here.
-        List<String> roles = getUserRoleNames(tenant, user);
+
+        Map<SkRoleType, List<String>> rolesByType = new HashMap<>();
+
+//        // Get the user's roles.  An exception can be thrown here.
+//        List<String> roles = getUserRoleNames(tenant, user);
         
         // Initialize the result based on the operation.
         // ANY starts out as false, ALL starts as true.
         boolean authorized = (op == AuthOperation.ANY) ? false : true;
-        
+
+        List<String> roles = Collections.EMPTY_LIST;
+
         // Iterate through the list of user-suppled role names.
-        for (String curRole : roleNames) {
+        for (SkRoleDescriptor curRole : roleDescriptors) {
+            SkRoleType roleType = curRole.getRoleType();
+            if(rolesByType.containsKey(roleType)) {
+                roles = rolesByType.get(roleType);
+            } else {
+                roles = getUserRoleNames(tenant, user, roleType);
+                rolesByType.put(roleType, roles);
+            }
+
             // Search for the role in the list whose elements are sorted in ascending order.
-            int position = Collections.binarySearch(roles, curRole);
+            int position = Collections.binarySearch(roles, curRole.getRoleFullName());
             
             // We stop processing ANY constraints as soon as we find the first match.
             if (op == AuthOperation.ANY) {

@@ -265,7 +265,7 @@ public class SqlStatements
   // Get the role ids and the role names directly (non-transitively) assigned to user.
   public static final String USER_SELECT_ROLE_IDS_AND_NAMES =
       "SELECT ur.role_id, r.name, r.has_children FROM sk_user_role ur, sk_role r " +
-      "WHERE ur.role_id = r.id and ur.tenant = ? and ur.user_name = ?";
+      "WHERE ur.role_id = r.id and ur.tenant = ? and ur.user_name = ? and r.type = ?";
   
   // Get all users assigned a list of role names which are expected
   // to be the role the user is querying and all its ancestors.

@@ -199,6 +199,7 @@ public final class UserResource
      @Path("/roles/{user}")
      @Produces(MediaType.APPLICATION_JSON)
      public Response getUserRoles(@PathParam("user") String user,
+                                  @DefaultValue("USER") @QueryParam("roleType") String roleTypeName,
                                   @QueryParam("tenant") String tenant)
      {
          // Trace this request.
@@ -216,6 +217,8 @@ public final class UserResource
                      entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
 
+         SkRoleType roleType = SkRoleType.getRoleTypeFromStringIgnoreCase(roleTypeName);
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null).check();
@@ -224,7 +227,7 @@ public final class UserResource
          // ------------------------ Request Processing ------------------------
          // Get the names.
          List<String> roles = null;
-         try {roles = getUserImpl().getUserRoleNames(tenant, user);}
+         try {roles = getUserImpl().getUserRoleNames(tenant, user, roleType);}
              catch (Exception e) {
                  return getExceptionResponse(e, null);
              }
@@ -609,7 +612,7 @@ public final class UserResource
          ReqUserHasRoleMulti multi = new ReqUserHasRoleMulti();
          multi.tenant = payload.tenant;
          multi.user   = payload.user;
-         multi.roleNames = new String[] {UserImpl.ADMIN_ROLE_NAME};
+         multi.roleDescriptors = new SkRoleDescriptor[] {SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true)};
          
          // Call the real method.
          return hasRoleMulti(payloadStream, AuthOperation.ANY, multi);
@@ -891,7 +894,12 @@ public final class UserResource
          ReqUserHasRoleMulti multi = new ReqUserHasRoleMulti();
          multi.tenant = payload.tenant;
          multi.user   = payload.user;
-         multi.roleNames = new String[] {payload.roleName};
+         SkRoleType roleType = SkRoleType.USER;
+         if(!StringUtils.isBlank(payload.roleType)) {
+            roleType = SkRoleType.getRoleTypeFromStringIgnoreCase(payload.roleType);
+         }
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, roleType);
+         multi.roleDescriptors = new SkRoleDescriptor[] {roleDescriptor};
          multi.orAdmin = payload.orAdmin;
          
          // Call the real method.
@@ -1213,7 +1221,7 @@ public final class UserResource
          // Unpack inputs for convenience.
          String   tenant    = payload.tenant;
          String   user      = payload.user;
-         String[] roleNames = payload.roleNames;
+         SkRoleDescriptor[] roleDescriptors = payload.roleDescriptors;
          boolean  orAdmin   = payload.orAdmin;
          
          // ------------------------- Check Authz ------------------------------
@@ -1224,13 +1232,13 @@ public final class UserResource
          // ------------------------ Request Processing ------------------------
          // We can optimize the ANY case by adding the admin role to the role array.
          if (orAdmin && (op == AuthOperation.ANY)) {
-             roleNames = Arrays.copyOf(roleNames, roleNames.length + 1);
-             roleNames[roleNames.length - 1] = UserImpl.ADMIN_ROLE_NAME;
+             roleDescriptors = Arrays.copyOf(roleDescriptors, roleDescriptors.length + 1);
+             roleDescriptors[roleDescriptors.length - 1] = SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true);
          }
          
          // Get the names.
          boolean authorized;
-         try {authorized = getUserImpl().hasRole(tenant, user, roleNames, op);}
+         try {authorized = getUserImpl().hasRole(tenant, user, roleDescriptors, op);}
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                               tenant, user, e.getMessage());
@@ -1239,8 +1247,8 @@ public final class UserResource
          
          // When authorization fails, check for admin role in the ALL operation case.
          if (!authorized && orAdmin && (op != AuthOperation.ANY)) {
-             try {authorized = getUserImpl().hasRole(tenant, user, 
-                                                     new String[] {UserImpl.ADMIN_ROLE_NAME}, 
+             try {authorized = getUserImpl().hasRole(tenant, user,
+                                                     new SkRoleDescriptor[] {SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true)},
                                                      AuthOperation.ANY);}
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
@@ -1322,7 +1330,7 @@ public final class UserResource
          // When authorization fails check is user is an admin.
          if (!authorized && orAdmin) {
              try {authorized = getUserImpl().hasRole(tenant, user, 
-                                                     new String[] {UserImpl.ADMIN_ROLE_NAME}, 
+                                                     new SkRoleDescriptor[] {SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true)},
                                                      AuthOperation.ANY);}
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 

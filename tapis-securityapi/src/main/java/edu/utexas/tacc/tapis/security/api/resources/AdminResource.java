@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.security.api.resources;
 
 import edu.utexas.tacc.tapis.security.api.utils.SKCheckAuthz;
 import edu.utexas.tacc.tapis.security.api.utils.TenantInit;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.config.RuntimeParameters;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -63,7 +64,7 @@ public class AdminResource extends AbstractResource {
         String jwtUser = TapisThreadLocal.tapisThreadContext.get().getJwtUser();
 
         Response resp = SKCheckAuthz.configure(primarySiteAdminTenantId, jwtUser)
-                .addRequiredRole(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE).check();
+                .addRequiredRole(SkRoleDescriptor.newSkRoleDescriptor(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE, true)).check();
         if(resp != null) {
             return resp;
         }

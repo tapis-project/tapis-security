@@ -406,11 +406,11 @@ public final class SkUserRoleDao
    * @return a non-null, ordered list of all roles assigned to user
    * @throws TapisException on error
    */
-  public List<String> getUserRoleNames(String tenant, String user) throws TapisException
+  public List<String> getUserRoleNames(String tenant, String user, SkRoleType roleType) throws TapisException
   {
       // Get the <role id, role name, has_children> tuples directly assigned to this user.
       // Input checking done here.
-      List<Triple<Integer,String,Boolean>> roleRecs = getUserRoleIdsAndNames(tenant, user);
+      List<Triple<Integer,String,Boolean>> roleRecs = getUserRoleIdsAndNames(tenant, user, roleType);
       
       // Final result list.
       ArrayList<String> roleNames = new ArrayList<>();
@@ -491,7 +491,7 @@ public final class SkUserRoleDao
    * @return a non-null list of all roles ids and names assigned directly to user
    * @throws TapisException on error
    */
-  public List<Triple<Integer,String,Boolean>> getUserRoleIdsAndNames(String tenant, String user) 
+  public List<Triple<Integer,String,Boolean>> getUserRoleIdsAndNames(String tenant, String user, SkRoleType roleType)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -524,7 +524,8 @@ public final class SkUserRoleDao
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
           pstmt.setString(2, user);
-                      
+          pstmt.setString(3, roleType.name());
+
           // Issue the call the result set.
           ResultSet rs = pstmt.executeQuery();
           while (rs.next()) {

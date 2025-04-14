@@ -11,6 +11,7 @@ public final class ReqUserHasRole
     public String  tenant;
     public String  user;
     public String  roleName;
+    public String  roleType;
     public boolean orAdmin;
 
     /** Return a user-appropriate error message on failed validation

@@ -315,7 +315,7 @@ public class NestedRoleTest
     private void checkUserRoles() throws TapisException
     {
        SkUserRoleDao dao = new SkUserRoleDao();
-       List<String> roles1 = dao.getUserRoleNames(tenant, user1);
+       List<String> roles1 = dao.getUserRoleNames(tenant, user1, SkRoleType.USER);
        System.out.println(" **** user1 roles: " + Arrays.toString(roles1.toArray()));
        Assert.assertEquals(roles1.contains("NestedTestRole1"), true);
        Assert.assertEquals(roles1.contains("NestedTestRole2"), true);
@@ -323,19 +323,19 @@ public class NestedRoleTest
        Assert.assertEquals(roles1.contains("NestedTestRole4"), true);
        Assert.assertEquals(roles1.size(), 4);
        
-       List<String> roles2 = dao.getUserRoleNames(tenant, user2);
+       List<String> roles2 = dao.getUserRoleNames(tenant, user2, SkRoleType.USER);
        System.out.println(" **** user2 roles: " + Arrays.toString(roles2.toArray()));
        Assert.assertEquals(roles2.contains("NestedTestRole2"), true);
        Assert.assertEquals(roles2.contains("NestedTestRole3"), true);
        Assert.assertEquals(roles2.contains("NestedTestRole4"), true);
        Assert.assertEquals(roles2.size(), 3);
       
-       List<String> roles3 = dao.getUserRoleNames(tenant, user3);
+       List<String> roles3 = dao.getUserRoleNames(tenant, user3, SkRoleType.USER);
        System.out.println(" **** user3 roles: " + Arrays.toString(roles3.toArray()));
        Assert.assertEquals(roles3.contains("NestedTestRole3"), true);
        Assert.assertEquals(roles3.size(), 1);
        
-       List<String> roles4 = dao.getUserRoleNames(tenant, user4);
+       List<String> roles4 = dao.getUserRoleNames(tenant, user4, SkRoleType.USER);
        System.out.println(" **** user4 roles: " + Arrays.toString(roles4.toArray()));
        Assert.assertEquals(roles4.contains("NestedTestRole4"), true);
        Assert.assertEquals(roles4.size(), 1);

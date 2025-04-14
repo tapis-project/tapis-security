@@ -59,7 +59,7 @@ public final class SKCheckAuthz
     private boolean _validatePassword;
     
     // Roles that the jwt user@tenant has some level of access.
-    private ArrayList<String> _requiredRoles;
+    private ArrayList<SkRoleDescriptor> _requiredRoles;
     private ArrayList<SkRoleDescriptor> _ownedRoles;
     
     // Prevention switches.
@@ -109,10 +109,10 @@ public final class SKCheckAuthz
     public SKCheckAuthz setValidatePassword() {_validatePassword = true; return this;}
     
     // Role lists.
-    public SKCheckAuthz addRequiredRole(String roleName) 
+    public SKCheckAuthz addRequiredRole(SkRoleDescriptor roleDescriptor)
     {
         if (_requiredRoles == null) _requiredRoles = new ArrayList<>();
-        _requiredRoles.add(roleName);
+        _requiredRoles.add(roleDescriptor);
         return this;
     }
     public SKCheckAuthz addOwnedRole(String roleName, SkRoleType roleType) {
@@ -350,7 +350,7 @@ public final class SKCheckAuthz
         try {
             var userImpl = UserImpl.getInstance();
             authorized = userImpl.hasRole(_jwtTenant, _jwtUser, 
-                                          new String[] {UserImpl.ADMIN_ROLE_NAME}, 
+                                          new SkRoleDescriptor[] {SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true)},
                                           AuthOperation.ANY);
         }
         catch (Exception e) {
@@ -487,7 +487,7 @@ public final class SKCheckAuthz
         // Start pessimistically.
         boolean authorized = false;
         try {
-            String[] roles = new String[_requiredRoles.size()];
+            SkRoleDescriptor[] roles = new SkRoleDescriptor[_requiredRoles.size()];
             roles = _requiredRoles.toArray(roles);
             var userImpl = UserImpl.getInstance();
             authorized = userImpl.hasRole(_jwtTenant, _jwtUser, 
