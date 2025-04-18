@@ -1,8 +1,11 @@
 package edu.utexas.tacc.tapis.security.authz.model;
 
+import edu.utexas.tacc.tapis.shared.utils.SkConstants;
 import org.apache.commons.lang3.StringUtils;
 
 public class SkRoleDescriptor {
+    public static final SkRoleDescriptor TENANT_ADMIN_ROLE_DESCRIPTOR = SkRoleDescriptor.newSkRoleDescriptor(SkRoleType.getRoleShortName(SkConstants.ADMIN_ROLE_NAME), SkRoleType.TENANT_ADMIN);
+    public static final SkRoleDescriptor SITE_ADMIN_ROLE_DESCRIPTOR = SkRoleDescriptor.newSkRoleDescriptor(SkRoleType.getRoleShortName(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE), SkRoleType.SITE_ADMIN);
     private final String roleName;
     private final SkRoleType roleType;
 
@@ -21,7 +24,7 @@ public class SkRoleDescriptor {
     public static SkRoleDescriptor newSkRoleDescriptor(String roleName, String roleTypeName, boolean allowTypeInferance) {
         SkRoleType roleType = null;
         if(!StringUtils.isBlank(roleTypeName)) {
-            roleType = SkRoleType.getRoleTypeFromStringIgnoreCase(roleTypeName);
+            roleType = SkRoleType.getRoleTypeFromStringIgnoreCase(roleName);
         }
         return new SkRoleDescriptor(roleName, roleType, allowTypeInferance);
     }
@@ -86,5 +89,15 @@ public class SkRoleDescriptor {
         }
 
         return roleDescriptor.isValid();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Name: ");
+        builder.append(roleName);
+        builder.append(", Type: ");
+        builder.append(roleType);
+        return builder.toString();
     }
 }

@@ -181,7 +181,7 @@ public final class TenantInit
     {
         // Get the list of admins in the tenant.
         List<String> admins = null;
-        SkRoleDescriptor adminRoleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true);
+        SkRoleDescriptor adminRoleDescriptor = SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR;
         try {
             admins = UserImpl.getInstance().getUsersWithRole(tenant, 
                                                 adminRoleDescriptor);
@@ -195,7 +195,7 @@ public final class TenantInit
             // This should not happen even if the tenant and role don't exist.
             // We log the problem but proceed.
             String msg = MsgUtils.getMsg("SK_GET_USERS_WITH_ROLE_ERROR", tenant, 
-                                         UserImpl.ADMIN_ROLE_NAME, e.getMessage());
+                                         adminRoleDescriptor, e.getMessage());
             _log.error(msg, e);
         } 
         
@@ -210,7 +210,7 @@ public final class TenantInit
             // that does not check whether the requestor is an administrator. 
         	UserImpl.getInstance().grantAdminRoleInternal(adminUser, tenant, SK_USER, siteAdminTenant);
         	String msg = MsgUtils.getMsg("SK_TENANT_ADMIN_ASSIGNED", tenant, adminUser,
-                                  		 UserImpl.ADMIN_ROLE_NAME);
+                                  		 adminRoleDescriptor);
             _log.info(msg);
         } 
         catch (Exception e) {

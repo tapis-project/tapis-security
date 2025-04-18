@@ -6,11 +6,10 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import edu.utexas.tacc.tapis.security.authz.model.SkRole;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisImplException;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +49,8 @@ public final class SKCheckAuthz
     
     // Identity checks.
     private boolean _checkMatchesJwtIdentity;
-    private boolean _checkIsAdmin;
+    private boolean _checkIsTenantAdmin;
+    private boolean _checkIsSiteAdmin;
     private boolean _checkIsService;
     private boolean _checkIsFilesService;
     
@@ -100,7 +100,16 @@ public final class SKCheckAuthz
     /* **************************************************************************** */
     // Roles and user checks.
     public SKCheckAuthz setCheckMatchesJwtIdentity() {_checkMatchesJwtIdentity = true; return this;}
-    public SKCheckAuthz setCheckIsAdmin()    {_checkIsAdmin = true; return this;}
+    public SKCheckAuthz setCheckIsTenantAdmin()    {
+        _checkIsTenantAdmin = true;
+        return this;
+    }
+
+    public SKCheckAuthz setCheckIsSiteAdmin()    {
+        _checkIsSiteAdmin = true;
+        return this;
+    }
+
     public SKCheckAuthz setCheckIsService()  {_checkIsService = true; return this;}
     public SKCheckAuthz setCheckIsFilesService() {_checkIsFilesService = true; return this;}
     
@@ -215,7 +224,8 @@ public final class SKCheckAuthz
         // with "short-circuiting" behavior.
         if (_checkIsService && checkIsService()) return null;
         if (_checkMatchesJwtIdentity && checkMatchesJwtIdentity()) return null;
-        if (_checkIsAdmin && checkIsAdmin()) return null;
+        if (_checkIsTenantAdmin && checkIsTenantAdmin()) return null;
+        if (_checkIsSiteAdmin && checkIsSiteAdmin()) return null;
         if (_checkIsFilesService && checkIsFilesService()) return null;
         
         if (_ownedRoles != null && checkOwnedRoles()) return null;
@@ -300,10 +310,25 @@ public final class SKCheckAuthz
         if (accountType == AccountType.user) {
             // User tokens require exact tenant matches.
             if (!_jwtTenant.equals(_reqTenant)) {
-                var msg = MsgUtils.getMsg("SK_UNEXPECTED_TENANT_VALUE", _jwtUser,
-                		                  _jwtTenant, _reqTenant, accountType.name());
-                _log.error(msg);
-                return msg;
+                boolean isSiteAdmin = false;
+                try {
+                    isSiteAdmin = UserImpl.getInstance().hasRole(_jwtTenant, _jwtUser,
+                            new SkRoleDescriptor[] {SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR},
+                            AuthOperation.ANY);
+                } catch (TapisImplException e) {
+                    // if we have an error, and can't determine if this is a site admin, the safest
+                    // thing is to just let the check fail
+                    String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR",
+            		        _jwtTenant, _jwtUser, e.getMessage());
+                    _log.error(msg, e);
+                }
+
+                if(!isSiteAdmin) {
+                    var msg = MsgUtils.getMsg("SK_UNEXPECTED_TENANT_VALUE", _jwtUser,
+                            _jwtTenant, _reqTenant, accountType.name());
+                    _log.error(msg);
+                    return msg;
+                }
             }
         }
 
@@ -343,14 +368,14 @@ public final class SKCheckAuthz
      * 
      * @return true if passes check, false otherwise.
      */
-    private boolean checkIsAdmin()
+    private boolean checkIsTenantAdmin()
     {
         // See if the jwt user has admin privileges.
         boolean authorized = false;
         try {
             var userImpl = UserImpl.getInstance();
             authorized = userImpl.hasRole(_jwtTenant, _jwtUser, 
-                                          new SkRoleDescriptor[] {SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true)},
+                                          new SkRoleDescriptor[] {SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR},
                                           AuthOperation.ANY);
         }
         catch (Exception e) {
@@ -374,9 +399,39 @@ public final class SKCheckAuthz
         
         // What happened?
         if (authorized) return true;
-        _failedChecks.add("IsAdmin");
+        _failedChecks.add("IsTenantAdmin");
         return false;
     }
+
+    /* ---------------------------------------------------------------------------- */
+    /* checkIsAdmin:                                                                */
+    /* ---------------------------------------------------------------------------- */
+    /** Check that the jwt identity is an administrator.
+     *
+     * @return true if passes check, false otherwise.
+     */
+    private boolean checkIsSiteAdmin()
+    {
+        // See if the jwt user has admin privileges.
+        boolean authorized = false;
+        try {
+            var userImpl = UserImpl.getInstance();
+            authorized = userImpl.hasRole(_jwtTenant, _jwtUser,
+                    new SkRoleDescriptor[] {SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR},
+                    AuthOperation.ANY);
+        }
+        catch (Exception e) {
+            String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR",
+                    _jwtTenant, _jwtUser, e.getMessage());
+            _log.error(msg, e);
+        }
+
+        // What happened?
+        if (authorized) return true;
+        _failedChecks.add("IsSiteAdmin");
+        return false;
+    }
+
 
     /* ---------------------------------------------------------------------------- */
     /* checkIsService:                                                              */

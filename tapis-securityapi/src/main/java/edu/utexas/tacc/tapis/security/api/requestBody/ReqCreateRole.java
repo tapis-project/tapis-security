@@ -29,7 +29,7 @@ public final class ReqCreateRole
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "createRole", "description");
         if (!SKApiUtils.isValidName(roleName))
             return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "createRole", "roleName", roleName);
-        if (!SKApiUtils.isValidRoleType(roleName))
+        if (!SKApiUtils.isValidRoleType(roleType))
             return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "createRole", "roleType", roleType);
         // Success.
         return null;

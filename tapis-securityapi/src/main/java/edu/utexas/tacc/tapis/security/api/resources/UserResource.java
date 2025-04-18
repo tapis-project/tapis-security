@@ -337,7 +337,7 @@ public final class UserResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setPreventAdminRole(roleDescriptor.getRoleFullName())
                              .check();
@@ -404,7 +404,7 @@ public final class UserResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setPreventAdminRole(roleDescriptor.getRoleFullName())
                              .check();
@@ -477,7 +477,7 @@ public final class UserResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .check();
          if (resp != null) return resp;
          
@@ -489,7 +489,7 @@ public final class UserResource
          int rows = 0;
          try {rows = getUserImpl().grantAdminRoleInternal(user, tenant, requestor, tenant);}
              catch (Exception e) {
-                 return getExceptionResponse(e, null, "Role", UserImpl.ADMIN_ROLE_NAME);
+                 return getExceptionResponse(e, null, "Role", SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR.toString());
              }
          
          // Populate the response.
@@ -544,7 +544,7 @@ public final class UserResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .check();
          if (resp != null) return resp;
          
@@ -562,7 +562,7 @@ public final class UserResource
              }
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_REMOVE_USER_ROLE_ERROR",  
-                                              tenant, UserImpl.ADMIN_ROLE_NAME, 
+                                              tenant, SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR,
                                               user, e.getMessage());
                  return getExceptionResponse(e, msg);
              }
@@ -612,7 +612,7 @@ public final class UserResource
          ReqUserHasRoleMulti multi = new ReqUserHasRoleMulti();
          multi.tenant = payload.tenant;
          multi.user   = payload.user;
-         multi.roleDescriptors = new SkRoleDescriptor[] {SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true)};
+         multi.roleDescriptors = new SkRoleDescriptor[] { SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR };
          
          // Call the real method.
          return hasRoleMulti(payloadStream, AuthOperation.ANY, multi);
@@ -634,7 +634,7 @@ public final class UserResource
          }
          
          // Call the real method.
-         return getUsersWithRole(SkRoleType.getRoleShortName(UserImpl.ADMIN_ROLE_NAME), SkRoleType.TENANT_ADMIN.name(), tenant);
+         return getUsersWithRole(SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR.getRoleName(), SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR.getRoleTypeName(), tenant);
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -675,7 +675,7 @@ public final class UserResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(granteeTenant, grantee)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .setCheckIsService()
                              .setPreventForeignTenantUpdate()
                              .check();
@@ -751,7 +751,7 @@ public final class UserResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .setCheckIsService()
                              .setCheckMatchesJwtIdentity()
                              .setPreventForeignTenantUpdate()
@@ -824,7 +824,7 @@ public final class UserResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setPreventAdminRole(roleDescriptor.getRoleFullName())
                              .check();
@@ -1233,7 +1233,7 @@ public final class UserResource
          // We can optimize the ANY case by adding the admin role to the role array.
          if (orAdmin && (op == AuthOperation.ANY)) {
              roleDescriptors = Arrays.copyOf(roleDescriptors, roleDescriptors.length + 1);
-             roleDescriptors[roleDescriptors.length - 1] = SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true);
+             roleDescriptors[roleDescriptors.length - 1] = SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR;
          }
          
          // Get the names.
@@ -1248,7 +1248,7 @@ public final class UserResource
          // When authorization fails, check for admin role in the ALL operation case.
          if (!authorized && orAdmin && (op != AuthOperation.ANY)) {
              try {authorized = getUserImpl().hasRole(tenant, user,
-                                                     new SkRoleDescriptor[] {SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true)},
+                                                     new SkRoleDescriptor[] {SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR},
                                                      AuthOperation.ANY);}
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
@@ -1330,7 +1330,7 @@ public final class UserResource
          // When authorization fails check is user is an admin.
          if (!authorized && orAdmin) {
              try {authorized = getUserImpl().hasRole(tenant, user, 
-                                                     new SkRoleDescriptor[] {SkRoleDescriptor.newSkRoleDescriptor(UserImpl.ADMIN_ROLE_NAME, true)},
+                                                     new SkRoleDescriptor[] {SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR},
                                                      AuthOperation.ANY);}
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 

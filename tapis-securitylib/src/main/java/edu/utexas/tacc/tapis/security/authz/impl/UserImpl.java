@@ -9,7 +9,6 @@ import java.util.Map;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -532,9 +531,6 @@ public final class UserImpl
 
         Map<SkRoleType, List<String>> rolesByType = new HashMap<>();
 
-//        // Get the user's roles.  An exception can be thrown here.
-//        List<String> roles = getUserRoleNames(tenant, user);
-        
         // Initialize the result based on the operation.
         // ANY starts out as false, ALL starts as true.
         boolean authorized = (op == AuthOperation.ANY) ? false : true;
@@ -684,7 +680,7 @@ public final class UserImpl
     {
         // The tenant admin role.
         String desc = "Administrator role for tenant " + granteeTenant;
-        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(ADMIN_ROLE_NAME, true);
+        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR;
         return grantRoleInternal(roleDescriptor, granteeTenant, desc,
         		                 grantee, granteeTenant, grantor, grantorTenant);
     }
@@ -764,7 +760,7 @@ public final class UserImpl
         }
         
         // The tenant admin role.
-        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(ADMIN_ROLE_NAME, true);
+        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR;
         
         // Get all the users with the admin role.  Exceptions already logged.
         List<String> admins = getUsersWithRole(tenant, roleDescriptor);

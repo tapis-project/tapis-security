@@ -28,7 +28,6 @@ import javax.ws.rs.core.UriInfo;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -294,7 +293,8 @@ public final class RoleResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsService()
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
+                             .setCheckIsSiteAdmin()
                              .setPreventForeignTenantUpdate()
                              .check();
          if (resp != null) return resp;
@@ -357,7 +357,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -422,7 +422,7 @@ public final class RoleResource
          // Create the role.
          List<String> list = null;
          try {
-             list = getRoleImpl().getRolePermissions(tenant, SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName), immediate);
+             list = getRoleImpl().getRolePermissions(tenant, roleDescriptor, immediate);
          } catch (Exception e) {
              String msg = MsgUtils.getMsg("SK_ROLE_GET_PERMISSIONS_ERROR",tenant, 
                                           TapisThreadLocal.tapisThreadContext.get().getJwtUser(), 
@@ -490,7 +490,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -567,7 +567,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setPreventInvalidOwnerAssignment(newTenant)
                              .check();
@@ -645,7 +645,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -710,7 +710,7 @@ public final class RoleResource
                  // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -780,7 +780,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -847,7 +847,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(parentRoleName, SkRoleType.USER)
                              .addOwnedRole(childRoleName, SkRoleType.USER)
                              .check();
@@ -917,7 +917,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .addOwnedRole(parentRoleName, SkRoleType.USER)
                              .check();
          if (resp != null) return resp;
@@ -1070,7 +1070,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null)
-                             .setCheckIsAdmin()
+                             .setCheckIsTenantAdmin()
                              .setCheckIsFilesService()
                              .check();
          if (resp != null) return resp;
