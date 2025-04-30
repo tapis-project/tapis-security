@@ -291,14 +291,19 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsService()
-                             .setCheckIsTenantAdmin()
-                             .setCheckIsSiteAdmin()
-                             .setPreventForeignTenantUpdate()
-                             .check();
+         SKCheckAuthz authz = SKCheckAuthz.configure(roleTenant, null)
+                 .setCheckIsService()
+                 .setCheckIsSiteAdmin()
+                 .setPreventForeignTenantUpdate();
+
+         // tenant admins can only create USER roles
+         if(SkRoleType.USER.equals(roleDescriptor.getRoleType())) {
+             authz.setCheckIsTenantAdmin();
+         }
+
+         Response resp = authz.check();
          if (resp != null) return resp;
-         
+
          // ------------------------ Request Processing ------------------------
          // The threadlocal object has been validated by now.
          String owner = TapisThreadLocal.tapisThreadContext.get().getJwtUser();
@@ -569,6 +574,7 @@ public final class RoleResource
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
+                             .setCheckIsSiteAdmin()
                              .setPreventInvalidOwnerAssignment(newTenant)
                              .check();
          if (resp != null) return resp;
@@ -711,6 +717,7 @@ public final class RoleResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsTenantAdmin()
+                             .setCheckIsSiteAdmin()
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -843,13 +850,14 @@ public final class RoleResource
          String roleTenant     = payload.roleTenant; 
          String parentRoleName = payload.parentRoleName;
          String childRoleName  = payload.childRoleName;
-         
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsTenantAdmin()
                              .addOwnedRole(parentRoleName, SkRoleType.USER)
                              .addOwnedRole(childRoleName, SkRoleType.USER)
+                             .setCheckIsSiteAdmin()
                              .check();
          if (resp != null) return resp;
          

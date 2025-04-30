@@ -24,7 +24,7 @@ public class SkRoleDescriptor {
     public static SkRoleDescriptor newSkRoleDescriptor(String roleName, String roleTypeName, boolean allowTypeInferance) {
         SkRoleType roleType = null;
         if(!StringUtils.isBlank(roleTypeName)) {
-            roleType = SkRoleType.getRoleTypeFromStringIgnoreCase(roleName);
+            roleType = SkRoleType.getRoleTypeFromStringIgnoreCase(roleTypeName);
         }
         return new SkRoleDescriptor(roleName, roleType, allowTypeInferance);
     }

@@ -46,6 +46,8 @@ public final class SKCheckAuthz
     private final SecretPathMapperParms _secretPathParms;
     private final TapisThreadContext    _threadContext;
     private final ArrayList<String>     _failedChecks = new ArrayList<>();
+
+    private Boolean _jwtUserIsSiteAdmin = null;
     
     // Identity checks.
     private boolean _checkMatchesJwtIdentity;
@@ -310,20 +312,7 @@ public final class SKCheckAuthz
         if (accountType == AccountType.user) {
             // User tokens require exact tenant matches.
             if (!_jwtTenant.equals(_reqTenant)) {
-                boolean isSiteAdmin = false;
-                try {
-                    isSiteAdmin = UserImpl.getInstance().hasRole(_jwtTenant, _jwtUser,
-                            new SkRoleDescriptor[] {SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR},
-                            AuthOperation.ANY);
-                } catch (TapisImplException e) {
-                    // if we have an error, and can't determine if this is a site admin, the safest
-                    // thing is to just let the check fail
-                    String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR",
-            		        _jwtTenant, _jwtUser, e.getMessage());
-                    _log.error(msg, e);
-                }
-
-                if(!isSiteAdmin) {
+                if(!isSiteAdmin()) {
                     var msg = MsgUtils.getMsg("SK_UNEXPECTED_TENANT_VALUE", _jwtUser,
                             _jwtTenant, _reqTenant, accountType.name());
                     _log.error(msg);
@@ -782,6 +771,7 @@ public final class SKCheckAuthz
     {
         // It's ok if no new tenant assignment is under consideration.
         if (StringUtils.isBlank(_preventInvalidOwner)) return null; // success
+        if (isSiteAdmin()) return null; // site admins can always do this.
         
         // The role's tenant can always stay the same, which is
         // the only way it can work for user JWTs.
@@ -842,5 +832,27 @@ public final class SKCheckAuthz
                                      s);
         _log.error(msg);
         return msg;
+    }
+
+    private boolean isSiteAdmin() {
+        // result is cached in _jwtUserIsSiteAdmin, so we don't have to keep looking it up
+        // over and over
+        if(_jwtUserIsSiteAdmin == null) {
+            _jwtUserIsSiteAdmin = Boolean.FALSE;
+            try {
+                boolean isSiteAdmin = UserImpl.getInstance().hasRole(_jwtTenant, _jwtUser,
+                        new SkRoleDescriptor[]{SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR},
+                        AuthOperation.ANY);
+                _jwtUserIsSiteAdmin = Boolean.valueOf(isSiteAdmin);
+            } catch (TapisImplException e) {
+                // if we have an error, and can't determine if this is a site admin, the safest
+                // thing is to just let the check fail
+                String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR",
+                        _jwtTenant, _jwtUser, e.getMessage());
+                _log.error(msg, e);
+            }
+        }
+
+        return _jwtUserIsSiteAdmin.booleanValue();
     }
 }

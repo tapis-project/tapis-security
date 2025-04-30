@@ -31,6 +31,7 @@ services:
        - tapis.tenant.svc.baseurl=https://admin.develop.tapis.io
        - JPDA_ADDRESS=0.0.0.0:8000
        - JPDA_SUSPEND=y
+       - tapis.envonly.skip.jwt.verify=true
 
     ports:
       - 8090:8080
