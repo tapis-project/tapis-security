@@ -1,11 +1,17 @@
 package edu.utexas.tacc.tapis.security.api.resources;
 
+import edu.utexas.tacc.tapis.security.api.responses.RespPathPrefixes;
+import edu.utexas.tacc.tapis.security.api.responses.RespRole;
 import edu.utexas.tacc.tapis.security.authz.dao.SkRoleDao;
 import edu.utexas.tacc.tapis.security.authz.model.SkRole;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import edu.utexas.tacc.tapis.security.authz.permissions.PermissionTransformer;
+import edu.utexas.tacc.tapis.shared.utils.SkConstants;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
+import edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray;
+import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultChangeCount;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -58,15 +64,15 @@ public class RoleResourceTests {
         doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, 201);
         doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, 201);
         doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.RESTRICTED_SVC, 201);
-        doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, 201);
-        doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.SITE_ADMIN, 201);
+        doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, 401);
+        doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.SITE_ADMIN, 401);
 
         // try as a site admin user - different Tenant
         doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.USER, 201);
         doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.USER_DEFAULT, 201);
         doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.RESTRICTED_SVC, 201);
-        doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.TENANT_ADMIN, 201);
-        doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.SITE_ADMIN, 201);
+        doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.TENANT_ADMIN, 401);
+        doTestCreateRole(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.SITE_ADMIN, 401);
     }
 
     private void doTestCreateRole(String token, String roleTenant, SkRoleType roleType, int expectedResult) throws Exception {
@@ -178,16 +184,15 @@ public class RoleResourceTests {
     public void testAddRolePermissions() throws Exception {
         doTestAddAndRetrieveRolePermissions(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
         doTestAddAndRetrieveRolePermissions(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 401);
-        doTestAddAndRetrieveRolePermissions(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_USER_1, 401);
-        doTestAddAndRetrieveRolePermissions(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_USER_2, 401);
+        doTestAddAndRetrieveRolePermissions(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_USER_SK, 401);
 
         doTestAddAndRetrieveRolePermissions(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_TENANT_ADMIN_USER, 200);
         doTestAddAndRetrieveRolePermissions(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
-//        doTestAddAndRetrieveRolePermissions(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_TENANT_ADMIN_USER, 200);
-//        doTestAddAndRetrieveRolePermissions(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestAddAndRetrieveRolePermissions(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_USER_SK, 401);
 
         doTestAddAndRetrieveRolePermissions(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
         doTestAddAndRetrieveRolePermissions(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_SITE_ADMIN_USER, 200);
+        doTestAddAndRetrieveRolePermissions(siteAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.RESTRICTED_SVC, IntegrationTestUtils.TEST_SITE_ADMIN_USER, 200);
 //        doTestAddAndRetrieveRolePermissions(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_USER_1, 200);
 //        doTestAddAndRetrieveRolePermissions(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_SITE_ADMIN_USER, 200);
     }
@@ -200,12 +205,12 @@ public class RoleResourceTests {
         String permSpec3 = "integration.test1,test2";
 
         // add permissions
-        Response response = RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleName, permSpec1);
+        Response response = RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName, permSpec1);
         Assert.assertEquals(response.getStatus(), expectedResult);
 
         if((expectedResult >= 200) && (expectedResult < 300)) {
             // get role, and make sure it's correct
-            response = RoleResourceTestUtils.getRolePermissions(token, roleTenant, SkRoleType.USER, roleName, true);
+            response = RoleResourceTestUtils.getRolePermissions(token, roleTenant, roleType, roleName, true);
             Assert.assertEquals(response.getStatus(), 200);
             String jsonString = response.readEntity(String.class);
             RespNameArray nameArray = TapisGsonUtils.getGson().fromJson(jsonString, RespNameArray.class);
@@ -215,10 +220,10 @@ public class RoleResourceTests {
             Assert.assertListNotContains(Arrays.asList(nameArray.result.names), Predicate.isEqual(permSpec3), "Permission " + permSpec3 + " not found for role " + roleName);
 
             // add permissions
-            response = RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleName, permSpec2);
+            response = RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName, permSpec2);
             Assert.assertEquals(response.getStatus(), expectedResult);
             // get role, and make sure it's correct
-            response = RoleResourceTestUtils.getRolePermissions(token, roleTenant, SkRoleType.USER, roleName, true);
+            response = RoleResourceTestUtils.getRolePermissions(token, roleTenant, roleType, roleName, true);
             Assert.assertEquals(response.getStatus(), 200);
             jsonString = response.readEntity(String.class);
             nameArray = TapisGsonUtils.getGson().fromJson(jsonString, RespNameArray.class);
@@ -229,11 +234,11 @@ public class RoleResourceTests {
             Assert.assertListNotContains(Arrays.asList(nameArray.result.names), Predicate.isEqual(permSpec3), "Permission " + permSpec3 + " not found for role " + roleName);
 
             // add permissions
-            response = RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleName, permSpec3);
+            response = RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName, permSpec3);
             Assert.assertEquals(response.getStatus(), expectedResult);
 
             // get role, and make sure it's correct
-            response = RoleResourceTestUtils.getRolePermissions(token, roleTenant, SkRoleType.USER, roleName, true);
+            response = RoleResourceTestUtils.getRolePermissions(token, roleTenant, roleType, roleName, true);
             Assert.assertEquals(response.getStatus(), 200);
             jsonString = response.readEntity(String.class);
             nameArray = TapisGsonUtils.getGson().fromJson(jsonString, RespNameArray.class);
@@ -256,12 +261,122 @@ public class RoleResourceTests {
     }
 
     @Test
-    public void testGetRoleByName() {
+    public void testGetRoleByName() throws Exception {
+        String userRoleName_1 = createRole(IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1);
+        String userRoleName_2 = createRole(IntegrationTestUtils.TEST_TENANT_2, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1);
+        String userDefaultRoleName_1 = createRole(IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, IntegrationTestUtils.TEST_USER_1);
+        String restrictedServiceRoleName_1 = createRole(IntegrationTestUtils.TEST_TENANT_1, SkRoleType.RESTRICTED_SVC, IntegrationTestUtils.TEST_USER_1);
+
+        doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, userRoleName_1, 200);
+        doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.USER, userRoleName_2, 400);
+        doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, userDefaultRoleName_1, 200);
+        doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, SkConstants.ADMIN_ROLE_NAME, 401);
+        doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.RESTRICTED_SVC, restrictedServiceRoleName_1, 200);
+        doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE, 400);
+
+        doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, userRoleName_1, 200);
+        doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.USER, userRoleName_2, 400);
+        doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, userDefaultRoleName_1, 200);
+        doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, SkConstants.ADMIN_ROLE_NAME, 401);
+        doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.RESTRICTED_SVC, restrictedServiceRoleName_1, 200);
+        doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE, 400);
+
+        doTestGetRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, userRoleName_1, 200);
+        doTestGetRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.USER, userRoleName_2, 200);
+        doTestGetRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, userDefaultRoleName_1, 200);
+        doTestGetRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, SkRoleType.getRoleShortName(SkConstants.ADMIN_ROLE_NAME), 200);
+        doTestGetRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.RESTRICTED_SVC, restrictedServiceRoleName_1, 200);
+        doTestGetRoleByName(siteAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, SkRoleType.getRoleShortName(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE), 200);
+    }
+
+    private void  doTestGetRoleByName(String token, String tenant, SkRoleType roleType, String roleName, int expectedResult) throws Exception {
+        Response response = RoleResourceTestUtils.getRoleByName(token, tenant, roleType, roleName);
+        Assert.assertEquals(response.getStatus(), expectedResult);
+
+        String jsonString = response.readEntity(String.class);
+        RespRole roleResponse = TapisGsonUtils.getGson().fromJson(jsonString, RespRole.class);
+        SkRole role = roleResponse.result;
+
+
+        if((expectedResult >= 200) && (expectedResult < 300)) {
+            Assert.assertEquals(roleName, role.getName());
+            Assert.assertEquals(roleType, role.getType());
+        }
+    }
+
+    @Test
+    public void testDeleteRoleByName() throws Exception {
+        doTestDeleteRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestDeleteRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 401);
+        doTestDeleteRoleByName(userToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.RESTRICTED_SVC, IntegrationTestUtils.TEST_USER_1, 400);
+        doTestDeleteRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, null, 401);
+        doTestDeleteRoleByName(userToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, null, 400);
+
+        doTestDeleteRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestDeleteRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 200);
+        doTestDeleteRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.RESTRICTED_SVC, IntegrationTestUtils.TEST_USER_1, 400);
+        doTestDeleteRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, null, 401);
+        doTestDeleteRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, null, 400);
+
+        doTestDeleteRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestDeleteRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 200);
+        doTestDeleteRoleByName(siteAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.RESTRICTED_SVC, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestDeleteRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, null, 401);
+        doTestDeleteRoleByName(siteAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, null, 401);
 
     }
 
-    private void doTestGetRoleByName() {
-//        String roleName = createRole(roleTenant, roleType, roleOwner)
+    private void doTestDeleteRoleByName(String token, String roleTenant, SkRoleType roleType, String roleOwner, int expectedResult) throws Exception {
+        // create roles to delete
+        String roleName = null;
+        switch (roleType) {
+            case USER -> roleName = createRole(roleTenant, roleType, roleOwner);
+            case USER_DEFAULT -> roleName = createRole(roleTenant, roleType, roleOwner);
+            case RESTRICTED_SVC -> roleName = createRole(roleTenant, roleType, roleOwner);
+            case TENANT_ADMIN -> roleName = SkConstants.ADMIN_ROLE_NAME;
+            case SITE_ADMIN -> roleName = SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE;
+        }
+
+
+        Response response = RoleResourceTestUtils.deleteRoleByName(token, roleTenant, roleType, roleName);
+        Assert.assertEquals(response.getStatus(), expectedResult);
+
+        String jsonString = response.readEntity(String.class);
+        RespChangeCount rowCountResponse = TapisGsonUtils.getGson().fromJson(jsonString, RespChangeCount.class);
+        ResultChangeCount changeCount = rowCountResponse.result;
+
+        if((expectedResult >= 200) && (expectedResult < 300)) {
+            Assert.assertEquals(1, changeCount.changes);
+        }
+    }
+
+    @Test
+    public void testPathPrefix() throws Exception {
+        doTestPathPrefix(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, "files:dev:READ:system_a:/home/user_a",
+                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, "files:dev:READ:system_a:/home/user_b");
+        doTestPathPrefix(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, "files:dev:READ:system_a:/home/user_a",
+                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, "files:dev:READ:system_a:/home/user_b");
+        doTestPathPrefix(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, "files:dev:READ:system_a:/home/user_a",
+                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, "files:dev:READ:system_a:/home/user_b");
+    }
+
+    private void doTestPathPrefix(String token, String roleTenant, SkRoleType roleType, String roleOwner,
+                                  String initialPermission, String schema,
+                                  String oldSystemId, String newSystemId, String oldPrefix,
+                                  String newPrefix, int expectedResult, String expectedNewPermission) throws Exception {
+        String roleName = createRole(roleTenant, roleType, roleOwner);
+        RoleResourceTestUtils.addRolePermissions(siteAdminToken, roleTenant, roleType, roleName, initialPermission);
+
+        Response response = RoleResourceTestUtils.previewPathPrefix(token, roleTenant, roleType, roleName, schema, oldSystemId, newSystemId, oldPrefix, newPrefix);
+        String jsonString = response.readEntity(String.class);
+        RespPathPrefixes prefixesResponse = TapisGsonUtils.getGson().fromJson(jsonString, RespPathPrefixes.class);
+        Assert.assertEquals(expectedResult, response.getStatus());
+        if((expectedResult >= 200) && (expectedResult < 300)) {
+            PermissionTransformer.Transformation[] result = prefixesResponse.result;
+            Assert.assertEquals(result.length, 1);
+            Assert.assertEquals(result[0].oldPerm, initialPermission);
+            Assert.assertEquals(result[0].newPerm, expectedNewPermission);
+        }
     }
 
     private String createRole(String roleTenant, SkRoleType roleType, String roleOwner) throws Exception {

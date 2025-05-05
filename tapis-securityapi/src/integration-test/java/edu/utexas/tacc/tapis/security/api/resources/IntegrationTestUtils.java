@@ -5,6 +5,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.parameters.TapisInput;
+import edu.utexas.tacc.tapis.shared.utils.SkConstants;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -19,6 +20,7 @@ public class IntegrationTestUtils {
     public static final String TEST_TENANT_ADMIN_USER = "admin";
     public static final String TEST_USER_1 = "testuser3";
     public static final String TEST_USER_2 = "testuser4";
+    public static final String TEST_USER_SK = SkConstants.SK_USER;
 
     public static String getTokenForUser(String user, String tenant) {
         var jwt = JWT.create()

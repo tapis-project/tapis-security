@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.security.api.resources;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqAddChildRole;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqAddRolePermission;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqCreateRole;
+import edu.utexas.tacc.tapis.security.api.requestBody.ReqPreviewPathPrefix;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqRemoveChildRole;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqRemoveRolePermission;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqUpdateRoleOwner;
@@ -23,12 +24,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public class RoleResourceTestUtils {
-    public static final String CREATE_ROLE_PATH = "role";
-    public static final String ADD_CHILD_ROLE_PATH = "role/addChild";
-    public static final String UPDATE_ROLE_OWNER = "role/updateOwner";
-    public static final String ADD_ROLE_PERMISSIONS = "role/addPerm";
-
-
     public static final String TEST_PREFIX_ROLE_NAME = "integration_test_role_";
 
     public static Response createRole(String token, String roleTenant,
@@ -41,7 +36,7 @@ public class RoleResourceTestUtils {
         String jsonString = TapisGsonUtils.getGson().toJson(reqCreateRole);
         Response response = ClientBuilder.newClient()
                 .target(IntegrationTestUtils.getBaseUrl())
-                .path(CREATE_ROLE_PATH)
+                .path("role")
                 .request(MediaType.APPLICATION_JSON)
                 .header("X-Tapis-Token", token)
                 .post(Entity.json(jsonString));
@@ -59,7 +54,7 @@ public class RoleResourceTestUtils {
         String jsonString = TapisGsonUtils.getGson().toJson(reqUpdateRoleOwner);
         Response response = ClientBuilder.newClient()
                 .target(IntegrationTestUtils.getBaseUrl())
-                .path(UPDATE_ROLE_OWNER + "/" + roleName)
+                .path("role/updateOwner" + "/" + roleName)
                 .request(MediaType.APPLICATION_JSON)
                 .header("X-Tapis-Token", token)
                 .post(Entity.json(jsonString));
@@ -75,30 +70,53 @@ public class RoleResourceTestUtils {
         String jsonString = TapisGsonUtils.getGson().toJson(reqAddChildRole);
         Response response = ClientBuilder.newClient()
                 .target(IntegrationTestUtils.getBaseUrl())
-                .path(ADD_CHILD_ROLE_PATH)
+                .path("role/addChild")
                 .request(MediaType.APPLICATION_JSON)
                 .header("X-Tapis-Token", token)
                 .post(Entity.json(jsonString));
         return response;
     }
 
-    public static Response addRolePermissions(String token, String roleTenant,
+    public static Response addRolePermissions(String token, String roleTenant, SkRoleType roleType,
                                         String roleName, String permSpec) throws TapisException {
         ReqAddRolePermission reqAddRolePermission = new ReqRemoveRolePermission();
         reqAddRolePermission.roleTenant = roleTenant;
+        reqAddRolePermission.roleType = roleType.name();
         reqAddRolePermission.roleName = roleName;
         reqAddRolePermission.permSpec = permSpec;
 
         String jsonString = TapisGsonUtils.getGson().toJson(reqAddRolePermission);
         Response response = ClientBuilder.newClient()
                 .target(IntegrationTestUtils.getBaseUrl())
-                .path(ADD_ROLE_PERMISSIONS)
+                .path("role/addPerm")
                 .request(MediaType.APPLICATION_JSON)
                 .header("X-Tapis-Token", token)
                 .post(Entity.json(jsonString));
         return response;
     }
 
+    public static Response previewPathPrefix(String token, String roleTenant, SkRoleType roleType, String roleName,
+                                             String schema, String oldSystemId, String newSystemId,
+                                             String oldPrefix, String newPrefix) throws TapisException {
+        ReqPreviewPathPrefix reqPreviewPathPrefix = new ReqPreviewPathPrefix();
+        reqPreviewPathPrefix.tenant = roleTenant;
+        reqPreviewPathPrefix.roleType = roleType.name();
+        reqPreviewPathPrefix.schema = schema;
+        reqPreviewPathPrefix.roleName = roleName;
+        reqPreviewPathPrefix.oldSystemId = oldSystemId;
+        reqPreviewPathPrefix.newSystemId = newSystemId;
+        reqPreviewPathPrefix.oldPrefix = oldPrefix;
+        reqPreviewPathPrefix.newPrefix = newPrefix;
+
+        String jsonString = TapisGsonUtils.getGson().toJson(reqPreviewPathPrefix);
+        Response response = ClientBuilder.newClient()
+                .target(IntegrationTestUtils.getBaseUrl())
+                .path("role/previewPathPrefix")
+                .request(MediaType.APPLICATION_JSON)
+                .header("X-Tapis-Token", token)
+                .post(Entity.json(jsonString));
+        return response;
+    }
     public static Response getRolePermissions(String token, String roleTenant,
                                               SkRoleType roleType, String roleName,
                                               boolean immediate) throws TapisException {
@@ -113,6 +131,33 @@ public class RoleResourceTestUtils {
                 .get();
         return response;
     }
+
+    public static Response getRoleByName(String token, String roleTenant,
+                                              SkRoleType roleType, String roleName) throws TapisException {
+        Response response = ClientBuilder.newClient()
+                .target(IntegrationTestUtils.getBaseUrl())
+                .queryParam("tenant", roleTenant)
+                .queryParam("roleType", roleType.name())
+                .path("role/" + roleName)
+                .request(MediaType.APPLICATION_JSON)
+                .header("X-Tapis-Token", token)
+                .get();
+        return response;
+    }
+
+    public static Response deleteRoleByName(String token, String roleTenant,
+                                         SkRoleType roleType, String roleName) throws TapisException {
+        Response response = ClientBuilder.newClient()
+                .target(IntegrationTestUtils.getBaseUrl())
+                .queryParam("tenant", roleTenant)
+                .queryParam("roleType", roleType.name())
+                .path("role/" + roleName)
+                .request(MediaType.APPLICATION_JSON)
+                .header("X-Tapis-Token", token)
+                .delete();
+        return response;
+    }
+
 
     public static void cleanupAllTestRoles(SkRoleDao roleDao, String tenant, Set<SkRoleType> roleTypesToDelete) throws Exception {
         for(var roleType : roleTypesToDelete) {

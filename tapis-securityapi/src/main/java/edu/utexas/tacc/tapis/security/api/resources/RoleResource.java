@@ -1,8 +1,11 @@
 package edu.utexas.tacc.tapis.security.api.resources;
 
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.security.PermitAll;
 import javax.servlet.ServletContext;
@@ -94,6 +97,11 @@ public final class RoleResource
             "/edu/utexas/tacc/tapis/security/api/jsonschema/PreviewPathPrefixRequest.json";
     private static final String FILE_SK_REPLACE_PATH_PREFIX_REQUEST = 
             "/edu/utexas/tacc/tapis/security/api/jsonschema/ReplacePathPrefixRequest.json";
+
+    private static final Set<SkRoleType> ALL_ROLES = EnumSet.allOf(SkRoleType.class);
+    private static final Set<SkRoleType> ADMIN_ROLES = EnumSet.of(SkRoleType.TENANT_ADMIN, SkRoleType.SITE_ADMIN);
+    private static final Set<SkRoleType> USER_ROLES = EnumSet.of(SkRoleType.USER);
+    private static final Set<SkRoleType> NON_ADMIN_ROLES = EnumSet.of(SkRoleType.USER, SkRoleType.USER_DEFAULT, SkRoleType.RESTRICTED_SVC);
 
     /* **************************************************************************** */
     /*                                    Fields                                    */
@@ -224,10 +232,12 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check();
+         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
+                 .setRoleTypeRestrictions(NON_ADMIN_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
+                 .check();
          if (resp != null) return resp;
 
-                 // ------------------------ Request Processing ------------------------
+         // ------------------------ Request Processing ------------------------
          // Get the role.
          SkRole role = null;
          try {
@@ -291,18 +301,17 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         SKCheckAuthz authz = SKCheckAuthz.configure(roleTenant, null)
-                 .setCheckIsService()
-                 .setCheckIsSiteAdmin()
-                 .setPreventForeignTenantUpdate();
+         Response resp = SKCheckAuthz.configure(roleTenant, null, roleDescriptor.getRoleType())
+                         .setCheckIsService()
+                         .setCheckIsSiteAdmin()
+                         .setCheckIsTenantAdmin()
+                         .setPreventForeignTenantUpdate()
+                         .setRoleTypeRestrictions(USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                         .check();
 
-         // tenant admins can only create USER roles
-         if(SkRoleType.USER.equals(roleDescriptor.getRoleType())) {
-             authz.setCheckIsTenantAdmin();
+         if (resp != null) {
+             return resp;
          }
-
-         Response resp = authz.check();
-         if (resp != null) return resp;
 
          // ------------------------ Request Processing ------------------------
          // The threadlocal object has been validated by now.
@@ -361,12 +370,17 @@ public final class RoleResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null)
-                             .setCheckIsTenantAdmin()
-                             .addOwnedRole(roleDescriptor)
-                             .check();
-         if (resp != null) return resp;
-         
+         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
+                 .addOwnedRole(roleDescriptor)
+                 .setCheckIsTenantAdmin()
+                 .setCheckIsSiteAdmin()
+                 .setRoleTypeRestrictions(USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                 .check();
+
+         if (resp != null) {
+             return resp;
+         }
+
          // ------------------------ Request Processing ------------------------
          // Delete the role.
          int rows = 0;
@@ -420,7 +434,9 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check();
+         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
+                 .setRoleTypeRestrictions(NON_ADMIN_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
+                 .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -711,15 +727,16 @@ public final class RoleResource
          // Fill in the parameter fields.
          String roleTenant = payload.roleTenant;
          String permSpec   = payload.permSpec;
-         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, SkRoleType.USER);
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, payload.roleType);
 
                  // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(roleTenant, null)
-                             .setCheckIsTenantAdmin()
-                             .setCheckIsSiteAdmin()
-                             .addOwnedRole(roleDescriptor)
-                             .check();
+         Response resp = SKCheckAuthz.configure(roleTenant, null, roleDescriptor.getRoleType())
+                 .setCheckIsTenantAdmin()
+                 .setCheckIsSiteAdmin()
+                 .addOwnedRole(roleDescriptor)
+                 .setRoleTypeRestrictions(USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                 .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -999,8 +1016,12 @@ public final class RoleResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null).check();
-         if (resp != null) return resp;
+         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
+                 .setRoleTypeRestrictions(NON_ADMIN_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                 .check();
+         if (resp != null) {
+             return resp;
+         }
          
         // ------------------------ Request Processing ------------------------
          // Get the list of transformations that would be appled by replacePathPrefix.
@@ -1114,6 +1135,7 @@ public final class RoleResource
      /* ---------------------------------------------------------------------------- */
      /* getDefaultUserRole:                                                          */
      /* ---------------------------------------------------------------------------- */
+     @Deprecated // This is no longer needed.  A default role always has the user's name, and a type of USER_DEFAULT.
      @GET
      @Path("/defaultRole/{user}")
      @Produces(MediaType.APPLICATION_JSON)
@@ -1292,29 +1314,4 @@ public final class RoleResource
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
              MsgUtils.getMsg("TAPIS_UPDATED", "Permission", permSpec), r)).build();
      }
-
-    /**
-     * Used to infer the type of a role based on it's name.  If a type is passed in, that type will be
-     * used.  If the type is null, this method will "guess" based on the role's prefix.  This should be
-     * called VERY carefully to avoid a situation where we might create an admin role when only a user
-     * role is permetted, etc.  Just be careful!
-     *
-     * @param roleName
-     * @param typeGiven
-     * @return
-     */
-    /*
-     private Pair<String, SkRoleType> inferNameAndType(String roleName, String typeGiven) {
-         if(StringUtils.isBlank(typeGiven)) {
-             return Pair.of(SkRoleType.getRoleShortName(roleName), SkRoleType.getRoleTypeFromRoleName(roleName));
-         }
-
-         return Pair.of(roleName, getRoleTypeFromStringIgnoreCase(typeGiven));
-     }
-
-     private SkRoleType getRoleTypeFromStringIgnoreCase(String typeName) {
-         return SkRoleType.valueOf(typeName.toUpperCase());
-     }
-
-     */
 }
