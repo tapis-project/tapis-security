@@ -5,7 +5,9 @@ import edu.utexas.tacc.tapis.security.api.requestBody.ReqAddRolePermission;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqCreateRole;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqPreviewPathPrefix;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqRemoveChildRole;
+import edu.utexas.tacc.tapis.security.api.requestBody.ReqRemovePermissionFromAllRoles;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqRemoveRolePermission;
+import edu.utexas.tacc.tapis.security.api.requestBody.ReqReplacePathPrefix;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqUpdateRoleOwner;
 import edu.utexas.tacc.tapis.security.authz.dao.SkRoleDao;
 import edu.utexas.tacc.tapis.security.authz.model.SkRole;
@@ -43,7 +45,7 @@ public class RoleResourceTestUtils {
         return response;
     }
 
-    public static Response updateOwner(String token,
+    public static Response updateRoleOwner(String token,
                                         String roleTenant, SkRoleType roleType, String roleName,
                                         String newTenant, String newOwner) throws TapisException {
         ReqUpdateRoleOwner reqUpdateRoleOwner = new ReqUpdateRoleOwner();
@@ -76,7 +78,23 @@ public class RoleResourceTestUtils {
                 .post(Entity.json(jsonString));
         return response;
     }
-
+/*
+    public static Response removePathPermissionsFromAllRoles(String token, String roleTenant,
+                                        SkRoleType roleType, String permSpec) throws TapisException {
+        ReqRemovePermissionFromAllRoles reqRemovePermissionFromAllRoles = new ReqRemovePermissionFromAllRoles();
+        reqRemovePermissionFromAllRoles.tenant = roleTenant;
+        reqRemovePermissionFromAllRoles.roleType = roleType.name();
+        reqRemovePermissionFromAllRoles.permSpec = permSpec;
+        String jsonString = TapisGsonUtils.getGson().toJson(reqRemovePermissionFromAllRoles);
+        Response response = ClientBuilder.newClient()
+                .target(IntegrationTestUtils.getBaseUrl())
+                .path("role/removePathPermissionFromAllRoles")
+                .request(MediaType.APPLICATION_JSON)
+                .header("X-Tapis-Token", token)
+                .post(Entity.json(jsonString));
+        return response;
+    }
+*/
     public static Response addRolePermissions(String token, String roleTenant, SkRoleType roleType,
                                         String roleName, String permSpec) throws TapisException {
         ReqAddRolePermission reqAddRolePermission = new ReqRemoveRolePermission();
@@ -117,6 +135,30 @@ public class RoleResourceTestUtils {
                 .post(Entity.json(jsonString));
         return response;
     }
+
+    public static Response replacePathPrefix(String token, String roleTenant, SkRoleType roleType, String roleName,
+                                             String schema, String oldSystemId, String newSystemId,
+                                             String oldPrefix, String newPrefix) throws TapisException {
+        ReqReplacePathPrefix reqReplacePathPrefix = new ReqReplacePathPrefix();
+        reqReplacePathPrefix.tenant = roleTenant;
+        reqReplacePathPrefix.roleType = roleType.name();
+        reqReplacePathPrefix.schema = schema;
+        reqReplacePathPrefix.roleName = roleName;
+        reqReplacePathPrefix.oldSystemId = oldSystemId;
+        reqReplacePathPrefix.newSystemId = newSystemId;
+        reqReplacePathPrefix.oldPrefix = oldPrefix;
+        reqReplacePathPrefix.newPrefix = newPrefix;
+
+        String jsonString = TapisGsonUtils.getGson().toJson(reqReplacePathPrefix);
+        Response response = ClientBuilder.newClient()
+                .target(IntegrationTestUtils.getBaseUrl())
+                .path("role/replacePathPrefix")
+                .request(MediaType.APPLICATION_JSON)
+                .header("X-Tapis-Token", token)
+                .post(Entity.json(jsonString));
+        return response;
+    }
+
     public static Response getRolePermissions(String token, String roleTenant,
                                               SkRoleType roleType, String roleName,
                                               boolean immediate) throws TapisException {

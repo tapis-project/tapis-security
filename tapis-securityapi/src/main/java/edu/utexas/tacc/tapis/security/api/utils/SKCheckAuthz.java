@@ -313,7 +313,7 @@ public final class SKCheckAuthz
             if ((_tenantAdminTypeRestrictions != null) && (!_tenantAdminTypeRestrictions.contains(_reqRoleType))) {
                 allowed = false;
             }
-        } else {
+        } else if (isUserAccount()){
             if ((_userTypeRestrictions != null) && (!_userTypeRestrictions.contains(_reqRoleType))) {
                 allowed = false;
             }
@@ -911,6 +911,10 @@ public final class SKCheckAuthz
         }
 
         return _jwtUserIsTenantAdmin.booleanValue();
+    }
+
+    private boolean isUserAccount() {
+        return (_threadContext.getAccountType() == AccountType.user);
     }
 
 }

@@ -353,29 +353,40 @@ public class RoleResourceTests {
     @Test
     public void testPathPrefix() throws Exception {
         doTestPathPrefix(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, "files:dev:READ:system_a:/home/user_a",
-                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, "files:dev:READ:system_a:/home/user_b");
+                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, 401, "files:dev:READ:system_a:/home/user_b");
         doTestPathPrefix(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, "files:dev:READ:system_a:/home/user_a",
-                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, "files:dev:READ:system_a:/home/user_b");
+                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, 200, "files:dev:READ:system_a:/home/user_b");
         doTestPathPrefix(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, "files:dev:READ:system_a:/home/user_a",
-                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, "files:dev:READ:system_a:/home/user_b");
+                "files", "system_a", "system_a", "/home/user_a", "/home/user_b", 200, 200, "files:dev:READ:system_a:/home/user_b");
     }
 
     private void doTestPathPrefix(String token, String roleTenant, SkRoleType roleType, String roleOwner,
                                   String initialPermission, String schema,
                                   String oldSystemId, String newSystemId, String oldPrefix,
-                                  String newPrefix, int expectedResult, String expectedNewPermission) throws Exception {
+                                  String newPrefix, int expectedPreviewResult, int expectedReplaceResult,
+                                  String expectedNewPermission) throws Exception {
         String roleName = createRole(roleTenant, roleType, roleOwner);
         RoleResourceTestUtils.addRolePermissions(siteAdminToken, roleTenant, roleType, roleName, initialPermission);
 
+        // test preview
         Response response = RoleResourceTestUtils.previewPathPrefix(token, roleTenant, roleType, roleName, schema, oldSystemId, newSystemId, oldPrefix, newPrefix);
         String jsonString = response.readEntity(String.class);
         RespPathPrefixes prefixesResponse = TapisGsonUtils.getGson().fromJson(jsonString, RespPathPrefixes.class);
-        Assert.assertEquals(expectedResult, response.getStatus());
-        if((expectedResult >= 200) && (expectedResult < 300)) {
+        Assert.assertEquals(response.getStatus(), expectedPreviewResult);
+        if((expectedPreviewResult >= 200) && (expectedPreviewResult < 300)) {
             PermissionTransformer.Transformation[] result = prefixesResponse.result;
             Assert.assertEquals(result.length, 1);
             Assert.assertEquals(result[0].oldPerm, initialPermission);
             Assert.assertEquals(result[0].newPerm, expectedNewPermission);
+        }
+        // Now test replace
+        response = RoleResourceTestUtils.replacePathPrefix(token, roleTenant, roleType, roleName, schema, oldSystemId, newSystemId, oldPrefix, newPrefix);
+        jsonString = response.readEntity(String.class);
+        RespChangeCount respChangeCount = TapisGsonUtils.getGson().fromJson(jsonString, RespChangeCount.class);
+        Assert.assertEquals(response.getStatus(), expectedReplaceResult);
+        ResultChangeCount result = respChangeCount.result;
+        if((expectedReplaceResult >= 200) && (expectedReplaceResult < 300)) {
+            Assert.assertEquals(result.changes, 1);
         }
     }
 
@@ -383,7 +394,7 @@ public class RoleResourceTests {
         String roleName = RoleResourceTestUtils.createRandomRoleName();
         Response response = RoleResourceTestUtils.createRole(siteAdminToken , roleTenant, roleType, roleName, "Integration Test Role");
         Assert.assertEquals(response.getStatus(), 201, "Create parent role failed");
-        response = RoleResourceTestUtils.updateOwner(siteAdminToken, roleTenant, roleType, roleName, roleTenant, roleOwner);
+        response = RoleResourceTestUtils.updateRoleOwner(siteAdminToken, roleTenant, roleType, roleName, roleTenant, roleOwner);
         Assert.assertEquals(response.getStatus(), 200);
         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleType);
         SkRole role = roleDao.getRole(roleTenant, roleDescriptor);

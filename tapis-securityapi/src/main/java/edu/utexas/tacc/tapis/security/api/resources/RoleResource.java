@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.security.api.resources;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -1098,9 +1099,11 @@ public final class RoleResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null)
+         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
                              .setCheckIsTenantAdmin()
+                             .setCheckIsSiteAdmin()
                              .setCheckIsFilesService()
+                             .setRoleTypeRestrictions(Collections.emptySet(), EnumSet.of(SkRoleType.USER, SkRoleType.USER_DEFAULT), NON_ADMIN_ROLES)
                              .check();
          if (resp != null) return resp;
          
