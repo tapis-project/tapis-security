@@ -9,7 +9,8 @@ public final class ReqRemovePermissionFromAllRoles
 {
     public String  tenant;
     public String  permSpec;
-    
+//    public String roleType;
+
     /** Return a user-appropriate error message on failed validation
      *  and return null if validation succeeds.
      */ 
@@ -17,11 +18,16 @@ public final class ReqRemovePermissionFromAllRoles
     public String validate() 
     {
         // Final checks.
-        if (StringUtils.isBlank(tenant)) 
+        if (StringUtils.isBlank(tenant)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "ReqRemovePermissionFromAllRoles", "tenant");
-        if (StringUtils.isBlank(permSpec))
+        }
+        if (StringUtils.isBlank(permSpec)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "ReqRemovePermissionFromAllRoles", "permSpec");
-        
+        }
+//        if (StringUtils.isBlank(roleType)) {
+//            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "previewPathPrefix", "roleType");
+//        }
+
         // Success.
         return null;
     }

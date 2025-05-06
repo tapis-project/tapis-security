@@ -390,6 +390,61 @@ public class RoleResourceTests {
         }
     }
 
+    @Test
+    public void testUpdateRoleName() throws Exception {
+        doTestUpdateRoleName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestUpdateRoleName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 401);
+
+        doTestUpdateRoleName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestUpdateRoleName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 200);
+
+        doTestUpdateRoleName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestUpdateRoleName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 200);
+    }
+
+    private void doTestUpdateRoleName(String token, String roleTenant, SkRoleType roleType, String roleOwner, int expectedResult) throws Exception {
+        String roleName = createRole(roleTenant, roleType, roleOwner);
+        String newRoleName = RoleResourceTestUtils.createRandomRoleName();
+        Response response = RoleResourceTestUtils.updateRoleName(token, roleTenant, roleType, roleName, newRoleName);
+        Assert.assertEquals(response.getStatus(), expectedResult);
+        if((expectedResult >= 200) && (expectedResult < 300)) {
+            SkRole newNameRole = roleDao.getRole(roleTenant, SkRoleDescriptor.newSkRoleDescriptor(newRoleName, roleType));
+            Assert.assertEquals(newNameRole.getName(), newRoleName);
+        } else {
+            SkRole newNameRole = roleDao.getRole(roleTenant, SkRoleDescriptor.newSkRoleDescriptor(roleName, roleType));
+            Assert.assertEquals(newNameRole.getName(), roleName);
+        }
+    }
+
+    @Test
+    public void testUpdateRoleDescription() throws Exception {
+        doTestUpdateRoleDescription(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestUpdateRoleDescription(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 401);
+
+        doTestUpdateRoleDescription(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestUpdateRoleDescription(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 200);
+
+        doTestUpdateRoleDescription(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+        doTestUpdateRoleDescription(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, IntegrationTestUtils.TEST_USER_2, 200);
+    }
+
+    private void doTestUpdateRoleDescription(String token, String roleTenant, SkRoleType roleType, String roleOwner, int expectedResult) throws Exception {
+        String roleName = createRole(roleTenant, roleType, roleOwner);
+        String newRoleDescription = "My New Description";
+        Response response = RoleResourceTestUtils.updateRoleDescription(token, roleTenant, roleType, roleName, newRoleDescription);
+        Assert.assertEquals(response.getStatus(), expectedResult);
+        if((expectedResult >= 200) && (expectedResult < 300)) {
+            SkRole newDescriptionRole = roleDao.getRole(roleTenant, SkRoleDescriptor.newSkRoleDescriptor(roleName, roleType));
+            Assert.assertEquals(newDescriptionRole.getName(), roleName);
+            Assert.assertEquals(newDescriptionRole.getDescription(), newRoleDescription);
+        } else {
+            SkRole role = roleDao.getRole(roleTenant, SkRoleDescriptor.newSkRoleDescriptor(roleName, roleType));
+            Assert.assertEquals(role.getName(), roleName);
+            Assert.assertNotEquals(role.getDescription(), newRoleDescription);
+        }
+    }
+
+
     private String createRole(String roleTenant, SkRoleType roleType, String roleOwner) throws Exception {
         String roleName = RoleResourceTestUtils.createRandomRoleName();
         Response response = RoleResourceTestUtils.createRole(siteAdminToken , roleTenant, roleType, roleName, "Integration Test Role");

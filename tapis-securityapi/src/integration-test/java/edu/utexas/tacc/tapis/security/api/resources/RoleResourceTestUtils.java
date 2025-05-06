@@ -8,6 +8,8 @@ import edu.utexas.tacc.tapis.security.api.requestBody.ReqRemoveChildRole;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqRemovePermissionFromAllRoles;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqRemoveRolePermission;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqReplacePathPrefix;
+import edu.utexas.tacc.tapis.security.api.requestBody.ReqUpdateRoleDescription;
+import edu.utexas.tacc.tapis.security.api.requestBody.ReqUpdateRoleName;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqUpdateRoleOwner;
 import edu.utexas.tacc.tapis.security.authz.dao.SkRoleDao;
 import edu.utexas.tacc.tapis.security.authz.model.SkRole;
@@ -62,6 +64,41 @@ public class RoleResourceTestUtils {
                 .post(Entity.json(jsonString));
         return response;
     }
+
+    public static Response updateRoleName(String token,
+                                           String roleTenant, SkRoleType roleType, String roleName,
+                                           String newRoleName) throws TapisException {
+        ReqUpdateRoleName reqUpdateRoleName = new ReqUpdateRoleName();
+        reqUpdateRoleName.newRoleName = newRoleName;
+        reqUpdateRoleName.roleType = roleType.name();
+        reqUpdateRoleName.roleTenant = roleTenant;
+        String jsonString = TapisGsonUtils.getGson().toJson(reqUpdateRoleName);
+        Response response = ClientBuilder.newClient()
+                .target(IntegrationTestUtils.getBaseUrl())
+                .path("role/updateName" + "/" + roleName)
+                .request(MediaType.APPLICATION_JSON)
+                .header("X-Tapis-Token", token)
+                .post(Entity.json(jsonString));
+        return response;
+    }
+    public static Response updateRoleDescription(String token,
+                                           String roleTenant, SkRoleType roleType, String roleName,
+                                           String newDescription) throws TapisException {
+        ReqUpdateRoleDescription reqUpdateRoleDescription = new ReqUpdateRoleDescription();
+        reqUpdateRoleDescription.newDescription = newDescription;
+        reqUpdateRoleDescription.roleTenant = roleTenant;
+        reqUpdateRoleDescription.roleType = roleType.name();
+        String jsonString = TapisGsonUtils.getGson().toJson(reqUpdateRoleDescription);
+        Response response = ClientBuilder.newClient()
+                .target(IntegrationTestUtils.getBaseUrl())
+                .path("role/updateDesc" + "/" + roleName)
+                .request(MediaType.APPLICATION_JSON)
+                .header("X-Tapis-Token", token)
+                .post(Entity.json(jsonString));
+        return response;
+    }
+
+
 
     public static Response addChildRole(String token, String roleTenant,
                                         String parentRoleName, String childRoleName) throws TapisException {
