@@ -14,6 +14,8 @@ import edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultChangeCount;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import javax.ws.rs.core.Response;
@@ -30,8 +32,8 @@ public class RoleResourceTests {
     private static final String tenantAdminToken = IntegrationTestUtils.getTokenForUser(IntegrationTestUtils.TEST_TENANT_ADMIN_USER, IntegrationTestUtils.TEST_TENANT_1);
     private static final String siteAdminToken = IntegrationTestUtils.getTokenForUser(IntegrationTestUtils.TEST_SITE_ADMIN_USER, IntegrationTestUtils.TEST_ADMIN_TENANT);
 
-    @BeforeClass
-    public void beforeClass() throws Exception {
+    @BeforeTest
+    public void beforeTest() throws Exception {
         roleDao = new SkRoleDao();
         RoleResourceTestUtils.cleanupAllTestRoles(new SkRoleDao(), IntegrationTestUtils.TEST_TENANT_1, SkRoleType.ALL_TYPES);
         RoleResourceTestUtils.cleanupAllTestRoles(new SkRoleDao(), IntegrationTestUtils.TEST_TENANT_2, SkRoleType.ALL_TYPES);
@@ -444,6 +446,113 @@ public class RoleResourceTests {
         }
     }
 
+    @Test
+    public void testRemovePermissionFromAllRoles() throws Exception {
+        testRemovePermissionFromAllRoles(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1,
+                SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 401);
+        testRemovePermissionFromAllRoles(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1,
+                SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+    }
+
+    private void testRemovePermissionFromAllRoles(String token, String roleTenant, SkRoleType roleType,
+                                                   String roleOwner, int expectedResult) throws  Exception {
+        String roleName1 = createRole(roleTenant, roleType, roleOwner);
+        String roleName2 = createRole(roleTenant, roleType, roleOwner);
+        String roleName3 = createRole(roleTenant, roleType, roleOwner);
+
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:1:a");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:1:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:1:a:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:1:aother");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:2:a");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:2:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:2:a:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:2:aother");
+
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "I:1:a");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "I:1:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:1:a:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:1:aother");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "I:3:a");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "I:3:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:3:a:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "I:3:aother");
+
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "II:1:a");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "II:1:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "II:1:a:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "II:1:aother");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "II:3:a");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "II:3:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "II:3:a:b");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "II:3:aother");
+
+        Response response = RoleResourceTestUtils.removePermissionsFromAllRoles(token, roleTenant, "I:1:a");
+        String jsonString = response.readEntity(String.class);
+        System.out.println(jsonString);
+        Assert.assertEquals(response.getStatus(), expectedResult);
+        if((expectedResult >= 200) && (expectedResult < 300)) {
+            RespChangeCount changeCountResponse = TapisGsonUtils.getGson().fromJson(jsonString, RespChangeCount.class);
+            Assert.assertEquals(changeCountResponse.result.changes, 2);
+        }
+
+        // cleanup roles - must clean between each invocation since it affects all roles with permission
+        beforeTest();
+    }
+
+    @Test
+    public void testRemovePathPermissionFromAllRoles() throws Exception {
+        doTestRemovePathPermissionFromAllRoles(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1,
+                SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 401);
+        doTestRemovePathPermissionFromAllRoles(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1,
+                SkRoleType.USER, IntegrationTestUtils.TEST_USER_1, 200);
+    }
+
+    private void  doTestRemovePathPermissionFromAllRoles(String token, String roleTenant, SkRoleType roleType,
+                                                         String roleOwner, int expectedResult) throws  Exception {
+        String roleName1 = createRole(roleTenant, roleType, roleOwner);
+        String roleName2 = createRole(roleTenant, roleType, roleOwner);
+        String roleName3 = createRole(roleTenant, roleType, roleOwner);
+
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "files:dev:READ:system1:/user/home/usera");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "files:dev:READ:system1:/user/home/userb");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "files:dev:READ:system1:/user/home/usera/subdir");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "files:dev:READ:system1:/user/home/usera_other");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "files:dev:READ:system2:/user/home/usera");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "files:dev:READ:system2:/user/home/userb");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "files:dev:READ:system2:/user/home/usera/subdir");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName1, "files:dev:READ:system2:/user/home/usera_other");
+
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "files:dev:READ:system1:/user/home/usera");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "files:dev:READ:system1:/user/home/userb");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "files:dev:READ:system1:/user/home/usera/subdir");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "files:dev:READ:system1:/user/home/usera_other");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "files:dev:READ:system3:/user/home/usera");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "files:dev:READ:system3:/user/home/userb");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "files:dev:READ:system3:/user/home/usera/subdir");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName2, "files:dev:READ:system3:/user/home/usera_other");
+
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "files:other:READ:system1:/user/home/usera");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "files:other:READ:system1:/user/home/userb");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "files:other:READ:system1:/user/home/usera/subdir");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "files:other:READ:system1:/user/home/usera_other");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "files:other:READ:system3:/user/home/usera");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "files:other:READ:system3:/user/home/userb");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "files:other:READ:system3:/user/home/usera/subdir");
+        RoleResourceTestUtils.addRolePermissions(token, roleTenant, roleType, roleName3, "files:other:READ:system3:/user/home/usera_other");
+
+        Response response = RoleResourceTestUtils.removePathPermissionsFromAllRoles(token, roleTenant, "files:dev:READ:system1:/user/home/usera");
+        String jsonString = response.readEntity(String.class);
+        Assert.assertEquals(response.getStatus(), expectedResult);
+        if((expectedResult >= 200) && (expectedResult < 300)) {
+            RespChangeCount changeCountResponse = TapisGsonUtils.getGson().fromJson(jsonString, RespChangeCount.class);
+            // NOTE - files:dev:READ:system1:/user/home/usera is like files:dev:READ:system1:/user/home/usera* (i.e usera_thing and usera:thing)
+            Assert.assertEquals(changeCountResponse.result.changes, 6);
+        }
+
+        // cleanup roles - must clean between each invocation since it affects all roles with permission
+        beforeTest();
+    }
 
     private String createRole(String roleTenant, SkRoleType roleType, String roleOwner) throws Exception {
         String roleName = RoleResourceTestUtils.createRandomRoleName();

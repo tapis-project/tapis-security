@@ -1231,6 +1231,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(reqTenant, null)
+                             .setCheckIsSiteAdmin()
                              .setCheckIsService()
                              .check();
          if (resp != null) return resp;
@@ -1296,6 +1297,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(reqTenant, null)
+                             .setCheckIsSiteAdmin()
                              .setCheckIsFilesService()
                              .check();
          if (resp != null) return resp;

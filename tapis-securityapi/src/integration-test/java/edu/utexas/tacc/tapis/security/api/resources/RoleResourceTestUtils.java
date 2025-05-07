@@ -115,23 +115,38 @@ public class RoleResourceTestUtils {
                 .post(Entity.json(jsonString));
         return response;
     }
-/*
-    public static Response removePathPermissionsFromAllRoles(String token, String roleTenant,
-                                        SkRoleType roleType, String permSpec) throws TapisException {
+
+    public static Response removePathPermissionsFromAllRoles(String token, String roleTenant, String permSpec)
+            throws TapisException {
         ReqRemovePermissionFromAllRoles reqRemovePermissionFromAllRoles = new ReqRemovePermissionFromAllRoles();
         reqRemovePermissionFromAllRoles.tenant = roleTenant;
-        reqRemovePermissionFromAllRoles.roleType = roleType.name();
         reqRemovePermissionFromAllRoles.permSpec = permSpec;
         String jsonString = TapisGsonUtils.getGson().toJson(reqRemovePermissionFromAllRoles);
         Response response = ClientBuilder.newClient()
                 .target(IntegrationTestUtils.getBaseUrl())
-                .path("role/removePathPermissionFromAllRoles")
+                .path("role/removePathPermFromAllRoles")
                 .request(MediaType.APPLICATION_JSON)
                 .header("X-Tapis-Token", token)
                 .post(Entity.json(jsonString));
         return response;
     }
-*/
+
+    public static Response removePermissionsFromAllRoles(String token, String roleTenant, String permSpec)
+            throws TapisException {
+        ReqRemovePermissionFromAllRoles reqRemovePermissionFromAllRoles = new ReqRemovePermissionFromAllRoles();
+        reqRemovePermissionFromAllRoles.tenant = roleTenant;
+        reqRemovePermissionFromAllRoles.permSpec = permSpec;
+        String jsonString = TapisGsonUtils.getGson().toJson(reqRemovePermissionFromAllRoles);
+        Response response = ClientBuilder.newClient()
+                .target(IntegrationTestUtils.getBaseUrl())
+                .path("role/removePermFromAllRoles")
+                .request(MediaType.APPLICATION_JSON)
+                .header("X-Tapis-Token", token)
+                .post(Entity.json(jsonString));
+        return response;
+    }
+
+
     public static Response addRolePermissions(String token, String roleTenant, SkRoleType roleType,
                                         String roleName, String permSpec) throws TapisException {
         ReqAddRolePermission reqAddRolePermission = new ReqRemoveRolePermission();
