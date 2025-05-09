@@ -128,7 +128,7 @@ public final class TenantInit
         // Designate the tenants service identifiers.
         final String primaryTenant = TapisConstants.PRIMARY_SITE_TENANT;
         final String tenantService = TapisConstants.SERVICE_NAME_TENANTS;
-        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(UserImpl.TENANT_CREATOR_ROLE, true);
+        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(UserImpl.TENANT_CREATOR_ROLE, SkRoleType.USER);
         
         // Associate sites do not need to assign the tenant creator role
         // since they cannot create JWTs in the primary site admin tenant.

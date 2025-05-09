@@ -213,9 +213,9 @@ public final class RoleResource
      @Produces(MediaType.APPLICATION_JSON)
      public Response getRoleByName(@PathParam("roleName") String roleName,
                                    @QueryParam("tenant") String tenant,
-                                   @QueryParam("roleType") String roleTypeName)
+                                   @DefaultValue("USER") @QueryParam("roleType") String roleTypeName)
      {
-         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName, true);
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName);
 
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -414,10 +414,10 @@ public final class RoleResource
      @Produces(MediaType.APPLICATION_JSON)
      public Response getRolePermissions(@PathParam("roleName") String roleName,
                                         @QueryParam("tenant") String tenant,
-                                        @QueryParam("roleType") String roleTypeName,
+                                        @DefaultValue("USER") @QueryParam("roleType") String roleTypeName,
                                         @DefaultValue("false") @QueryParam("immediate") boolean immediate)
      {
-         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName, true);
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, roleTypeName);
 
          // Trace this request.
          if (_log.isTraceEnabled()) {

@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.security.api.utils.SKApiUtils;
@@ -10,7 +11,7 @@ public final class ReqUpdateRoleName
 {
     public String roleTenant;
     public String newRoleName;
-    public String roleType;
+    public String roleType= SkRoleType.USER.name();
 
     /** Return a user-appropriate error message on failed validation
      *  and return null if validation succeeds.

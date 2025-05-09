@@ -9,7 +9,7 @@ public class SkRoleDescriptor {
     private final String roleName;
     private final SkRoleType roleType;
 
-    public static SkRoleDescriptor newSkRoleDescriptor(String roleName, boolean allowTypeInferance) {
+    private static SkRoleDescriptor newSkRoleDescriptor(String roleName, boolean allowTypeInferance) {
         return newSkRoleDescriptor(roleName, (SkRoleType)null, allowTypeInferance);
     }
 
@@ -21,7 +21,7 @@ public class SkRoleDescriptor {
         return newSkRoleDescriptor(roleName, roleTypeName, false);
     }
 
-    public static SkRoleDescriptor newSkRoleDescriptor(String roleName, String roleTypeName, boolean allowTypeInferance) {
+    private static SkRoleDescriptor newSkRoleDescriptor(String roleName, String roleTypeName, boolean allowTypeInferance) {
         SkRoleType roleType = null;
         if(!StringUtils.isBlank(roleTypeName)) {
             roleType = SkRoleType.getRoleTypeFromStringIgnoreCase(roleTypeName);
@@ -29,11 +29,11 @@ public class SkRoleDescriptor {
         return new SkRoleDescriptor(roleName, roleType, allowTypeInferance);
     }
 
-    public static SkRoleDescriptor newSkRoleDescriptor(String roleName, SkRoleType roleType, boolean allowTypeInferance) {
+    private static SkRoleDescriptor newSkRoleDescriptor(String roleName, SkRoleType roleType, boolean allowTypeInferance) {
         return new SkRoleDescriptor(roleName, roleType, allowTypeInferance);
     }
 
-    public SkRoleDescriptor(String roleName, SkRoleType roleType, boolean allowTypeInferance) {
+    private SkRoleDescriptor(String roleName, SkRoleType roleType, boolean allowTypeInferance) {
         if((allowTypeInferance) && (roleType == null)) {
             this.roleName = SkRoleType.getRoleShortName(roleName);
             this.roleType = SkRoleType.getRoleTypeFromRoleName(roleName);

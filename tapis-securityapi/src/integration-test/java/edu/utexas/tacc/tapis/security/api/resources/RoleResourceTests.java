@@ -274,14 +274,14 @@ public class RoleResourceTests {
         doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, userDefaultRoleName_1, 200);
         doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, SkConstants.ADMIN_ROLE_NAME, 401);
         doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.RESTRICTED_SVC, restrictedServiceRoleName_1, 200);
-        doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE, 400);
+        doTestGetRoleByName(userToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, SkRoleType.getRoleShortName(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE), 400);
 
         doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, userRoleName_1, 200);
         doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.USER, userRoleName_2, 400);
         doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER_DEFAULT, userDefaultRoleName_1, 200);
         doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.TENANT_ADMIN, SkConstants.ADMIN_ROLE_NAME, 401);
         doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.RESTRICTED_SVC, restrictedServiceRoleName_1, 200);
-        doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE, 400);
+        doTestGetRoleByName(tenantAdminToken, IntegrationTestUtils.TEST_ADMIN_TENANT, SkRoleType.SITE_ADMIN, SkRoleType.getRoleShortName(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE), 400);
 
         doTestGetRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_1, SkRoleType.USER, userRoleName_1, 200);
         doTestGetRoleByName(siteAdminToken, IntegrationTestUtils.TEST_TENANT_2, SkRoleType.USER, userRoleName_2, 200);

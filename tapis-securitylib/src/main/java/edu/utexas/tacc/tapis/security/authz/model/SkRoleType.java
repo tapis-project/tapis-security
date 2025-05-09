@@ -12,7 +12,8 @@ public enum SkRoleType {
 
     public static final EnumSet<SkRoleType> ALL_TYPES = java.util.EnumSet.allOf(SkRoleType.class);
 
-    public static SkRoleType getRoleTypeFromRoleName(String roleName) {
+    // TODO:  this can go after we are sure it's not needed anywhere
+    protected static SkRoleType getRoleTypeFromRoleName(String roleName) {
         if (roleName.startsWith(SkRole.PREFIX_USER_DEFAULT)) {
             return USER_DEFAULT;
         } else if (roleName.startsWith(SkRole.PREFIX_RESTRICTED_SVC)) {

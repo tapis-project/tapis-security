@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.security.api.utils.SKApiUtils;
@@ -37,12 +38,16 @@ public final class ReqUserHasRoleMulti
         // Success.
         return null;
     }
-
+/*
     @Deprecated
     public void setRoleNames(String[] roleNames) {
         roleDescriptors = new SkRoleDescriptor[roleNames.length];
         for(int i = 0;i < roleNames.length; i++) {
-            roleDescriptors[i] = SkRoleDescriptor.newSkRoleDescriptor(roleNames[i], true);
+            // TODO:  Dan - Should this default to type user?  Is there a way to make this happen?
+            SkRoleType roleType = SkRoleType.getRoleTypeFromRoleName(roleNames[i]);
+            roleDescriptors[i] = SkRoleDescriptor.newSkRoleDescriptor(roleNames[i], roleType);
         }
     }
+
+ */
 }

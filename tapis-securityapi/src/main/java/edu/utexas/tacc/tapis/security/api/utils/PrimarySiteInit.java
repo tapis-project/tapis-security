@@ -18,7 +18,7 @@ public final class PrimarySiteInit {
         // make sure we have a primary site admin role, and primary site admin
         String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
         Tenant primarySiteAdminTenant = TenantManager.getInstance().getTenant(primarySiteAdminTenantId);
-        SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE, true);
+        SkRoleDescriptor roleDescriptor = SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR;
 
         // Get the list of all users with the primary site admin role.
         List<String> primarySiteAdmins = null;

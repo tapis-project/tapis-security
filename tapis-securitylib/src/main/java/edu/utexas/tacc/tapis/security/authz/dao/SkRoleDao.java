@@ -651,7 +651,7 @@ public final class SkRoleDao
               pstmt.setString(4, requestorTenant);
               pstmt.setString(5, roleTenant);
               pstmt.setString(6, roleDescriptor.getRoleFullName());
-              pstmt.setString(7, roleDescriptor.getRoleFullName());
+              pstmt.setString(7, roleDescriptor.getRoleTypeName());
           }
           
           // Issue the call. 0 rows will be returned when a duplicate

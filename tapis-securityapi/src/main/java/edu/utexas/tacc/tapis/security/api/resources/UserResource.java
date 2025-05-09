@@ -819,7 +819,7 @@ public final class UserResource
          String tenant     = payload.tenant;
          String user       = payload.user;
          String permSpec   = payload.permSpec;
-         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, true);
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(payload.roleName, payload.roleType);
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.

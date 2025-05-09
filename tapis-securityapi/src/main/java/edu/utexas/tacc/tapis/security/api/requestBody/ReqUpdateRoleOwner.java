@@ -9,7 +9,7 @@ public final class ReqUpdateRoleOwner
  implements IReqBody
 {
     public String roleTenant;
-    public String roleType;
+    public String roleType=SkRoleType.USER.name();
     public String newOwner;
     public String newTenant; // optional
 
