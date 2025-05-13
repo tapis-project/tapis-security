@@ -25,7 +25,7 @@ public class ReqAddRolePermission
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "addRolePermission", "roleTenant");
         }
         if (StringUtils.isBlank(roleType)) {
-            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "replacePathPrefix", "roleType");
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "addRolePermission", "roleType");
         }
         if (StringUtils.isBlank(roleName)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "addRolePermission", "roleName");

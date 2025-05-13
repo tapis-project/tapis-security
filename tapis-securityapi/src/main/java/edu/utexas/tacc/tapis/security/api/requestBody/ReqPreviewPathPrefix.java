@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
@@ -11,7 +12,7 @@ public final class ReqPreviewPathPrefix
     public String schema;
     public String roleName;
 
-    public String roleType;
+    public String roleType = SkRoleType.USER.name();
     public String oldSystemId;
     public String newSystemId;
     public String oldPrefix;

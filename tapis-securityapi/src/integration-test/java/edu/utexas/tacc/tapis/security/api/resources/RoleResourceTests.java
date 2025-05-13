@@ -13,6 +13,7 @@ import edu.utexas.tacc.tapis.sharedapi.responses.RespChangeCount;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultChangeCount;
 import org.testng.Assert;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
@@ -33,7 +34,8 @@ public class RoleResourceTests {
     private static final String siteAdminToken = IntegrationTestUtils.getTokenForUser(IntegrationTestUtils.TEST_SITE_ADMIN_USER, IntegrationTestUtils.TEST_ADMIN_TENANT);
 
     @BeforeTest
-    public void beforeTest() throws Exception {
+    @AfterTest
+    public void cleanup() throws Exception {
         roleDao = new SkRoleDao();
         RoleResourceTestUtils.cleanupAllTestRoles(new SkRoleDao(), IntegrationTestUtils.TEST_TENANT_1, SkRoleType.ALL_TYPES);
         RoleResourceTestUtils.cleanupAllTestRoles(new SkRoleDao(), IntegrationTestUtils.TEST_TENANT_2, SkRoleType.ALL_TYPES);
@@ -497,7 +499,7 @@ public class RoleResourceTests {
         }
 
         // cleanup roles - must clean between each invocation since it affects all roles with permission
-        beforeTest();
+        cleanup();
     }
 
     @Test
@@ -551,7 +553,7 @@ public class RoleResourceTests {
         }
 
         // cleanup roles - must clean between each invocation since it affects all roles with permission
-        beforeTest();
+        cleanup();
     }
 
     private String createRole(String roleTenant, SkRoleType roleType, String roleOwner) throws Exception {
