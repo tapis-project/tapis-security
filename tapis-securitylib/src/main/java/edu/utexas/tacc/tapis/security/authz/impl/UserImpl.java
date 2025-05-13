@@ -8,6 +8,7 @@ import java.util.Map;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
@@ -758,15 +759,14 @@ public final class UserImpl
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST);            
         }
-        
-        // The tenant admin role.
-        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR;
-        
+
         // Get all the users with the admin role.  Exceptions already logged.
-        List<String> admins = getUsersWithRole(tenant, roleDescriptor);
-        
-        // Make sure the requestor is an admin.  Null checks are performed here.
-        if (!admins.contains(requestor)) {
+        List<String> admins = getUsersWithRole(tenant, SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR);
+        String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
+        List<String> siteAdmins = getUsersWithRole(primarySiteAdminTenantId, SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR);
+
+        // Make sure the requestor is a tenant admin or a site admin.  Null checks are performed here.
+        if ((!admins.contains(requestor)) && (!siteAdmins.contains(requestor))) {
             String msg = MsgUtils.getMsg("SK_REQUESTOR_NOT_ADMIN", tenant, requestor);
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST); 
@@ -784,15 +784,15 @@ public final class UserImpl
 
         // Get the role id.
         int roleId = 0;
-        try {roleId = getRoleId(tenant, roleDescriptor);}
-            catch (TapisNotFoundException e) {
+        try {
+            roleId = getRoleId(tenant, SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR);
+        } catch (TapisNotFoundException e) {
                 _log.error(e.getMessage());
                 throw e;
-            }
-            catch (Exception e) {
+        } catch (Exception e) {
                 _log.error(e.getMessage());
                 throw new TapisImplException(e.getMessage(), e, Condition.INTERNAL_SERVER_ERROR);            
-            }
+        }
 
         // Get the dao.
         SkUserRoleDao dao = null;

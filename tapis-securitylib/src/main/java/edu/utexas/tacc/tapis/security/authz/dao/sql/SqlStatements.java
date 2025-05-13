@@ -52,8 +52,8 @@ public class SqlStatements
   
   // Strict version of above commands that are not idempotent.
   public static final String ROLE_INSERT_STRICT = 
-	  "INSERT INTO sk_role (tenant, name, description, owner, owner_tenant, createdby, createdby_tenant, updatedby, updatedby_tenant) "
-	  + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+	  "INSERT INTO sk_role (tenant, name, description, owner, owner_tenant, createdby, createdby_tenant, updatedby, updatedby_tenant, type) "
+	  + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
   
   public static final String ROLE_GET_HASCHILDREN_FOR_UPDATE =
       "SELECT has_children FROM sk_role where tenant = ? AND id = ? FOR UPDATE";	  

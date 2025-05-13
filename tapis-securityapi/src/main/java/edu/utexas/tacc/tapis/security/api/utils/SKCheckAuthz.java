@@ -10,6 +10,7 @@ import javax.ws.rs.core.Response.Status;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisImplException;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,6 @@ public final class SKCheckAuthz
     // Constructor parameters.
     private final String                _reqTenant;  // can be null
     private final String                _reqUser;    // can be null
-    private final SkRoleType            _reqRoleType;    // can be null
 
     private final String                _jwtTenant;  // never null
     private final String                _jwtUser;    // never null
@@ -73,6 +73,7 @@ public final class SKCheckAuthz
     private String  _preventAdminRoleName;
     private boolean _preventInvalidOwnerAssignment;
     private String  _preventInvalidOwner;
+    private SkRoleType _restrictRoleType;
 
     private Collection<SkRoleType> _userTypeRestrictions;
     private Collection<SkRoleType> _tenantAdminTypeRestrictions;
@@ -90,13 +91,12 @@ public final class SKCheckAuthz
      * valid to provide a null or empty request tenant; basic checking does not require 
      * a valid request user. 
      */
-    private SKCheckAuthz(String reqTenant, String reqUser, SkRoleType reqRoleType,
+    private SKCheckAuthz(String reqTenant, String reqUser,
                          SecretPathMapperParms secretPathParms)
     {
         // Null parameters are detected before first use. 
         _reqTenant        = reqTenant;
         _reqUser          = reqUser;
-        _reqRoleType      = reqRoleType;
         _secretPathParms  = secretPathParms;
         
         // Get the jwt information.
@@ -122,12 +122,14 @@ public final class SKCheckAuthz
 
     public SKCheckAuthz setCheckIsService()  {_checkIsService = true; return this;}
     public SKCheckAuthz setCheckIsFilesService() {_checkIsFilesService = true; return this;}
-    public SKCheckAuthz setRoleTypeRestrictions(Collection<SkRoleType> userTypeRestrictions,
+    public SKCheckAuthz setRoleTypeRestrictions(SkRoleType restrictRoleType,
+                                                Collection<SkRoleType> userTypeRestrictions,
                                                 Collection<SkRoleType> tenantAdminTypeRestrictions,
                                                 Collection<SkRoleType> siteAdminTypeRestrictions) {
         this._userTypeRestrictions = userTypeRestrictions;
         this._tenantAdminTypeRestrictions = tenantAdminTypeRestrictions;
         this._siteAdminTypeRestrictions = siteAdminTypeRestrictions;
+        this._restrictRoleType = restrictRoleType;
         return this;
     }
     
@@ -180,20 +182,14 @@ public final class SKCheckAuthz
     /* ---------------------------------------------------------------------------- */
     public static SKCheckAuthz configure(String reqTenant, String reqUser,
                                          SecretPathMapperParms secretPathParms)
-    {return new SKCheckAuthz(reqTenant, reqUser, null, secretPathParms);}
+    {return new SKCheckAuthz(reqTenant, reqUser, secretPathParms);}
     
     /* ---------------------------------------------------------------------------- */
     /* configure:                                                                   */
     /* ---------------------------------------------------------------------------- */
     public static SKCheckAuthz configure(String reqTenant, String reqUser)
-    {return new SKCheckAuthz(reqTenant, reqUser, null, null);}
-
-    /* ---------------------------------------------------------------------------- */
-    /* configure:                                                                   */
-    /* ---------------------------------------------------------------------------- */
-    public static SKCheckAuthz configure(String reqTenant, String reqUser, SkRoleType reqRoleType)
     {
-        return new SKCheckAuthz(reqTenant, reqUser, reqRoleType, null);
+        return new SKCheckAuthz(reqTenant, reqUser, null);
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -306,15 +302,15 @@ public final class SKCheckAuthz
         boolean allowed = true;
 
         if(isSiteAdmin()) {
-            if((_siteAdminTypeRestrictions != null) && (!_siteAdminTypeRestrictions.contains(_reqRoleType))) {
+            if((_siteAdminTypeRestrictions != null) && (!_siteAdminTypeRestrictions.contains(_restrictRoleType))) {
                 allowed = false;
             }
         } else if (isTenantAdmin()) {
-            if ((_tenantAdminTypeRestrictions != null) && (!_tenantAdminTypeRestrictions.contains(_reqRoleType))) {
+            if ((_tenantAdminTypeRestrictions != null) && (!_tenantAdminTypeRestrictions.contains(_restrictRoleType))) {
                 allowed = false;
             }
         } else if (isUserAccount()){
-            if ((_userTypeRestrictions != null) && (!_userTypeRestrictions.contains(_reqRoleType))) {
+            if ((_userTypeRestrictions != null) && (!_userTypeRestrictions.contains(_restrictRoleType))) {
                 allowed = false;
             }
         }
@@ -322,7 +318,7 @@ public final class SKCheckAuthz
         if(!allowed) {
             _failedChecks.add("RoleTypeRestrictions");
             var msg = MsgUtils.getMsg("SK_ROLE_TYPE_ERROR", _jwtUser,
-                    _jwtTenant, _reqRoleType);
+                    _jwtTenant, _restrictRoleType);
             _log.error(msg);
             return msg;
         }
@@ -875,7 +871,8 @@ public final class SKCheckAuthz
         if(_jwtUserIsSiteAdmin == null) {
             _jwtUserIsSiteAdmin = Boolean.FALSE;
             try {
-                boolean isSiteAdmin = UserImpl.getInstance().hasRole(_jwtTenant, _jwtUser,
+                String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
+                boolean isSiteAdmin = UserImpl.getInstance().hasRole(primarySiteAdminTenantId, _jwtUser,
                         new SkRoleDescriptor[]{SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR},
                         AuthOperation.ANY);
                 _jwtUserIsSiteAdmin = Boolean.valueOf(isSiteAdmin);

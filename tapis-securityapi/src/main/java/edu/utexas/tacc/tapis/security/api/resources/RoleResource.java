@@ -235,8 +235,8 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
-                 .setRoleTypeRestrictions(NON_ADMIN_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
+         Response resp = SKCheckAuthz.configure(tenant, null)
+                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), NON_ADMIN_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
                  .check();
          if (resp != null) return resp;
 
@@ -304,12 +304,12 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(roleTenant, null, roleDescriptor.getRoleType())
+         Response resp = SKCheckAuthz.configure(roleTenant, null)
                          .setCheckIsService()
                          .setCheckIsSiteAdmin()
                          .setCheckIsTenantAdmin()
                          .setPreventForeignTenantUpdate()
-                         .setRoleTypeRestrictions(USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                         .setRoleTypeRestrictions(roleDescriptor.getRoleType(), USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
                          .check();
 
          if (resp != null) {
@@ -373,11 +373,11 @@ public final class RoleResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
+         Response resp = SKCheckAuthz.configure(tenant, null)
                  .addOwnedRole(roleDescriptor)
                  .setCheckIsTenantAdmin()
                  .setCheckIsSiteAdmin()
-                 .setRoleTypeRestrictions(USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
                  .check();
 
          if (resp != null) {
@@ -437,8 +437,8 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
-                 .setRoleTypeRestrictions(NON_ADMIN_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
+         Response resp = SKCheckAuthz.configure(tenant, null)
+                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), NON_ADMIN_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
                  .check();
          if (resp != null) return resp;
          
@@ -513,11 +513,12 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(roleTenant, null, roleDescriptor.getRoleType())
+         Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsTenantAdmin()
                              .setCheckIsSiteAdmin()
                              .addOwnedRole(roleDescriptor)
-                             .setRoleTypeRestrictions(USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                             .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
+                                     USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
                              .check();
          if (resp != null) return resp;
          
@@ -592,12 +593,13 @@ public final class RoleResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(roleTenant, null, roleDescriptor.getRoleType())
+         Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsTenantAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setCheckIsSiteAdmin()
                              .setPreventInvalidOwnerAssignment(newTenant)
-                             .setRoleTypeRestrictions(NO_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                             .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
+                                     NO_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
                              .check();
          if (resp != null) return resp;
          
@@ -672,11 +674,12 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(roleTenant, null, roleDescriptor.getRoleType())
+         Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsTenantAdmin()
                              .setCheckIsSiteAdmin()
                              .addOwnedRole(roleDescriptor)
-                             .setRoleTypeRestrictions(USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                             .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
+                                     USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
                              .check();
          if (resp != null) return resp;
          
@@ -739,11 +742,12 @@ public final class RoleResource
 
                  // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(roleTenant, null, roleDescriptor.getRoleType())
+         Response resp = SKCheckAuthz.configure(roleTenant, null)
                  .setCheckIsTenantAdmin()
                  .setCheckIsSiteAdmin()
                  .addOwnedRole(roleDescriptor)
-                 .setRoleTypeRestrictions(USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
+                         USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
                  .check();
          if (resp != null) return resp;
          
@@ -811,10 +815,11 @@ public final class RoleResource
 
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(roleTenant, null, roleDescriptor.getRoleType())
+         Response resp = SKCheckAuthz.configure(roleTenant, null)
                              .setCheckIsSiteAdmin()
                              .setCheckIsTenantAdmin()
-                             .setRoleTypeRestrictions(USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                             .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
+                                     USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -1026,8 +1031,9 @@ public final class RoleResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
-                 .setRoleTypeRestrictions(NON_ADMIN_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+         Response resp = SKCheckAuthz.configure(tenant, null)
+                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
+                         NON_ADMIN_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
                  .check();
          if (resp != null) {
              return resp;
@@ -1108,11 +1114,14 @@ public final class RoleResource
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
-         Response resp = SKCheckAuthz.configure(tenant, null, roleDescriptor.getRoleType())
+         Response resp = SKCheckAuthz.configure(tenant, null)
                              .setCheckIsTenantAdmin()
                              .setCheckIsSiteAdmin()
                              .setCheckIsFilesService()
-                             .setRoleTypeRestrictions(NO_ROLES, EnumSet.of(SkRoleType.USER, SkRoleType.USER_DEFAULT), NON_ADMIN_ROLES)
+                             .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
+                                     NO_ROLES,
+                                     EnumSet.of(SkRoleType.USER, SkRoleType.USER_DEFAULT),
+                                     NON_ADMIN_ROLES)
                              .check();
          if (resp != null) return resp;
          
