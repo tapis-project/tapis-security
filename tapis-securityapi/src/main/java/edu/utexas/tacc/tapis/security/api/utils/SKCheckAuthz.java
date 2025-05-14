@@ -462,10 +462,26 @@ public final class SKCheckAuthz
      */
     private boolean checkIsService()
     {
+        boolean isPermitted = false;
+
         // See if the jwt and request user@tenant are the same.
-        if (_threadContext.getAccountType() == AccountType.service) return true;
+        if (_threadContext.getAccountType() == AccountType.service) {
+            String serviceName = _threadContext.getJwtUser();
+
+            // If we need more than this - especially something that is allowed for
+            // somethings, but not others (probably restricted services for example)
+            // we can add a 'default' case that will check actual shiro permissions
+            // per the restricted service spec.
+            switch (serviceName) {
+                case TapisConstants.SERVICE_NAME_FILES -> isPermitted = true;
+                case TapisConstants.SERVICE_NAME_SYSTEMS -> isPermitted = true;
+                case TapisConstants.SERVICE_NAME_APPS -> isPermitted = true;
+                case TapisConstants.SERVICE_NAME_JOBS -> isPermitted = true;
+            }
+        }
+
         _failedChecks.add("IsService");
-        return false;
+        return isPermitted;
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -871,11 +887,18 @@ public final class SKCheckAuthz
         if(_jwtUserIsSiteAdmin == null) {
             _jwtUserIsSiteAdmin = Boolean.FALSE;
             try {
+                // check to make sure the tenant is the site-admin-tenant (fail if not)
                 String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
-                boolean isSiteAdmin = UserImpl.getInstance().hasRole(primarySiteAdminTenantId, _jwtUser,
-                        new SkRoleDescriptor[]{SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR},
-                        AuthOperation.ANY);
-                _jwtUserIsSiteAdmin = Boolean.valueOf(isSiteAdmin);
+                if(!primarySiteAdminTenantId.equals(_jwtTenant)) {
+                    _jwtUserIsSiteAdmin = Boolean.FALSE;
+                } else {
+                    // now that we know it's the site admin tenant, make sure the user has the
+                    // site admin role.
+                    boolean isSiteAdmin = UserImpl.getInstance().hasRole(_jwtTenant, _jwtUser,
+                            new SkRoleDescriptor[]{SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR},
+                            AuthOperation.ANY);
+                    _jwtUserIsSiteAdmin = Boolean.valueOf(isSiteAdmin);
+                }
             } catch (TapisImplException e) {
                 // if we have an error, and can't determine if this is a site admin, the safest
                 // thing is to just let the check fail
