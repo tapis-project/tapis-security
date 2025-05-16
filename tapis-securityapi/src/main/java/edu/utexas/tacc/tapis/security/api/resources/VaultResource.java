@@ -30,7 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.utexas.tacc.tapis.security.api.requestBody.ReqValidateServicePwd;
+import edu.utexas.tacc.tapis.security.api.requestBody.ReqValidatePwd;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqVersions;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqWriteSecret;
 import edu.utexas.tacc.tapis.security.api.responses.RespSecret;
@@ -78,8 +78,8 @@ public final class VaultResource
         "/edu/utexas/tacc/tapis/security/api/jsonschema/WriteSecretRequest.json";
     private static final String FILE_SK_SECRET_VERSION_REQUEST = 
         "/edu/utexas/tacc/tapis/security/api/jsonschema/SecretVersionRequest.json";
-    private static final String FILE_SK_VALIDATE_SERVICE_PWD_REQUEST = 
-        "/edu/utexas/tacc/tapis/security/api/jsonschema/ValidateServicePwdRequest.json";
+    private static final String FILE_SK_VALIDATE_PWD_REQUEST =
+        "/edu/utexas/tacc/tapis/security/api/jsonschema/ValidatePwdRequest.json";
     
     /* **************************************************************************** */
     /*                                    Fields                                    */
@@ -765,9 +765,9 @@ public final class VaultResource
          // Parse and validate the json in the request payload, which must exist.
          // Note that the secret values in the payload will only be string values,
          // which is more restrictive typing than Vault.
-         ReqValidateServicePwd payload = null;
-         try {payload = getPayload(payloadStream, FILE_SK_VALIDATE_SERVICE_PWD_REQUEST, 
-                                   ReqValidateServicePwd.class);
+         ReqValidatePwd payload = null;
+         try {payload = getPayload(payloadStream, FILE_SK_VALIDATE_PWD_REQUEST,
+                                   ReqValidatePwd.class);
          } 
          catch (Exception e) {
              String msg = MsgUtils.getMsg("NET_REQUEST_PAYLOAD_ERROR", 
@@ -799,8 +799,8 @@ public final class VaultResource
          // ------------------------ Request Processing ------------------------
          // Get the names.
          boolean authorized;
-         try {authorized = getVaultImpl().validateServicePwd(tenant, user, secretName, 
-                                                             payload.password);}
+         try {authorized = getVaultImpl().validatePwd(tenant, user,
+                 SecretType.ServicePwd, secretName, payload.password);}
              catch (Exception e) {
                  // Already logged.
                  return getExceptionResponse(e, e.getMessage());
@@ -808,7 +808,7 @@ public final class VaultResource
          
          // Password was not matched.
          if (!authorized) {
-             String msg = MsgUtils.getMsg("SK_INVALID_SERVICE_PASSWORD", 
+             String msg = MsgUtils.getMsg("SK_INVALID_PASSWORD",
                                           tenant, user, secretName);
              _log.warn(msg);
              return Response.status(Status.FORBIDDEN).
@@ -824,8 +824,89 @@ public final class VaultResource
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
                  MsgUtils.getMsg("TAPIS_AUTHORIZED", "Service", secretName), r)).build();
      }
-     
-     /* **************************************************************************** */
+
+    /* ---------------------------------------------------------------------------- */
+    /* validateSiteAdminPassword:                                                   */
+    /* ---------------------------------------------------------------------------- */
+    @POST
+    @Path("/secret/validateSiteAdminPassword/{secretName}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response validateSiteAdminPassword(@PathParam("secretName") String secretName,
+                                            InputStream payloadStream)
+    {
+        // Trace this request.
+        if (_log.isTraceEnabled()) {
+            String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(),
+                    "writeSecret", _request.getRequestURL());
+            _log.trace(msg);
+        }
+
+        // ------------------------- Input Processing -------------------------
+        // Parse and validate the json in the request payload, which must exist.
+        // Note that the secret values in the payload will only be string values,
+        // which is more restrictive typing than Vault.
+        ReqValidatePwd payload = null;
+        try {payload = getPayload(payloadStream, FILE_SK_VALIDATE_PWD_REQUEST,
+                ReqValidatePwd.class);
+        }
+        catch (Exception e) {
+            String msg = MsgUtils.getMsg("NET_REQUEST_PAYLOAD_ERROR",
+                    "validatePassword", e.getMessage());
+            _log.error(msg, e);
+            return Response.status(Status.BAD_REQUEST).
+                    entity(TapisRestUtils.createErrorResponse(msg)).build();
+        }
+
+        // Extract input values.
+        String tenant = payload.tenant;
+        String user   = payload.user;
+
+        // Support secret name paths by replacing the escape characters (+) with
+        // slashes.  This is typically handled in SecretPathMapperParms.
+        if (secretName != null) secretName = secretName.replace('+', '/');
+
+        // Log payload info.
+        if (_log.isDebugEnabled())
+            _log.debug(MsgUtils.getMsg("SK_VALIDATING_PASSWORD", tenant, user, secretName));
+
+        // ------------------------- Check Authz ------------------------------
+        // Authorization passed if a null response is returned.
+        Response resp = SKCheckAuthz.configure(tenant, user)
+                .setValidatePassword()
+                .check();
+        if (resp != null) return resp;
+
+        // ------------------------ Request Processing ------------------------
+        // Get the names.
+        boolean authorized;
+        try {authorized = getVaultImpl().validatePwd(tenant, user,
+                SecretType.SiteAdminPwd, secretName, payload.password);}
+        catch (Exception e) {
+            // Already logged.
+            return getExceptionResponse(e, e.getMessage());
+        }
+
+        // Password was not matched.
+        if (!authorized) {
+            String msg = MsgUtils.getMsg("SK_INVALID_PASSWORD",
+                    tenant, user, secretName);
+            _log.warn(msg);
+            return Response.status(Status.FORBIDDEN).
+                    entity(TapisRestUtils.createErrorResponse(msg)).build();
+        }
+
+        // Set the result payload on success.
+        ResultAuthorized authResp = new ResultAuthorized();
+        authResp.isAuthorized = true;
+        RespAuthorized r = new RespAuthorized(authResp);
+
+        // Return the data portion of the vault response.
+        return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
+                MsgUtils.getMsg("TAPIS_AUTHORIZED", "SiteAdmin", secretName), r)).build();
+    }
+
+    /* **************************************************************************** */
      /*                               Private Methods                                */
      /* **************************************************************************** */
      /* ---------------------------------------------------------------------------- */

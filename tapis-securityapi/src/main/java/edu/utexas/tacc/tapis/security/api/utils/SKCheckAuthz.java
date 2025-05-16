@@ -462,9 +462,19 @@ public final class SKCheckAuthz
      */
     private boolean checkIsService()
     {
+        // If we need more than this - especially something that is allowed for
+        // somethings, but not others (probably restricted services for example)
+        // we can add a 'default' case that will check actual shiro permissions
+        // per the restricted service spec.
+        boolean isPermitted = isTrustedService();
+
+        _failedChecks.add("IsService");
+        return isPermitted;
+    }
+
+    private boolean isTrustedService() {
         boolean isPermitted = false;
 
-        // See if the jwt and request user@tenant are the same.
         if (_threadContext.getAccountType() == AccountType.service) {
             String serviceName = _threadContext.getJwtUser();
 
@@ -477,10 +487,10 @@ public final class SKCheckAuthz
                 case TapisConstants.SERVICE_NAME_SYSTEMS -> isPermitted = true;
                 case TapisConstants.SERVICE_NAME_APPS -> isPermitted = true;
                 case TapisConstants.SERVICE_NAME_JOBS -> isPermitted = true;
+                case TapisConstants.SERVICE_NAME_TOKENS -> isPermitted = true;
             }
         }
 
-        _failedChecks.add("IsService");
         return isPermitted;
     }
 
@@ -622,7 +632,11 @@ public final class SKCheckAuthz
             case ServicePwd:
                 authorized = secretCheckServicePwd();
             break;
-            
+
+            case SiteAdminPwd:
+                authorized = secretCheckSiteAdminPwd();
+                break;
+
             case JWTSigning:
                 authorized = secretCheckIsTokensService();
             break;
@@ -692,7 +706,7 @@ public final class SKCheckAuthz
         // Are the path parms configured and is the caller the tokens service?
     	// We report a failure here only if the next check also fails.
         if (_threadContext.getAccountType() == AccountType.service &&
-            _jwtUser.equals(TapisConstants.SERVICE_NAME_TOKENS)) 
+            _jwtUser.equals(TapisConstants.SERVICE_NAME_TOKENS))
            return true;
         
         // A service can validate its own password. This method records its own failure.
@@ -702,7 +716,36 @@ public final class SKCheckAuthz
         _failedChecks.add("IsTokensService");
         return false;
     }
-    
+
+    /* ---------------------------------------------------------------------------- */
+    /* secretCheckServicePwd:                                                       */
+    /* ---------------------------------------------------------------------------- */
+    private boolean secretCheckSiteAdminPwd()
+    {
+        // Are the path parms configured and is the caller the tokens service?
+        // We report a failure here only if the next check also fails.
+        if (_threadContext.getAccountType() == AccountType.service &&
+                _jwtUser.equals(TapisConstants.SERVICE_NAME_TOKENS)) {
+            return true;
+        }
+
+        // A service can validate its own password. This method records its own failure.
+        if (secretCheckServiceRequestIdentity("ValidatePassword")) {
+            return true;
+        }
+
+        // A site admin can interact with siteadmin passwords
+        if (isSiteAdmin() &&
+            isSiteAdminTenant(_jwtTenant) &&
+            _jwtUser.equals(_reqUser) ){
+            return true;
+        }
+
+        // Neither check passed so we add the first check's failure to the record.
+        _failedChecks.add("SiteAdminSecret");
+        return false;
+    }
+
     /* ---------------------------------------------------------------------------- */
     /* secretCheckServiceRequestIdentity:                                           */
     /* ---------------------------------------------------------------------------- */
@@ -723,7 +766,7 @@ public final class SKCheckAuthz
         _failedChecks.add(checkName);
         return false;
     }
-    
+
     /* ---------------------------------------------------------------------------- */
     /* secretCheckSecretUser:                                                       */
     /* ---------------------------------------------------------------------------- */
@@ -888,8 +931,7 @@ public final class SKCheckAuthz
             _jwtUserIsSiteAdmin = Boolean.FALSE;
             try {
                 // check to make sure the tenant is the site-admin-tenant (fail if not)
-                String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
-                if(!primarySiteAdminTenantId.equals(_jwtTenant)) {
+                if(!isSiteAdminTenant(_jwtTenant)) {
                     _jwtUserIsSiteAdmin = Boolean.FALSE;
                 } else {
                     // now that we know it's the site admin tenant, make sure the user has the
@@ -909,6 +951,15 @@ public final class SKCheckAuthz
         }
 
         return _jwtUserIsSiteAdmin.booleanValue();
+    }
+
+    private boolean isSiteAdminTenant(String tenantId) {
+        // check to make sure the tenant is the site-admin-tenant (fail if not)
+        String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
+        if (primarySiteAdminTenantId.equals(tenantId)) {
+            return  Boolean.TRUE;
+        }
+        return Boolean.FALSE;
     }
 
     private boolean isTenantAdmin() {

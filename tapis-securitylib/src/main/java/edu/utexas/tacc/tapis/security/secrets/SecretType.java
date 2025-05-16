@@ -13,8 +13,9 @@ public enum SecretType
     DBCredential("dbcred"),
     JWTSigning("jwtsigning"),
     User("user"),
-    ServicePwd("service");
-    
+    ServicePwd("service"),
+    SiteAdminPwd("siteadmin");
+
     // The exact text that appears in a request's url path.
     private final String _urlText;
     

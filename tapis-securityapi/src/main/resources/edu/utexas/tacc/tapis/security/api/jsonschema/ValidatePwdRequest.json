@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-06/schema#",
-    "$id": "http://tapis.tacc.utexas.edu/ValidateServicePwdRequest",
+    "$id": "http://tapis.tacc.utexas.edu/ValidatePwdRequest",
     "description": "Schema for validating a service's password",
     "additionalProperties": false,
     "type": "object",

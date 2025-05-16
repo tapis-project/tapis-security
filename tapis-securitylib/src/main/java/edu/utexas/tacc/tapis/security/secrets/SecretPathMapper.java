@@ -138,6 +138,9 @@ public final class SecretPathMapper
             case ServicePwd:
                 secretPath = getServicePath(tenant, user);
                 break;
+            case SiteAdminPwd:
+                secretPath = getSiteAdminPath(tenant, user);
+                break;
             default:
                 // This should never happen as long as all cases are covered.
                 var secretTypes = new ArrayList<String>();
@@ -193,6 +196,28 @@ public final class SecretPathMapper
         // Return the path for this secret type.
         return "secret/tapis/tenant/" + tenant + "/service/" + user + "/kv/" + 
                _parms.secretName;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* getSiteAdminPath:                                                        */
+    /* ---------------------------------------------------------------------- */
+    /** Construct the tapis service secret path.
+     *
+     * <pre>
+     *  /tapis/tenant/<tenant>/service/<user>/kv/<secretName>
+     * </pre>
+     *
+     * @param tenant the request tenant
+     * @param user the request user, which is expected to be a service name
+     * @return the Vault secret engine path
+     * @throws TapisImplException missing or invalid query parameters
+     */
+    private String getSiteAdminPath(String tenant, String user)
+            throws TapisImplException
+    {
+        // Return the path for this secret type.
+        return "secret/tapis/tenant/" + tenant + "/siteadmin/" + user + "/kv/" +
+                _parms.secretName;
     }
 
     /* ---------------------------------------------------------------------- */
