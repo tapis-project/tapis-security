@@ -16,6 +16,7 @@ public class IntegrationTestUtils {
     public static final String TEST_ADMIN_TENANT = "admin";
     public static final String TEST_TENANT_1 = "dev";
     public static final String TEST_TENANT_2 = "dev2";
+    // test requires renaming 'admin' user to 'site_admin' in sk_user_role table for the site admin user
     public static final String TEST_SITE_ADMIN_USER = "site_admin";
     public static final String TEST_TENANT_ADMIN_USER = "admin";
     public static final String TEST_USER_1 = "testuser3";

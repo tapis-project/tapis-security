@@ -695,7 +695,7 @@ public final class UserResource
          Response resp = SKCheckAuthz.configure(granteeTenant, grantee)
                              .setCheckIsTenantAdmin()
                              .setCheckIsSiteAdmin()
-                             .setCheckIsService()
+                             .setCheckServiceIsAllowed()
                              .setPreventForeignTenantUpdate()
                              .check();
          if (resp != null) return resp;
@@ -774,7 +774,7 @@ public final class UserResource
                              .setCheckIsSiteAdmin()
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
                                      RoleResource.USER_ROLES, RoleResource.NON_SITE_ADMIN_ROLES, RoleResource.ALL_ROLES)
-                             .setCheckIsService()
+                             .setCheckServiceIsAllowed()
                              .setCheckMatchesJwtIdentity()
                              .setPreventForeignTenantUpdate()
                              .check();

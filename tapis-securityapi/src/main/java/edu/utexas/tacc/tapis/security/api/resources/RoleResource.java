@@ -1,8 +1,6 @@
 package edu.utexas.tacc.tapis.security.api.resources;
 
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -305,7 +303,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(roleTenant, null)
-                         .setCheckIsService()
+                         .setCheckServiceIsAllowed()
                          .setCheckIsSiteAdmin()
                          .setCheckIsTenantAdmin()
                          .setPreventForeignTenantUpdate()
@@ -1244,7 +1242,7 @@ public final class RoleResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(reqTenant, null)
                              .setCheckIsSiteAdmin()
-                             .setCheckIsService()
+                             .setCheckServiceIsAllowed()
                              .check();
          if (resp != null) return resp;
          

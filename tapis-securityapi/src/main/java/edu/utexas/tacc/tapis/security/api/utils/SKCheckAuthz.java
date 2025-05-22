@@ -120,7 +120,7 @@ public final class SKCheckAuthz
         return this;
     }
 
-    public SKCheckAuthz setCheckIsService()  {_checkIsService = true; return this;}
+    public SKCheckAuthz setCheckServiceIsAllowed()  {_checkIsService = true; return this;}
     public SKCheckAuthz setCheckIsFilesService() {_checkIsFilesService = true; return this;}
     public SKCheckAuthz setRoleTypeRestrictions(SkRoleType restrictRoleType,
                                                 Collection<SkRoleType> userTypeRestrictions,

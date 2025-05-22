@@ -162,7 +162,7 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
+                            .setCheckServiceIsAllowed()
                             .check();
         if (resp != null) return resp;
         
@@ -252,7 +252,7 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
+                            .setCheckServiceIsAllowed()
                             .check();
         if (resp != null) return resp;
         
@@ -320,7 +320,7 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
+                            .setCheckServiceIsAllowed()
                             .check();
         if (resp != null) return resp;
         
@@ -393,7 +393,7 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
+                            .setCheckServiceIsAllowed()
                             .check();
         if (resp != null) return resp;
         
@@ -501,7 +501,7 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
+                            .setCheckServiceIsAllowed()
                             .check();
         if (resp != null) return resp;
         
@@ -601,7 +601,7 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
+                            .setCheckServiceIsAllowed()
                             .check();
         if (resp != null) return resp;
         
