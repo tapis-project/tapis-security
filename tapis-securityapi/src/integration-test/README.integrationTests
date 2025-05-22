@@ -1,0 +1,7 @@
+To run integration tests from IDE, you will need these VM Options:
+-ea --add-opens java.base/java.time=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED
+
+And these environment variables:
+tapis.service.properties.pathname=<path to integration test properties>
+
+for example: ${TAPIS_SECURITY_HOME_DIR}/tapis-securityapi/src/integration-test/resources/integration-tests.properties
