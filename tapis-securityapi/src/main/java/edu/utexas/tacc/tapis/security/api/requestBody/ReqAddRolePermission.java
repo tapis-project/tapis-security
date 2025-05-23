@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.security.api.utils.SKApiUtils;
@@ -11,6 +12,7 @@ public class ReqAddRolePermission
     public String roleTenant;
     public String roleName;
     public String permSpec;
+    public String roleType = SkRoleType.USER.name();
 
     /** Return a user-appropriate error message on failed validation
      *  and return null if validation succeeds.
@@ -19,14 +21,21 @@ public class ReqAddRolePermission
     public String validate() 
     {
         // Final checks.
-        if (StringUtils.isBlank(roleTenant)) 
+        if (StringUtils.isBlank(roleTenant)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "addRolePermission", "roleTenant");
-        if (StringUtils.isBlank(roleName)) 
+        }
+        if (StringUtils.isBlank(roleType)) {
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "addRolePermission", "roleType");
+        }
+        if (StringUtils.isBlank(roleName)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "addRolePermission", "roleName");
-        if (!SKApiUtils.isValidName(roleName))
+        }
+        if (!SKApiUtils.isValidName(roleName)) {
             return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "addRolePermission", "roleName", roleName);
-        if (StringUtils.isBlank(permSpec))
+        }
+        if (StringUtils.isBlank(permSpec)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "addRolePermission", "permSpec");
+        }
         
         // Success.
         return null;

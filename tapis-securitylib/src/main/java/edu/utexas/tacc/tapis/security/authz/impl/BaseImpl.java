@@ -1,5 +1,8 @@
 package edu.utexas.tacc.tapis.security.authz.impl;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRole;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,7 +149,7 @@ abstract class BaseImpl
      * @return the role's id
      * @throws TapisException if the id was not retrieved
      */
-    protected int getRoleId(String tenant, String roleName) 
+    protected int getRoleId(String tenant, SkRoleDescriptor roleDescriptor)
      throws TapisException, TapisNotFoundException
     {
         // Get the dao.
@@ -160,9 +163,9 @@ abstract class BaseImpl
         
         // Get the role id.
         Integer roleId = null;
-        try {roleId = roleDao.getRoleId(tenant, roleName);}
+        try {roleId = roleDao.getRoleId(tenant, roleDescriptor);}
             catch (Exception e) {
-                String msg = MsgUtils.getMsg("SK_GET_ROLE_ID_ERROR", roleName,
+                String msg = MsgUtils.getMsg("SK_GET_ROLE_ID_ERROR", roleDescriptor.getRoleFullName(),
                                              tenant, e.getMessage());
                 _log.error(msg, e);
                 throw new TapisException(msg);
@@ -170,9 +173,9 @@ abstract class BaseImpl
         
         // Make sure we found the role.
         if (roleId == null) {
-            String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, roleName);
+            String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, roleDescriptor.getRoleFullName());
             _log.error(msg);
-            throw new TapisNotFoundException(msg, roleName);
+            throw new TapisNotFoundException(msg, roleDescriptor.getRoleFullName());
         }
         
         return roleId;
@@ -181,14 +184,16 @@ abstract class BaseImpl
     /* ---------------------------------------------------------------------------- */
     /* getUserDefaultRolename:                                                      */
     /* ---------------------------------------------------------------------------- */
-    public String getUserDefaultRolename(String user)
-    {return USER_DEFAULT_ROLE_PREFIX + user;}
+    public SkRoleDescriptor getUserDefaultRolename(String user)
+    {
+        return SkRoleDescriptor.newSkRoleDescriptor(user, SkRoleType.USER_DEFAULT);
+    }
     
     /* ---------------------------------------------------------------------------- */
     /* makeTenantTokenGeneratorRolename:                                            */
     /* ---------------------------------------------------------------------------- */
-    public String makeTenantTokenGeneratorRolename(String tenant)
+    public SkRoleDescriptor makeTenantTokenGeneratorRolename(String tenant)
     {
-        return tenant + TENANT_TOKEN_GENERATOR_ROLE_SUFFIX;
+        return SkRoleDescriptor.newSkRoleDescriptor(tenant + TENANT_TOKEN_GENERATOR_ROLE_SUFFIX, SkRoleType.USER);
     }
 }

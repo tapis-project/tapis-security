@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,7 +128,7 @@ public final class SkRolePermissionDao
    * @throws TapisException on error
    * @throws TapisNotFoundException unknown role name
    */
-  public int assignPermission(String roleTenant, String roleName, String permission, 
+  public int assignPermission(String roleTenant, SkRoleDescriptor roleDescriptor, String permission,
                               String requestor, String requestorTenant) 
    throws TapisException, TapisNotFoundException
   {
@@ -135,11 +136,11 @@ public final class SkRolePermissionDao
       SkRoleDao dao = new SkRoleDao();
       
       // The parent must exist in the tenant.
-      Integer roleId = dao.getRoleId(roleTenant, roleName);
+      Integer roleId = dao.getRoleId(roleTenant, roleDescriptor);
       if (roleId == null) {
-          String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", roleTenant, roleName);
+          String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", roleTenant, roleDescriptor.getRoleFullName());
           _log.error(msg);
-          throw new TapisNotFoundException(msg, roleName);
+          throw new TapisNotFoundException(msg, roleDescriptor.getRoleFullName());
       }
       
       // Assign the permission.
@@ -266,7 +267,7 @@ public final class SkRolePermissionDao
    * @throws TapisException on error
    * @throws TapisNotFoundException unknown role name
    */
-  public int removePermission(String tenant, String roleName, 
+  public int removePermission(String tenant, SkRoleDescriptor roleDescriptor,
                               String permission) 
    throws TapisException, TapisNotFoundException
   {
@@ -274,11 +275,11 @@ public final class SkRolePermissionDao
       SkRoleDao dao = new SkRoleDao();
       
       // The parent must exist in the tenant.
-      Integer roleId = dao.getRoleId(tenant, roleName);
+      Integer roleId = dao.getRoleId(tenant, roleDescriptor);
       if (roleId == null) {
-          String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, roleName);
+          String msg = MsgUtils.getMsg("SK_ROLE_NOT_FOUND", tenant, roleDescriptor.getRoleFullName());
           _log.error(msg);
-          throw new TapisNotFoundException(msg, roleName);
+          throw new TapisNotFoundException(msg, roleDescriptor.getRoleFullName());
       }
       
       // Assign the permission.

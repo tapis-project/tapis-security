@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
@@ -10,6 +11,8 @@ public final class ReqPreviewPathPrefix
     public String tenant;
     public String schema;
     public String roleName;
+
+    public String roleType = SkRoleType.USER.name();
     public String oldSystemId;
     public String newSystemId;
     public String oldPrefix;
@@ -22,14 +25,21 @@ public final class ReqPreviewPathPrefix
     public String validate() 
     {
         // Final checks.
-        if (StringUtils.isBlank(tenant)) 
+        if (StringUtils.isBlank(tenant)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "previewPathPrefix", "tenant");
-        if (StringUtils.isBlank(schema)) 
+        }
+        if (StringUtils.isBlank(roleType)) {
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "previewPathPrefix", "roleType");
+        }
+        if (StringUtils.isBlank(schema)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "previewPathPrefix", "schema");
-        if (StringUtils.isBlank(oldSystemId))
+        }
+        if (StringUtils.isBlank(oldSystemId)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "previewPathPrefix", "oldSystemId");
-        if (StringUtils.isBlank(newSystemId)) 
+        }
+        if (StringUtils.isBlank(newSystemId)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "previewPathPrefix", "newSystemId");
+        }
         
         // Success.
         return null;

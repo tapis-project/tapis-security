@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,9 +83,9 @@ public final class UserImpl
     /* ---------------------------------------------------------------------------- */
     /* createAndAssignRole:                                                         */
     /* ---------------------------------------------------------------------------- */
-    public int createAndAssignRole(String roleName, String roleTenant, String description,
-                                    String grantee, String granteeTenant,
-                                    String grantor, String grantorTenant, boolean strict) 
+    public int createAndAssignRole(SkRoleDescriptor roleDescriptor, String roleTenant, String description,
+                                   String grantee, String granteeTenant,
+                                   String grantor, String grantorTenant, boolean strict)
      throws TapisImplException
     {
         // Get the dao.
@@ -96,7 +99,7 @@ public final class UserImpl
 
         // Create and assign the role.
         int rows = 0;
-        try {rows = userDao.createAndAssignRole(roleName, roleTenant, description, 
+        try {rows = userDao.createAndAssignRole(roleDescriptor, roleTenant, description,
         		                                grantee, granteeTenant, 
         		                                grantor, grantorTenant, strict);}
             catch (Exception e) {
@@ -169,13 +172,13 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* grantRole:                                                             */
     /* ---------------------------------------------------------------------- */
-    public int grantRole(String tenant, String user, String roleName, 
+    public int grantRole(String tenant, String user, SkRoleDescriptor roleDescriptor,
     		             String requestor, String requestorTenant) 
       throws TapisImplException, TapisNotFoundException
     {
         // Get the role id.
         int roleId = 0;
-        try {roleId = getRoleId(tenant, roleName);}
+        try {roleId = getRoleId(tenant, roleDescriptor);}
             catch (TapisNotFoundException e) {
                 _log.error(e.getMessage());
                 throw e;
@@ -210,12 +213,12 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* revokeUserRole:                                                        */
     /* ---------------------------------------------------------------------- */
-    public int revokeUserRole(String tenant, String user, String roleName) 
+    public int revokeUserRole(String tenant, String user, SkRoleDescriptor roleDescriptor)
       throws TapisImplException, TapisNotFoundException
     {
         // Get the role id.
         int roleId = 0;
-        try {roleId = getRoleId(tenant, roleName);}
+        try {roleId = getRoleId(tenant, roleDescriptor);}
             catch (TapisNotFoundException e) {
                 _log.error(e.getMessage());
                 throw e;
@@ -275,7 +278,7 @@ public final class UserImpl
         }
         
         // Construct the user's default role name.
-        String roleName = getUserDefaultRolename(grantee);
+        SkRoleDescriptor roleDescriptor = getUserDefaultRolename(grantee);
         
         // Perform an optimistic assignment that works only if the user's 
         // default role exists and has already been assigned to the user.
@@ -286,7 +289,7 @@ public final class UserImpl
         for (int i = 0; i < 2; i++) {
             try {
                 // See if we can assign the permission to the role.
-                rows += grantRoleWithPermission(roleName, granteeTenant, permSpec,  
+                rows += grantRoleWithPermission(roleDescriptor, granteeTenant, permSpec,
                 		                        grantee, granteeTenant, 
                 		                        grantor, grantorTenant);
                 
@@ -298,7 +301,7 @@ public final class UserImpl
                 // assign it to the user in one atomic operation.
                 // Any failure here aborts the whole operation.
             	String desc = "Default role for user " + grantee;
-                rows = createAndAssignRole(roleName, granteeTenant, desc, 
+                rows = createAndAssignRole(roleDescriptor, granteeTenant, desc,
                 		                   grantee, granteeTenant,
                 		                   grantor, grantorTenant, strict);
             }
@@ -324,7 +327,7 @@ public final class UserImpl
      * @throws TapisImplException on general errors
      * @throws TapisNotFoundException the role does not exist
      */
-    public int grantRoleWithPermission(String roleName, String roleTenant, String permSpec,
+    public int grantRoleWithPermission(SkRoleDescriptor roleDescriptor, String roleTenant, String permSpec,
     		                           String grantee, String granteeTenant,  
                                        String grantor, String grantorTenant)
         throws TapisImplException, TapisNotFoundException
@@ -333,7 +336,7 @@ public final class UserImpl
         // --------------------------------------------------------------------
         // Get the role id.
         int roleId = 0;
-        try {roleId = getRoleId(granteeTenant, roleName);}
+        try {roleId = getRoleId(granteeTenant, roleDescriptor);}
             catch (TapisNotFoundException e) {
                 _log.error(e.getMessage());
                 throw e;
@@ -359,13 +362,13 @@ public final class UserImpl
         } catch (TapisNotFoundException e) {
             // This only occurs when the role name is not found.
             String msg = MsgUtils.getMsg("SK_ADD_PERMISSION_ERROR", grantor, granteeTenant,
-            		                     permSpec, roleName, roleTenant);
+            		                     permSpec, roleDescriptor.getRoleFullName(), roleTenant);
             _log.error(msg, e);
             throw e;
         } catch (Exception e) {
             // We assume a bad request for all other errors.
             String msg = MsgUtils.getMsg("SK_ADD_PERMISSION_ERROR", grantor, granteeTenant,
-                                         permSpec, roleName, roleTenant);
+                                         permSpec, roleDescriptor.getRoleFullName(), roleTenant);
             _log.error(msg, e);
             throw new TapisImplException(msg, e, Condition.BAD_REQUEST);        
         }
@@ -395,7 +398,7 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* getUserRoleNames:                                                      */
     /* ---------------------------------------------------------------------- */
-    public List<String> getUserRoleNames(String tenant, String user) 
+    public List<String> getUserRoleNames(String tenant, String user, SkRoleType roleType)
      throws TapisImplException
     {
         // Get the dao.
@@ -408,7 +411,7 @@ public final class UserImpl
 
         // Get the user's role names including those assigned transitively.
         List<String> roles = null;
-        try {roles = dao.getUserRoleNames(tenant, user);}
+        try {roles = dao.getUserRoleNames(tenant, user, roleType);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                              tenant, user, e.getMessage());
@@ -430,7 +433,7 @@ public final class UserImpl
      * @return pairs of <roleId, roleName> for each role directly assigned to user
      * @throws TapisImplException
      */
-    public List<Triple<Integer,String,Boolean>> getUserRoleIdsAndNames(String tenant, String user) 
+    public List<Triple<Integer,String,Boolean>> getUserRoleIdsAndNames(String tenant, String user, SkRoleType roleType)
      throws TapisImplException
     {
         // Get the dao.
@@ -443,7 +446,7 @@ public final class UserImpl
 
         // Get the user's role names including those assigned transitively.
         List<Triple<Integer,String,Boolean>> triples = null;
-        try {triples = dao.getUserRoleIdsAndNames(tenant, user);}
+        try {triples = dao.getUserRoleIdsAndNames(tenant, user, roleType);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                              tenant, user, e.getMessage());
@@ -456,7 +459,7 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* getUsersWithRole:                                                      */
     /* ---------------------------------------------------------------------- */
-    public List<String> getUsersWithRole(String tenant, String roleName) 
+    public List<String> getUsersWithRole(String tenant, SkRoleDescriptor roleDescriptor)
      throws TapisImplException, TapisNotFoundException
     {
         // Get the dao.
@@ -470,7 +473,7 @@ public final class UserImpl
 
         // Assign the role to the user.
         List<String> users = null;
-        try {users = dao.getUsersWithRole(tenant, roleName);}
+        try {users = dao.getUsersWithRole(tenant, roleDescriptor);}
             catch (TapisNotFoundException e) {
                 _log.error(e.getMessage());
                 throw e;
@@ -512,7 +515,7 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* hasRole:                                                               */
     /* ---------------------------------------------------------------------- */
-    public boolean hasRole(String tenant, String user, String[] roleNames, AuthOperation op) 
+    public boolean hasRole(String tenant, String user, SkRoleDescriptor[] roleDescriptors, AuthOperation op)
      throws TapisImplException
     {
         // Check inputs not checked by called routines.
@@ -521,23 +524,32 @@ public final class UserImpl
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST);            
         }
-        if (roleNames == null || (roleNames.length == 0)) {
+        if (roleDescriptors == null || (roleDescriptors.length == 0)) {
             String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "hasRole", "roleNames");
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST);  
         }
-        
-        // Get the user's roles.  An exception can be thrown here.
-        List<String> roles = getUserRoleNames(tenant, user);
-        
+
+        Map<SkRoleType, List<String>> rolesByType = new HashMap<>();
+
         // Initialize the result based on the operation.
         // ANY starts out as false, ALL starts as true.
         boolean authorized = (op == AuthOperation.ANY) ? false : true;
-        
+
+        List<String> roles = Collections.EMPTY_LIST;
+
         // Iterate through the list of user-suppled role names.
-        for (String curRole : roleNames) {
+        for (SkRoleDescriptor curRole : roleDescriptors) {
+            SkRoleType roleType = curRole.getRoleType();
+            if(rolesByType.containsKey(roleType)) {
+                roles = rolesByType.get(roleType);
+            } else {
+                roles = getUserRoleNames(tenant, user, roleType);
+                rolesByType.put(roleType, roles);
+            }
+
             // Search for the role in the list whose elements are sorted in ascending order.
-            int position = Collections.binarySearch(roles, curRole);
+            int position = Collections.binarySearch(roles, curRole.getRoleFullName());
             
             // We stop processing ANY constraints as soon as we find the first match.
             if (op == AuthOperation.ANY) {
@@ -669,7 +681,8 @@ public final class UserImpl
     {
         // The tenant admin role.
         String desc = "Administrator role for tenant " + granteeTenant;
-        return grantRoleInternal(ADMIN_ROLE_NAME, granteeTenant, desc,
+        final SkRoleDescriptor roleDescriptor = SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR;
+        return grantRoleInternal(roleDescriptor, granteeTenant, desc,
         		                 grantee, granteeTenant, grantor, grantorTenant);
     }
 
@@ -689,7 +702,7 @@ public final class UserImpl
      * @throws TapisImplException on error
      * @throws TapisNotFoundException if the role is not found
      */
-    public int grantRoleInternal(String roleName, String roleTenant, String description,
+    public int grantRoleInternal(SkRoleDescriptor roleDescriptor, String roleTenant, String description,
     		                     String grantee, String granteeTenant,
     		                     String grantor, String grantorTenant)
       throws TapisImplException, TapisNotFoundException
@@ -706,7 +719,7 @@ public final class UserImpl
         // Create and assign the role.
         boolean strict = false;
         int rows = 0;
-        try {rows = userDao.createAndAssignRole(roleName, roleTenant, description, 
+        try {rows = userDao.createAndAssignRole(roleDescriptor, roleTenant, description,
         		                                grantee, granteeTenant, 
         		                                grantor, grantorTenant, strict);}
             catch (Exception e) {
@@ -746,15 +759,14 @@ public final class UserImpl
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST);            
         }
-        
-        // The tenant admin role.
-        final String roleName = ADMIN_ROLE_NAME;
-        
+
         // Get all the users with the admin role.  Exceptions already logged.
-        List<String> admins = getUsersWithRole(tenant, roleName);
-        
-        // Make sure the requestor is an admin.  Null checks are performed here.
-        if (!admins.contains(requestor)) {
+        List<String> admins = getUsersWithRole(tenant, SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR);
+        String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
+        List<String> siteAdmins = getUsersWithRole(primarySiteAdminTenantId, SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR);
+
+        // Make sure the requestor is a tenant admin or a site admin.  Null checks are performed here.
+        if ((!admins.contains(requestor)) && (!siteAdmins.contains(requestor))) {
             String msg = MsgUtils.getMsg("SK_REQUESTOR_NOT_ADMIN", tenant, requestor);
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST); 
@@ -772,15 +784,15 @@ public final class UserImpl
 
         // Get the role id.
         int roleId = 0;
-        try {roleId = getRoleId(tenant, roleName);}
-            catch (TapisNotFoundException e) {
+        try {
+            roleId = getRoleId(tenant, SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR);
+        } catch (TapisNotFoundException e) {
                 _log.error(e.getMessage());
                 throw e;
-            }
-            catch (Exception e) {
+        } catch (Exception e) {
                 _log.error(e.getMessage());
                 throw new TapisImplException(e.getMessage(), e, Condition.INTERNAL_SERVER_ERROR);            
-            }
+        }
 
         // Get the dao.
         SkUserRoleDao dao = null;

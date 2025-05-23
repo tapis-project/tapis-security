@@ -4,7 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 
-public class ReqValidateServicePwd 
+public class ReqValidatePwd
  implements IReqBody
 {
     public String tenant;

@@ -1,0 +1,2 @@
+If you have never started vault, you can use setupSecurityContainers.sh.  Note that this mounts a docker volume in the docker container, 
+so if you have ever started vault, it will not init properly unless you remove that volume (tapis-security-vault-data:/vault)

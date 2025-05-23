@@ -115,8 +115,7 @@ public class ShareResource
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response shareResource(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
-                                  InputStream payloadStream)
+    public Response shareResource(InputStream payloadStream)
     {
         // Trace this request.
         if (_log.isTraceEnabled()) {
@@ -136,7 +135,7 @@ public class ShareResource
                                          "shareResource", e.getMessage());
             _log.error(msg, e);
             return Response.status(Status.BAD_REQUEST).
-              entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+              entity(TapisRestUtils.createErrorResponse(msg)).build();
         }
             
         // Fill in the parameter fields.
@@ -163,8 +162,8 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
-                            .check(prettyPrint);
+                            .setCheckServiceIsAllowed()
+                            .check();
         if (resp != null) return resp;
         
         // ------------------------ Request Processing ------------------------
@@ -177,7 +176,7 @@ public class ShareResource
             String msg = MsgUtils.getMsg("SK_SHARE_CREATE_ERROR", skShare.getGrantor(), skShare.getTenant(),
                             skShare.getGrantee(), skShare.getResourceType(), skShare.printResource(), 
                             skShare.getPrivilege());
-            return getExceptionResponse(e, msg, prettyPrint);
+            return getExceptionResponse(e, msg);
         }
         
         // NOTE: We need to assign a location header as well.
@@ -191,10 +190,10 @@ public class ShareResource
         // No new rows means the role exists. 
         if (rows == 0)
             return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-                MsgUtils.getMsg("TAPIS_EXISTED", "Share", skShare.getId()), prettyPrint, r)).build();
+                MsgUtils.getMsg("TAPIS_EXISTED", "Share", skShare.getId()), r)).build();
         else 
             return Response.status(Status.CREATED).entity(TapisRestUtils.createSuccessResponse(
-                MsgUtils.getMsg("TAPIS_CREATED", "Share", skShare.getId()), prettyPrint, r)).build();
+                MsgUtils.getMsg("TAPIS_CREATED", "Share", skShare.getId()), r)).build();
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -214,8 +213,7 @@ public class ShareResource
                               @DefaultValue("") @QueryParam("createdByTenant") String createdByTenant,
                               @DefaultValue("true")  @QueryParam("includePublicGrantees") boolean includePublicGrantees,
                               @DefaultValue("true")  @QueryParam("requireNullId2")        boolean requireNullId2,
-                              @DefaultValue("0")     @QueryParam("id")         int id,
-                              @DefaultValue("false") @QueryParam("pretty")     boolean prettyPrint)
+                              @DefaultValue("0")     @QueryParam("id")         int id)
     {
         // Trace this request.
         if (_log.isTraceEnabled()) {
@@ -249,13 +247,13 @@ public class ShareResource
         if (inputFilter.getTenant() == null) {
             var r = new RespBasic("Missing input parameter: tenant");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "tenant"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "tenant"), r)).build();
         }
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
-                            .check(prettyPrint);
+                            .setCheckServiceIsAllowed()
+                            .check();
         if (resp != null) return resp;
         
         // ------------------------ Request Processing ------------------------
@@ -267,7 +265,7 @@ public class ShareResource
             String msg = MsgUtils.getMsg("SK_SHARE_RETRIEVAL_ERROR", oboTenant, oboUser,
                                          threadContext.getJwtTenantId(), threadContext.getJwtUser(),
                                          inputFilter.getTenant());
-            return getExceptionResponse(e, msg, prettyPrint);
+            return getExceptionResponse(e, msg);
         }
         
         // Package the list for the response.
@@ -278,7 +276,7 @@ public class ShareResource
         // Success means zero or more shares were found. 
         RespShareList r = new RespShareList(skShares);
         return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-            MsgUtils.getMsg("TAPIS_FOUND", "Shares", skShares.shares.size()), prettyPrint, r)).build();
+            MsgUtils.getMsg("TAPIS_FOUND", "Shares", skShares.shares.size()), r)).build();
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -289,8 +287,7 @@ public class ShareResource
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response getShare(@PathParam("id") int id,
-                             @DefaultValue("") @QueryParam("tenant") String tenant,  // required
-                             @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+                             @DefaultValue("") @QueryParam("tenant") String tenant)
     {
         // Trace this request.
         if (_log.isTraceEnabled()) {
@@ -304,7 +301,7 @@ public class ShareResource
         if (id <= 0) {
             var r = new RespBasic("Invalid share id: " + id + ".");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "Share", id), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "Share", id), r)).build();
         }
         
         // Make sure we have an actual tenant string.
@@ -312,7 +309,7 @@ public class ShareResource
         if (tenant == null) {
             var r = new RespBasic("Missing tenant query parameter.");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "Share", "tenant"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "Share", "tenant"), r)).build();
         }
         
         // Get obo information.
@@ -323,8 +320,8 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
-                            .check(prettyPrint);
+                            .setCheckServiceIsAllowed()
+                            .check();
         if (resp != null) return resp;
         
         // ------------------------ Request Processing ------------------------
@@ -336,21 +333,21 @@ public class ShareResource
             String msg = MsgUtils.getMsg("SK_SHARE_RETRIEVAL_ERROR", oboTenant, oboUser,
                                          threadContext.getJwtTenantId(), threadContext.getJwtUser(),
                                          tenant);
-            return getExceptionResponse(e, msg, prettyPrint);
+            return getExceptionResponse(e, msg);
         }
         
         // Surface not found as an error.
         if (skShare == null) {
             var r = new RespBasic("No share with id " + id + " was found.");
             return Response.status(Status.NOT_FOUND).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "Share", id), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "Share", id), r)).build();
         }
                 
         // ---------------------------- Success ------------------------------- 
         // Success means zero or more shares were found. 
         RespShare r = new RespShare(skShare);
         return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-            MsgUtils.getMsg("TAPIS_FOUND", "Shares", id), prettyPrint, r)).build();
+            MsgUtils.getMsg("TAPIS_FOUND", "Shares", id), r)).build();
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -361,8 +358,7 @@ public class ShareResource
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteShareById(@PathParam("id") int id,
-                                    @DefaultValue("") @QueryParam("tenant") String tenant,  // required
-                                    @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
+                                    @DefaultValue("") @QueryParam("tenant") String tenant)
     {
         // Trace this request.
         if (_log.isTraceEnabled()) {
@@ -376,7 +372,7 @@ public class ShareResource
         if (id <= 0) {
             var r = new RespBasic("Invalid share id: " + id + ".");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "deleteShare", id), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "deleteShare", id), r)).build();
         }
         
         // Make sure we have an actual tenant string.
@@ -384,7 +380,7 @@ public class ShareResource
         if (tenant == null) {
             var r = new RespBasic("Missing tenant query parameter.");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "Share", "tenant"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "Share", "tenant"), r)).build();
         }
         
         // Get obo information.
@@ -397,8 +393,8 @@ public class ShareResource
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
-                            .check(prettyPrint);
+                            .setCheckServiceIsAllowed()
+                            .check();
         if (resp != null) return resp;
         
         // ------------------------ Request Processing ------------------------
@@ -409,7 +405,7 @@ public class ShareResource
         catch (Exception e) {
             String msg = MsgUtils.getMsg("SK_SHARE_DELETE_BY_ID_ERROR", oboTenant, oboUser,
                                          jwtTenant, jwtUser, id, tenant);
-            return getExceptionResponse(e, msg, prettyPrint);
+            return getExceptionResponse(e, msg);
         }
         
         // Package the count.
@@ -420,13 +416,13 @@ public class ShareResource
         // This call is idempotent but returns a different response message when ID not found.
         if (rows < 1) {
             return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "deleteShare", id), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "deleteShare", id), r)).build();
         }
                 
         // ---------------------------- Success ------------------------------- 
         // Success means zero or more shares were found. 
         return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-            MsgUtils.getMsg("TAPIS_FOUND", "deleteShare", id), prettyPrint, r)).build();
+            MsgUtils.getMsg("TAPIS_FOUND", "deleteShare", id), r)).build();
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -441,8 +437,7 @@ public class ShareResource
                                 @DefaultValue("") @QueryParam("resourceType") String resourceType,
                                 @DefaultValue("") @QueryParam("resourceId1")  String resourceId1,
                                 @DefaultValue("") @QueryParam("resourceId2")  String resourceId2,
-                                @DefaultValue("") @QueryParam("privilege")    String privilege,
-                                @DefaultValue("false") @QueryParam("pretty")  boolean prettyPrint)
+                                @DefaultValue("") @QueryParam("privilege")    String privilege)
     {
         // Trace this request.
         if (_log.isTraceEnabled()) {
@@ -475,39 +470,39 @@ public class ShareResource
         if (sel.getGrantor() == null) {
             var r = new RespBasic("Missing input parameter: grantor");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "grantor"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "grantor"), r)).build();
         }
         if (sel.getGrantee() == null) {
             var r = new RespBasic("Missing input parameter: grantee");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "grantee"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "grantee"), r)).build();
         }
         if (sel.getTenant() == null) {
             var r = new RespBasic("Missing input parameter: tenant");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "tenant"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "tenant"), r)).build();
         }
         if (sel.getResourceType() == null) {
             var r = new RespBasic("Missing input parameter: resourceType");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "resourceType"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "resourceType"), r)).build();
         }
         if (sel.getResourceId1() == null) {
             var r = new RespBasic("Missing input parameter: resourceId1");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "resourceId1"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "resourceId1"), r)).build();
         }
         if (sel.getPrivilege() == null) {
             var r = new RespBasic("Missing input parameter: privilege");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "privilege"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "privilege"), r)).build();
         }
         
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
-                            .check(prettyPrint);
+                            .setCheckServiceIsAllowed()
+                            .check();
         if (resp != null) return resp;
         
         // ------------------------ Request Processing ------------------------
@@ -518,7 +513,7 @@ public class ShareResource
         catch (Exception e) {
             String msg = MsgUtils.getMsg("SK_SHARE_DELETE_ERROR", oboTenant, oboUser,
                                          jwtTenant, jwtUser, grantee, grantor, tenant);
-            return getExceptionResponse(e, msg, prettyPrint);
+            return getExceptionResponse(e, msg);
         }
         
         // Package the count.
@@ -529,13 +524,13 @@ public class ShareResource
         // This call is idempotent but returns a different response message when ID not found.
         if (rows < 1) {
             return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "deleteShare", grantee), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "deleteShare", grantee), r)).build();
         }
                 
         // ---------------------------- Success ------------------------------- 
         // Success means zero or more shares were found. 
         return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-            MsgUtils.getMsg("TAPIS_FOUND", "deleteShare", grantee), prettyPrint, r)).build();
+            MsgUtils.getMsg("TAPIS_FOUND", "deleteShare", grantee), r)).build();
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -552,8 +547,7 @@ public class ShareResource
                                  @DefaultValue("") @QueryParam("resourceId2")  String resourceId2,
                                  @DefaultValue("") @QueryParam("privilege")    String privilege,
                                  @DefaultValue("false") @QueryParam("excludePublic") boolean excludePublic,
-                                 @DefaultValue("false") @QueryParam("excludePublicNoAuthn") boolean excludePublicNoAuthn,
-                                 @DefaultValue("false") @QueryParam("pretty")  boolean prettyPrint)
+                                 @DefaultValue("false") @QueryParam("excludePublicNoAuthn") boolean excludePublicNoAuthn)
     {
         // Trace this request.
         if (_log.isTraceEnabled()) {
@@ -581,34 +575,34 @@ public class ShareResource
         if (sel.getGrantee() == null) {
             var r = new RespBasic("Missing input parameter: grantee");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "grantee"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "grantee"), r)).build();
         }
         if (sel.getTenant() == null) {
             var r = new RespBasic("Missing input parameter: tenant");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "tenant"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "tenant"), r)).build();
         }
         if (sel.getResourceType() == null) {
             var r = new RespBasic("Missing input parameter: resourceType");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "resourceType"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "resourceType"), r)).build();
         }
         if (sel.getResourceId1() == null) {
             var r = new RespBasic("Missing input parameter: resourceId1");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "resourceId1"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "resourceId1"), r)).build();
         }
         if (sel.getPrivilege() == null) {
             var r = new RespBasic("Missing input parameter: privilege");
             return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "privilege"), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", "privilege"), r)).build();
         }
         
         // ------------------------- Check Authz ------------------------------
         // Authorization passed if a null response is returned.
         Response resp = SKCheckAuthz.configure(oboTenant, oboUser)
-                            .setCheckIsService()
-                            .check(prettyPrint);
+                            .setCheckServiceIsAllowed()
+                            .check();
         if (resp != null) return resp;
         
         // ------------------------ Request Processing ------------------------
@@ -620,7 +614,7 @@ public class ShareResource
             String msg = MsgUtils.getMsg("SK_SHARE_RETRIEVAL_ERROR", oboTenant, oboUser,
                                          threadContext.getJwtTenantId(), threadContext.getJwtUser(),
                                          sel.getTenant());
-            return getExceptionResponse(e, msg, prettyPrint);
+            return getExceptionResponse(e, msg);
         }
         
         // Create the response.
@@ -631,12 +625,12 @@ public class ShareResource
         // Surface not found as an error.
         if (!hasPrivilege) {
             return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", sel.getPrivilege()), prettyPrint, r)).build();
+                    MsgUtils.getMsg("TAPIS_NOT_FOUND", "hasPrivilege", sel.getPrivilege()), r)).build();
         }
                 
         // ---------------------------- Success ------------------------------- 
         // Success means zero or more shares were found. 
         return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-            MsgUtils.getMsg("TAPIS_FOUND", "hasPrivilege", sel.getPrivilege()), prettyPrint, r)).build();
+            MsgUtils.getMsg("TAPIS_FOUND", "hasPrivilege", sel.getPrivilege()), r)).build();
     }
 }

@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.security.api.utils.SKApiUtils;
@@ -10,7 +12,7 @@ public final class ReqUserHasRoleMulti
 {
     public String   tenant;
     public String   user;
-    public String[] roleNames;
+    public SkRoleDescriptor[] roleDescriptors;
     public boolean  orAdmin;
 
     /** Return a user-appropriate error message on failed validation
@@ -24,18 +26,28 @@ public final class ReqUserHasRoleMulti
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "hasRoleMulti", "tenant");
         if (StringUtils.isBlank(user)) 
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "hasRoleMulti", "user");
-        if (roleNames == null || (roleNames.length == 0))
-            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "hasRoleMulti", "roleNames");
+        if (roleDescriptors == null || (roleDescriptors.length == 0))
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "hasRoleMulti", "roleDescriptors");
 
         // Check each role name.
-        for (String roleName : roleNames) {
-            if (StringUtils.isBlank(roleName)) 
-                return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "hasRoleMulti", "roleName");
-            if (!SKApiUtils.isValidName(roleName))
-                return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "hasRoleMulti", "roleName", roleName);
+        for (SkRoleDescriptor roleDescriptor : roleDescriptors) {
+            if(!SkRoleDescriptor.descriptorIsValid(roleDescriptor))
+                return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "hasRoleMulti", "roleDescriptor");
         }
         
         // Success.
         return null;
     }
+/*
+    @Deprecated
+    public void setRoleNames(String[] roleNames) {
+        roleDescriptors = new SkRoleDescriptor[roleNames.length];
+        for(int i = 0;i < roleNames.length; i++) {
+            // TODO:  Dan - Should this default to type user?  Is there a way to make this happen?
+            SkRoleType roleType = SkRoleType.getRoleTypeFromRoleName(roleNames[i]);
+            roleDescriptors[i] = SkRoleDescriptor.newSkRoleDescriptor(roleNames[i], roleType);
+        }
+    }
+
+ */
 }

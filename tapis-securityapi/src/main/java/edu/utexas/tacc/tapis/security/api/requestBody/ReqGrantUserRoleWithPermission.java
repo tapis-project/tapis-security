@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.security.api.utils.SKApiUtils;
@@ -11,6 +12,7 @@ public final class ReqGrantUserRoleWithPermission
     public String tenant;
     public String user;
     public String roleName;
+    public String roleType = SkRoleType.USER.name();
     public String permSpec;
 
     /** Return a user-appropriate error message on failed validation
@@ -20,17 +22,25 @@ public final class ReqGrantUserRoleWithPermission
     public String validate() 
     {
         // Final checks.
-        if (StringUtils.isBlank(tenant)) 
+        if (StringUtils.isBlank(tenant)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "grantUserRoleWithPerm", "tenant");
-        if (StringUtils.isBlank(user)) 
+        }
+        if (StringUtils.isBlank(user)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "grantUserRoleWithPerm", "user");
-        if (StringUtils.isBlank(roleName)) 
+        }
+        if (StringUtils.isBlank(roleName)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "grantUserRoleWithPerm", "roleName");
-        if (!SKApiUtils.isValidName(roleName))
+        }
+        if (!SKApiUtils.isValidName(roleName)) {
             return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "grantUserRoleWithPerm", "roleName", roleName);
-        if (StringUtils.isBlank(permSpec)) 
+        }
+        if (StringUtils.isBlank(permSpec)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "grantUserRoleWithPerm", "permSpec");
-        
+        }
+        if (StringUtils.isBlank(roleType)) {
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "replacePathPrefix", "roleType");
+        }
+
         // Success.
         return null;
     }

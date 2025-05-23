@@ -30,7 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.utexas.tacc.tapis.security.api.requestBody.ReqValidateServicePwd;
+import edu.utexas.tacc.tapis.security.api.requestBody.ReqValidatePwd;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqVersions;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqWriteSecret;
 import edu.utexas.tacc.tapis.security.api.responses.RespSecret;
@@ -78,8 +78,8 @@ public final class VaultResource
         "/edu/utexas/tacc/tapis/security/api/jsonschema/WriteSecretRequest.json";
     private static final String FILE_SK_SECRET_VERSION_REQUEST = 
         "/edu/utexas/tacc/tapis/security/api/jsonschema/SecretVersionRequest.json";
-    private static final String FILE_SK_VALIDATE_SERVICE_PWD_REQUEST = 
-        "/edu/utexas/tacc/tapis/security/api/jsonschema/ValidateServicePwdRequest.json";
+    private static final String FILE_SK_VALIDATE_PWD_REQUEST =
+        "/edu/utexas/tacc/tapis/security/api/jsonschema/ValidatePwdRequest.json";
     
     /* **************************************************************************** */
     /*                                    Fields                                    */
@@ -142,7 +142,6 @@ public final class VaultResource
                                 @QueryParam("tenant") String tenant,
                                 @QueryParam("user") String user,
                                 @DefaultValue("0") @QueryParam("version") int version,
-                                @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                 /* Query parameters used to construct the secret path in vault */
                                 @QueryParam("sysid")      String sysId,
                                 @QueryParam("sysuser")    String sysUser,
@@ -163,13 +162,13 @@ public final class VaultResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          if (StringUtils.isBlank(user)) {
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "user");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // ------------------------- Path Processing --------------------------
@@ -179,14 +178,14 @@ public final class VaultResource
                                                    keyType, dbHost, dbName, dbService);}
              catch (Exception e) {
                  _log.error(e.getMessage(), e);
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user, secretPathParms)
                              .setCheckSecrets()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -196,7 +195,7 @@ public final class VaultResource
              skSecret = getVaultImpl().secretRead(tenant, user, secretPathParms, version);
          } catch (Exception e) {
              _log.error(e.getMessage(), e);
-             return getExceptionResponse(e, e.getMessage(), prettyPrint);
+             return getExceptionResponse(e, e.getMessage());
          }
          
          // ------------------------ Request Output ----------------------------
@@ -206,7 +205,7 @@ public final class VaultResource
          // Success.
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
                  MsgUtils.getMsg("TAPIS_READ", "Secret", secretPathParms.getSecretName()), 
-                                 prettyPrint, respSecret)).build();
+                                 respSecret)).build();
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -218,7 +217,6 @@ public final class VaultResource
      @Produces(MediaType.APPLICATION_JSON)
      public Response writeSecret(@PathParam("secretType") String secretType,
                                  @PathParam("secretName") String secretName,
-                                 @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                  /* Query parameters used to construct the secret path in vault */
                                  @QueryParam("sysid")      String sysId,
                                  @QueryParam("sysuser")    String sysUser,
@@ -248,7 +246,7 @@ public final class VaultResource
                                           "writeSecret", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // Unpack the payload.
@@ -264,14 +262,14 @@ public final class VaultResource
                                                    keyType, dbHost, dbName, dbService);}
              catch (Exception e) {
                  _log.error(e.getMessage(), e);
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user, secretPathParms)
                              .setCheckSecrets()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -281,14 +279,14 @@ public final class VaultResource
              skSecretMeta = getVaultImpl().secretWrite(tenant, user, secretPathParms, secretMap);
          } catch (Exception e) {
              _log.error(e.getMessage(), e);
-             return getExceptionResponse(e, e.getMessage(), prettyPrint);
+             return getExceptionResponse(e, e.getMessage());
          }
          
          // Return the data portion of the vault response.
          RespSecretMeta r = new RespSecretMeta(skSecretMeta);
          return Response.status(Status.CREATED).entity(TapisRestUtils.createSuccessResponse(
                  MsgUtils.getMsg("TAPIS_CREATED", "Secret", secretPathParms.getSecretName()), 
-                                 prettyPrint, r)).build();
+                                 r)).build();
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -300,7 +298,6 @@ public final class VaultResource
      @Produces(MediaType.APPLICATION_JSON)
      public Response deleteSecret(@PathParam("secretType") String secretType,
                                   @PathParam("secretName") String secretName,
-                                  @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                   /* Query parameters used to construct the secret path in vault */
                                   @QueryParam("sysid")      String sysId,
                                   @QueryParam("sysuser")    String sysUser,
@@ -328,7 +325,7 @@ public final class VaultResource
                                           "deleteSecret", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // Massage the input.
@@ -344,14 +341,14 @@ public final class VaultResource
                                                    keyType, dbHost, dbName, dbService);}
              catch (Exception e) {
                  _log.error(e.getMessage(), e);
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user, secretPathParms)
                              .setCheckSecrets()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -362,14 +359,14 @@ public final class VaultResource
                                                            versions);
          } catch (Exception e) {
              _log.error(e.getMessage(), e);
-             return getExceptionResponse(e, e.getMessage(), prettyPrint);
+             return getExceptionResponse(e, e.getMessage());
          }
          
          // Return the data portion of the vault response.
          RespVersions r = new RespVersions(deletedVersions);
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
                  MsgUtils.getMsg("TAPIS_DELETED", "Secret", secretPathParms.getSecretName()), 
-                                 prettyPrint, r)).build();
+                                 r)).build();
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -381,7 +378,6 @@ public final class VaultResource
      @Produces(MediaType.APPLICATION_JSON)
      public Response undeleteSecret(@PathParam("secretType") String secretType,
                                     @PathParam("secretName") String secretName,
-                                    @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                     /* Query parameters used to construct the secret path in vault */
                                     @QueryParam("sysid")      String sysId,
                                     @QueryParam("sysuser")    String sysUser,
@@ -408,7 +404,7 @@ public final class VaultResource
                                           "undeleteSecret", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // Massage the input.
@@ -424,14 +420,14 @@ public final class VaultResource
                                                    keyType, dbHost, dbName, dbService);}
              catch (Exception e) {
                  _log.error(e.getMessage(), e);
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user, secretPathParms)
                              .setCheckSecrets()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -442,14 +438,14 @@ public final class VaultResource
                                                                versions);
          } catch (Exception e) {
              _log.error(e.getMessage(), e);
-             return getExceptionResponse(e, e.getMessage(), prettyPrint);
+             return getExceptionResponse(e, e.getMessage());
          }
          
          // Return the data portion of the vault response.
          RespVersions r = new RespVersions(undeletedVersions);
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
                  MsgUtils.getMsg("TAPIS_UNDELETED", "Secret", secretPathParms.getSecretName()), 
-                                 prettyPrint, r)).build();
+                                 r)).build();
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -461,7 +457,6 @@ public final class VaultResource
      @Produces(MediaType.APPLICATION_JSON)
      public Response destroySecret(@PathParam("secretType") String secretType,
                                    @PathParam("secretName") String secretName,
-                                   @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                    /* Query parameters used to construct the secret path in vault */
                                    @QueryParam("sysid")      String sysId,
                                    @QueryParam("sysuser")    String sysUser,
@@ -489,7 +484,7 @@ public final class VaultResource
                                           "destroySecret", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // Massage the input.
@@ -505,14 +500,14 @@ public final class VaultResource
                                                    keyType, dbHost, dbName, dbService);}
              catch (Exception e) {
                  _log.error(e.getMessage(), e);
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user, secretPathParms)
                              .setCheckSecrets()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -523,14 +518,14 @@ public final class VaultResource
                                                               versions);
          } catch (Exception e) {
              _log.error(e.getMessage(), e);
-             return getExceptionResponse(e, e.getMessage(), prettyPrint);
+             return getExceptionResponse(e, e.getMessage());
          }
          
          // Return the data portion of the vault response.
          RespVersions r = new RespVersions(destroyedVersions);
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
                  MsgUtils.getMsg("TAPIS_DELETED", "Secret", secretPathParms.getSecretName()), 
-                                 prettyPrint, r)).build();
+                                 r)).build();
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -543,7 +538,6 @@ public final class VaultResource
                                     @PathParam("secretName") String secretName,
                                     @QueryParam("tenant") String tenant,
                                     @QueryParam("user")   String user,
-                                    @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                     /* Query parameters used to construct the secret path in vault */
                                     @QueryParam("sysid")      String sysId,
                                     @QueryParam("sysuser")    String sysUser,
@@ -564,13 +558,13 @@ public final class VaultResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          if (StringUtils.isBlank(user)) {
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "user");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // ------------------------- Path Processing --------------------------
@@ -580,14 +574,14 @@ public final class VaultResource
                                                    keyType, dbHost, dbName, dbService);}
              catch (Exception e) {
                  _log.error(e.getMessage(), e);
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user, secretPathParms)
                              .setCheckSecrets()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -597,14 +591,14 @@ public final class VaultResource
              info = getVaultImpl().secretReadMeta(tenant, user, secretPathParms);
          } catch (Exception e) {
              _log.error(e.getMessage(), e);
-             return getExceptionResponse(e, e.getMessage(), prettyPrint);
+             return getExceptionResponse(e, e.getMessage());
          }
          
          // Return the data portion of the vault response.
          var r = new RespSecretVersionMetadata(info);
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
                  MsgUtils.getMsg("TAPIS_READ", "Secret", secretPathParms.getSecretName()), 
-                                 prettyPrint, r)).build();
+                                 r)).build();
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -616,7 +610,6 @@ public final class VaultResource
      public Response listSecretMeta(@PathParam("secretType") String secretType,
                                     @QueryParam("tenant") String tenant,
                                     @QueryParam("user")   String user,
-                                    @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                     /* Query parameters used to construct the secret path in vault */
                                     @QueryParam("sysid")      String sysId,
                                     @QueryParam("sysuser")    String sysUser,
@@ -637,13 +630,13 @@ public final class VaultResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          if (StringUtils.isBlank(user)) {
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "user");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // ------------------------- Path Processing --------------------------
@@ -653,14 +646,14 @@ public final class VaultResource
                                                    keyType, dbHost, dbName, dbService);}
              catch (Exception e) {
                  _log.error(e.getMessage(), e);
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user, secretPathParms)
                              .setCheckSecrets()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -670,13 +663,13 @@ public final class VaultResource
              info = getVaultImpl().secretListMeta(tenant, user, secretPathParms);
          } catch (Exception e) {                  
              _log.error(e.getMessage(), e);
-             return getExceptionResponse(e, e.getMessage(), prettyPrint);
+             return getExceptionResponse(e, e.getMessage());
          }
          
          // Return the data portion of the vault response.
          var r = new RespSecretList(info);
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-                 MsgUtils.getMsg("TAPIS_READ", "Secret", info.secretPath), prettyPrint, r)).build();
+                 MsgUtils.getMsg("TAPIS_READ", "Secret", info.secretPath), r)).build();
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -689,7 +682,6 @@ public final class VaultResource
                                        @PathParam("secretName") String secretName,
                                        @QueryParam("tenant") String tenant,
                                        @QueryParam("user")   String user,
-                                       @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                                        /* Query parameters used to construct the secret path in vault */
                                        @QueryParam("sysid")      String sysId,
                                        @QueryParam("sysuser")    String sysUser,
@@ -710,13 +702,13 @@ public final class VaultResource
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "tenant");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          if (StringUtils.isBlank(user)) {
              String msg = MsgUtils.getMsg("SK_MISSING_PARAMETER", "user");
              _log.error(msg);
              return Response.status(Status.BAD_REQUEST).
-                     entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // ------------------------- Path Processing --------------------------
@@ -726,14 +718,14 @@ public final class VaultResource
                                                    keyType, dbHost, dbName, dbService);}
              catch (Exception e) {
                  _log.error(e.getMessage(), e);
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user, secretPathParms)
                              .setCheckSecrets()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
@@ -742,14 +734,14 @@ public final class VaultResource
              getVaultImpl().secretDestroyMeta(tenant, user, secretPathParms);
          } catch (Exception e) {
              _log.error(e.getMessage(), e);
-             return getExceptionResponse(e, e.getMessage(), prettyPrint);
+             return getExceptionResponse(e, e.getMessage());
          }
          
          // Return the data portion of the vault response.
          var r = new RespBasic();
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
                  MsgUtils.getMsg("TAPIS_DELETED", "Secret", secretPathParms.getSecretName()), 
-                                 prettyPrint, r)).build();
+                                 r)).build();
      }
      
      /* ---------------------------------------------------------------------------- */
@@ -760,7 +752,6 @@ public final class VaultResource
      @Consumes(MediaType.APPLICATION_JSON)
      @Produces(MediaType.APPLICATION_JSON)
      public Response validateServicePassword(@PathParam("secretName") String secretName,
-                         @DefaultValue("false") @QueryParam("pretty") boolean prettyPrint,
                          InputStream payloadStream)
      {
          // Trace this request.
@@ -774,16 +765,16 @@ public final class VaultResource
          // Parse and validate the json in the request payload, which must exist.
          // Note that the secret values in the payload will only be string values,
          // which is more restrictive typing than Vault.
-         ReqValidateServicePwd payload = null;
-         try {payload = getPayload(payloadStream, FILE_SK_VALIDATE_SERVICE_PWD_REQUEST, 
-                                   ReqValidateServicePwd.class);
+         ReqValidatePwd payload = null;
+         try {payload = getPayload(payloadStream, FILE_SK_VALIDATE_PWD_REQUEST,
+                                   ReqValidatePwd.class);
          } 
          catch (Exception e) {
              String msg = MsgUtils.getMsg("NET_REQUEST_PAYLOAD_ERROR", 
                                           "validateServicePassword", e.getMessage());
              _log.error(msg, e);
              return Response.status(Status.BAD_REQUEST).
-               entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+               entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // Extract input values.
@@ -802,26 +793,26 @@ public final class VaultResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, user)
                              .setValidatePassword()
-                             .check(prettyPrint);
+                             .check();
          if (resp != null) return resp;
          
          // ------------------------ Request Processing ------------------------
          // Get the names.
          boolean authorized;
-         try {authorized = getVaultImpl().validateServicePwd(tenant, user, secretName, 
-                                                             payload.password);}
+         try {authorized = getVaultImpl().validatePwd(tenant, user,
+                 SecretType.ServicePwd, secretName, payload.password);}
              catch (Exception e) {
                  // Already logged.
-                 return getExceptionResponse(e, e.getMessage(), prettyPrint);
+                 return getExceptionResponse(e, e.getMessage());
              }
          
          // Password was not matched.
          if (!authorized) {
-             String msg = MsgUtils.getMsg("SK_INVALID_SERVICE_PASSWORD", 
+             String msg = MsgUtils.getMsg("SK_INVALID_PASSWORD",
                                           tenant, user, secretName);
              _log.warn(msg);
              return Response.status(Status.FORBIDDEN).
-                 entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+                 entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
          
          // Set the result payload on success.
@@ -831,10 +822,91 @@ public final class VaultResource
          
          // Return the data portion of the vault response.
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-                 MsgUtils.getMsg("TAPIS_AUTHORIZED", "Service", secretName), prettyPrint, r)).build();
+                 MsgUtils.getMsg("TAPIS_AUTHORIZED", "Service", secretName), r)).build();
      }
-     
-     /* **************************************************************************** */
+
+    /* ---------------------------------------------------------------------------- */
+    /* validateSiteAdminPassword:                                                   */
+    /* ---------------------------------------------------------------------------- */
+    @POST
+    @Path("/secret/validateSiteAdminPassword/{secretName}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response validateSiteAdminPassword(@PathParam("secretName") String secretName,
+                                            InputStream payloadStream)
+    {
+        // Trace this request.
+        if (_log.isTraceEnabled()) {
+            String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(),
+                    "writeSecret", _request.getRequestURL());
+            _log.trace(msg);
+        }
+
+        // ------------------------- Input Processing -------------------------
+        // Parse and validate the json in the request payload, which must exist.
+        // Note that the secret values in the payload will only be string values,
+        // which is more restrictive typing than Vault.
+        ReqValidatePwd payload = null;
+        try {payload = getPayload(payloadStream, FILE_SK_VALIDATE_PWD_REQUEST,
+                ReqValidatePwd.class);
+        }
+        catch (Exception e) {
+            String msg = MsgUtils.getMsg("NET_REQUEST_PAYLOAD_ERROR",
+                    "validatePassword", e.getMessage());
+            _log.error(msg, e);
+            return Response.status(Status.BAD_REQUEST).
+                    entity(TapisRestUtils.createErrorResponse(msg)).build();
+        }
+
+        // Extract input values.
+        String tenant = payload.tenant;
+        String user   = payload.user;
+
+        // Support secret name paths by replacing the escape characters (+) with
+        // slashes.  This is typically handled in SecretPathMapperParms.
+        if (secretName != null) secretName = secretName.replace('+', '/');
+
+        // Log payload info.
+        if (_log.isDebugEnabled())
+            _log.debug(MsgUtils.getMsg("SK_VALIDATING_PASSWORD", tenant, user, secretName));
+
+        // ------------------------- Check Authz ------------------------------
+        // Authorization passed if a null response is returned.
+        Response resp = SKCheckAuthz.configure(tenant, user)
+                .setValidatePassword()
+                .check();
+        if (resp != null) return resp;
+
+        // ------------------------ Request Processing ------------------------
+        // Get the names.
+        boolean authorized;
+        try {authorized = getVaultImpl().validatePwd(tenant, user,
+                SecretType.SiteAdminPwd, secretName, payload.password);}
+        catch (Exception e) {
+            // Already logged.
+            return getExceptionResponse(e, e.getMessage());
+        }
+
+        // Password was not matched.
+        if (!authorized) {
+            String msg = MsgUtils.getMsg("SK_INVALID_PASSWORD",
+                    tenant, user, secretName);
+            _log.warn(msg);
+            return Response.status(Status.FORBIDDEN).
+                    entity(TapisRestUtils.createErrorResponse(msg)).build();
+        }
+
+        // Set the result payload on success.
+        ResultAuthorized authResp = new ResultAuthorized();
+        authResp.isAuthorized = true;
+        RespAuthorized r = new RespAuthorized(authResp);
+
+        // Return the data portion of the vault response.
+        return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
+                MsgUtils.getMsg("TAPIS_AUTHORIZED", "SiteAdmin", secretName), r)).build();
+    }
+
+    /* **************************************************************************** */
      /*                               Private Methods                                */
      /* **************************************************************************** */
      /* ---------------------------------------------------------------------------- */

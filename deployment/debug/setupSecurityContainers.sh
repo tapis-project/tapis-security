@@ -250,6 +250,12 @@ function doInit() {
   doUp
 }
 
+function doPrintRoleInfo() {
+  readConfig
+  announce "Docker compose restart"
+  getRoleAndSecretIds
+}
+
 SCRIPT_DIR=$(dirname $0)
 SERVICE_CODE="security"
 CONFIG_TEMPLATE=${SCRIPT_DIR}/security.conf
@@ -257,6 +263,13 @@ CONFIG_FILE=${SCRIPT_DIR}/security.conf.current
 
 if [[ ! $#  -eq 1 ]] ; then
   echo must provide a command
+  echo     init - install/initialize docker containers
+  echo     up - bring up docker containers 
+  echo     down - bring down docker containers 
+  echo     start - bring up docker containers after a stop command
+  echo     stop - bring down docker containers without destroying them
+  echo     restart - restart docker containers
+  echo     printRoleInfo - print out role information from vault container
   exit  1
 fi
 
@@ -283,6 +296,9 @@ case $COMMAND in
     ;;
   vault)
     doVault
+    ;;
+  printRoleInfo)
+    doPrintRoleInfo
     ;;
   *)
     echo "Unknown command '$COMMAND'"

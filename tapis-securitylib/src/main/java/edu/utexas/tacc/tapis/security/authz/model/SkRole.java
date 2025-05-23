@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.security.authz.model;
 
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -18,7 +19,12 @@ public final class SkRole
 {
     // Tracing.
     private static final Logger _log = LoggerFactory.getLogger(SkRole.class);
-    
+
+    public static final String PREFIX_USER_DEFAULT = "$$";
+    public static final String PREFIX_RESTRICTED_SVC = "$#";
+    public static final String PREFIX_TENANT_ADMIN = "$!";
+    public static final String PREFIX_SITE_ADMIN = "$~";
+
     private int     id;
     private String  tenant;
     private String  name;
@@ -31,6 +37,7 @@ public final class SkRole
     private Instant updated;
     private String  updatedby;
     private String  updatedbyTenant;
+    private SkRoleType type;
     private boolean hasChildren;
 
     @Override
@@ -337,4 +344,12 @@ public final class SkRole
 	public void setHasChildren(boolean hasChildren) {
 		this.hasChildren = hasChildren;
 	}
+
+    public SkRoleType getType() {
+        return type;
+    }
+
+    public void setType(SkRoleType type) {
+        this.type = type;
+    }
 }

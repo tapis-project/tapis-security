@@ -15,15 +15,22 @@ public final class ReqRemoveRolePermission
     public String validate() 
     {
         // Final checks.
-        if (StringUtils.isBlank(roleTenant)) 
+        if (StringUtils.isBlank(roleTenant)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "removeRolePermission", "roleTenant");
-        if (StringUtils.isBlank(roleName)) 
+        }
+        if (StringUtils.isBlank(roleType)) {
+            return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "removeRolePermission", "roleType");
+        }
+        if (StringUtils.isBlank(roleName)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "removeRolePermission", "roleName");
-        if (!SKApiUtils.isValidName(roleName))
+        }
+        if (!SKApiUtils.isValidName(roleName)) {
             return MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "removeRolePermission", "roleName", roleName);
-        if (StringUtils.isBlank(permSpec))
+        }
+        if (StringUtils.isBlank(permSpec)) {
             return MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "removeRolePermission", "permSpec");
-        
+        }
+
         // Success.
         return null;
     }

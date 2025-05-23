@@ -874,43 +874,43 @@ public final class VaultImpl
    /** Return true only if the password parameter exactly matches the service's 
     * password in vault.  Otherwise, false is returned.
     * 
-    * @param tenant the service's tenant
-    * @param serviceName the service name
+    * @param tenant the user or service's tenant
+    * @param userOrServiceName the user or service name
     * @param secretName the path name of the password
     * @param password the password to be validated
     * @return true if the password parameter exactly matches the password in vault, 
     *         false otherwise.
     * @throws TapisImplException on error
     */
-   public boolean validateServicePwd(String tenant, String serviceName, String secretName,
-                                     String password) 
+   public boolean validatePwd(String tenant, String userOrServiceName, SecretType secretType,
+                                     String secretName, String password)
     throws TapisImplException
    {
        // ------------------------ Input Checking ----------------------------
        // The read method will check the first two parameters.
        if (StringUtils.isBlank(password)) {
-           String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "validateServicePwd", "password");
+           String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "validatePwd", "password");
            _log.error(msg);
            throw new TapisImplException(msg, Condition.BAD_REQUEST);
        }
        if (StringUtils.isBlank(secretName)) {
-           String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "validateServicePwd", "secretName");
+           String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "validatePwd", "secretName");
            _log.error(msg);
            throw new TapisImplException(msg, Condition.BAD_REQUEST);
        }
       
        // ------------------------ Request Processing ------------------------
        // Fill in the parameter object as required by secretRead.
-       var pathParms = new SecretPathMapperParms(SecretType.ServicePwd);
+       var pathParms = new SecretPathMapperParms(secretType);
        pathParms.setSecretName(secretName);
        
        // Let the read method do the heavy lifting by reading the 
        // latest version of the secret.
        SkSecret secret;
-       try {secret = secretRead(tenant, serviceName, pathParms, 0);}
+       try {secret = secretRead(tenant, userOrServiceName, pathParms, 0);}
            catch (Exception e) {
-               String msg = MsgUtils.getMsg("SK_INVALID_SERVICE_PASSWORD", 
-                                            tenant, serviceName, secretName);
+               String msg = MsgUtils.getMsg("SK_INVALID_PASSWORD",
+                                            tenant, userOrServiceName, secretName);
                _log.error(msg, e);
                throw e;
            }
