@@ -488,6 +488,7 @@ public final class SKCheckAuthz
                 case TapisConstants.SERVICE_NAME_APPS -> isPermitted = true;
                 case TapisConstants.SERVICE_NAME_JOBS -> isPermitted = true;
                 case TapisConstants.SERVICE_NAME_TOKENS -> isPermitted = true;
+                case TapisConstants.SERVICE_NAME_STREAMS -> isPermitted = true;
             }
         }
 
