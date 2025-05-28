@@ -184,7 +184,7 @@ public final class SkRoleTreeDao
           detectCycle(conn, tenant, user, parentRoleName, parentRoleId, childRoleName);
           
           // Get the parent's current hasChildren indicator and lock parent record.
-          boolean hadChildren = getParentHasChildren(conn, tenant, parentRoleId);
+          boolean hadChildren = getParentHasChildren(conn, roleTenant, parentRoleId);
           
           // Set the sql command.
           String sql = SqlStatements.ROLE_ADD_CHILD_ROLE_BY_ID;
