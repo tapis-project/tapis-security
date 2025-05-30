@@ -24,6 +24,12 @@
                     "items": {"$ref": "#/$defs/ServicePwd"},
                     "minItems": 0
                 },
+                "siteadminpwd": {
+                    "description": "Zero or more site admin passwords.",
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/SiteAdminPwd"},
+                    "minItems": 0
+                },
                 "jwtsigning": {
                     "description": "Zero or more jwt signing keys.",
                     "type": "array",
@@ -99,7 +105,56 @@
                 "secretName"
             ]
         },
-        
+
+        "SiteAdminPwd": {
+            "title": "SiteAdminPwd",
+            "type": "object",
+            "properties": {
+                "tenant": {
+                    "description": "The site admin's tenant.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24
+                },
+                "user": {
+                    "description": "The site admin's name.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                },
+                "secretName": {
+                    "description": "The path name assigned to the secret.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                },
+                "password": {
+                    "description": "The site admin's password.",
+                    "type": "string",
+                    "minLength": 16,
+                    "maxLength": 256
+                },
+                "kubeSecretName": {
+                    "description": "The name of the Kubernetes secret.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                },
+                "kubeSecretKey": {
+                    "description": "The specific key in the Kubernetes secret.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "tenant",
+                "user",
+                "secretName"
+            ]
+        },
+
         "User": {
             "title": "User",
             "type": "object",

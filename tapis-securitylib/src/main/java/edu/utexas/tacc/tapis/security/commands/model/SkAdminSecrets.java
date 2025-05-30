@@ -8,5 +8,6 @@ public final class SkAdminSecrets
     public List<SkAdminJwtSigning>   jwtsigning;
     public List<SkAdminJwtPublic>    jwtpublic;
     public List<SkAdminServicePwd>   servicepwd;
+    public List<SkAdminSiteAdminPwd> siteadminpwd;
     public List<SkAdminUser>         user;
 }
