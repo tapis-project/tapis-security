@@ -54,6 +54,7 @@ public final class SkAdminResults
     private TreeSet<String> dbCredentialMsgs = new TreeSet<>();
     private TreeSet<String> jwtSigningMsgs = new TreeSet<>();
     private TreeSet<String> servicePwdMsgs = new TreeSet<>();
+    private TreeSet<String> siteAdminPwdMsgs = new TreeSet<>();
     private TreeSet<String> userMsgs = new TreeSet<>();
     private TreeSet<String> deployMsgs = new TreeSet<>();
     
@@ -279,6 +280,10 @@ public final class SkAdminResults
         it = servicePwdMsgs.iterator();
         while (it.hasNext()) {buf.append("   "); buf.append(it.next()); buf.append("\n");}
         buf.append("\n");
+        buf.append("--> Site Admin Passwords:\n");
+        it = siteAdminPwdMsgs.iterator();
+        while (it.hasNext()) {buf.append("   "); buf.append(it.next()); buf.append("\n");}
+        buf.append("\n");
         buf.append("--> User Secrets:\n");
         it = userMsgs.iterator();
         while (it.hasNext()) {buf.append("   "); buf.append(it.next()); buf.append("\n");}
@@ -309,6 +314,9 @@ public final class SkAdminResults
                 break;
             case ServicePwd:
                 servicePwdMsgs.add(message);
+                break;
+            case SiteAdminPwd:
+                siteAdminPwdMsgs.add(message);
                 break;
             case User:
                 userMsgs.add(message);

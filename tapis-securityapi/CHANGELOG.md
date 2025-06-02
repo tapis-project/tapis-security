@@ -9,6 +9,17 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 -----------------------
+## 1.9.0 - 2025-01-12
+
+### New Features:
+1. Adding site admin password secret support to skadmin
+
+### Breaking Changes:
+Removing deprecated endpoints security/ready (use security/readycheck instead),
+ and security/sayHi (use security/healthCheck instead).
+
+### New Features:
+-----------------------
 ## 1.8.2 - 2025-01-12
 
 ### New Features:

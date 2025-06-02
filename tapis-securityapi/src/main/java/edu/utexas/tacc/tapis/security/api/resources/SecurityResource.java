@@ -106,33 +106,6 @@ public final class SecurityResource
   /*                                Public Methods                                */
   /* **************************************************************************** */
   /* ---------------------------------------------------------------------------- */
-  /* hello:                                                                       */
-  /* ---------------------------------------------------------------------------- */
-  // Will be removed with next major release version
-  @Deprecated
-  @GET
-  @Path("/hello")
-  @Produces(MediaType.APPLICATION_JSON)
-  @PermitAll
-  public Response sayHello(@DefaultValue("false") @QueryParam("pretty") boolean prettyPrint)
-  {
-      // Trace this request.
-      if (_log.isTraceEnabled()) {
-          String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(), "hello", 
-                                     "  " + _request.getRequestURL());
-          _log.trace(msg);
-      }
-      
-      // Create the response payload.
-      RespBasic r = new RespBasic("Hello from the Tapis Security Kernel.");
-         
-      // ---------------------------- Success ------------------------------- 
-      // Success means we found the resource. 
-      return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
-          MsgUtils.getMsg("TAPIS_FOUND", "hello", "0 items"), prettyPrint, r)).build();
-  }
-
-  /* ---------------------------------------------------------------------------- */
   /* healthcheck:                                                                 */
   /* ---------------------------------------------------------------------------- */
   /** This method does no logging and is expected to be as lightwieght as possible.
@@ -172,16 +145,6 @@ public final class SecurityResource
       return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
               MsgUtils.getMsg("TAPIS_HEALTHY", "Security Kernel"), false, r)).build();
   }
-
-  // Will be removed with next major release version
-  @Deprecated
-  @GET
-  @Path("/ready")
-  @Produces(MediaType.APPLICATION_JSON)
-  @PermitAll
-    public Response ready() {
-      return readycheck();
-    }
 
   /* ---------------------------------------------------------------------------- */
   /* readycheck:                                                                       */

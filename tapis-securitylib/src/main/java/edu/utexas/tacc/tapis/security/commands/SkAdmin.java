@@ -17,6 +17,8 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.TreeMap;
 
+import edu.utexas.tacc.tapis.security.commands.processors.SkAdminSiteAdminPwdProcessor;
+import edu.utexas.tacc.tapis.security.commands.processors.SkAdminVaultSiteAdminPwdProcessor;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -175,6 +177,7 @@ public class SkAdmin
     private SkAdminJwtSigningProcessor   _jwtSigningProcessor;
     private SkAdminJwtPublicProcessor    _jwtPublicProcessor;
     private SkAdminServicePwdProcessor   _servicePwdProcessor;
+    private SkAdminSiteAdminPwdProcessor _siteadminPwdProcessor;
     private SkAdminUserProcessor         _userProcessor;
     
     // Create the singleton instance for use throughout.
@@ -639,7 +642,9 @@ public class SkAdmin
                 new SkAdminJwtPublicProcessor(_secrets.jwtpublic, _parms);
             _servicePwdProcessor = 
                 new SkAdminServicePwdProcessor(_secrets.servicepwd, _parms);
-            _userProcessor = 
+            _siteadminPwdProcessor =
+                    new SkAdminSiteAdminPwdProcessor(_secrets.siteadminpwd, _parms);
+            _userProcessor =
                 new SkAdminUserProcessor(_secrets.user, _parms);
         }
         else {
@@ -667,7 +672,9 @@ public class SkAdmin
                 new SkAdminVaultJwtPublicProcessor(_secrets.jwtpublic, _parms);
             _servicePwdProcessor = 
                 new SkAdminVaultServicePwdProcessor(_secrets.servicepwd, _parms);
-            _userProcessor = 
+            _siteadminPwdProcessor =
+                    new SkAdminVaultSiteAdminPwdProcessor(_secrets.siteadminpwd, _parms);
+            _userProcessor =
                 new SkAdminVaultUserProcessor(_secrets.user, _parms);
         }
     }
@@ -697,6 +704,7 @@ public class SkAdmin
         _dbCredentialProcessor.create();
         _jwtSigningProcessor.create();
         _servicePwdProcessor.create();
+        _siteadminPwdProcessor.create();
         _userProcessor.create();
     }
     
@@ -713,6 +721,7 @@ public class SkAdmin
         _dbCredentialProcessor.update();
         _jwtSigningProcessor.update();
         _servicePwdProcessor.update();
+        _siteadminPwdProcessor.update();
         _userProcessor.update();
     }
     
@@ -735,6 +744,7 @@ public class SkAdmin
         _jwtSigningProcessor.deploy(_deployRecorder);
         _jwtPublicProcessor.deploy(_deployRecorder);  // deployment only processor
         _servicePwdProcessor.deploy(_deployRecorder);
+        _siteadminPwdProcessor.deploy(_deployRecorder);
         _userProcessor.deploy(_deployRecorder);
         
         // Deploy to kubernetes.
