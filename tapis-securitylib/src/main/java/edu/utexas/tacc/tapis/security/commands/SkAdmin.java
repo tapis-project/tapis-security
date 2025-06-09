@@ -814,6 +814,7 @@ public class SkAdmin
         result.jwtsigning   = new ArrayList<>();
         result.jwtpublic    = new ArrayList<>();
         result.servicepwd   = new ArrayList<>();
+        result.siteadminpwd = new ArrayList<>();
         result.user         = new ArrayList<>();
         
         // Read in each file and accumulate its results.
@@ -823,6 +824,7 @@ public class SkAdmin
             if (r.jwtsigning != null)   result.jwtsigning.addAll(r.jwtsigning);
             if (r.jwtpublic  != null)   result.jwtpublic.addAll(r.jwtpublic);
             if (r.servicepwd != null)   result.servicepwd.addAll(r.servicepwd);
+            if (r.siteadminpwd != null)   result.siteadminpwd.addAll(r.siteadminpwd);
             if (r.user != null)         result.user.addAll(r.user);
         }
         
