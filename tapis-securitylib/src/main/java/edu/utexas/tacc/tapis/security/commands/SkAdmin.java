@@ -676,6 +676,13 @@ public class SkAdmin
                     new SkAdminVaultSiteAdminPwdProcessor(_secrets.siteadminpwd, _parms);
             _userProcessor =
                 new SkAdminVaultUserProcessor(_secrets.user, _parms);
+
+            _log.debug("DBCredential secrets count: ", _secrets.dbcredential == null ? 0 : _secrets.dbcredential.size());
+            _log.debug("jwtSigningProcessor secrets count: ", _secrets.jwtsigning == null ? 0 : _secrets.jwtsigning.size());
+            _log.debug("jwtPublic secrets count: ", _secrets.jwtpublic == null ? 0 : _secrets.jwtpublic.size());
+            _log.debug("servicePwd secrets count: ", _secrets.servicepwd == null ? 0 : _secrets.servicepwd.size());
+            _log.debug("siteAdminPwd secrets count: ", _secrets.siteadminpwd == null ? 0 : _secrets.siteadminpwd.size());
+            _log.debug("user secrets count: ", _secrets.user == null ? 0 : _secrets.user.size());
         }
     }
     
