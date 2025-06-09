@@ -49,6 +49,7 @@ public class SkAdminServicePwdProcessor
     @Override
     protected void create(SkAdminServicePwd secret)
     {
+        _log.debug("Creating Service Password Secrets (SK)");
         // See if the secret already exists.
         SkSecret skSecret = null;
         try {skSecret = readSecret(secret);} 

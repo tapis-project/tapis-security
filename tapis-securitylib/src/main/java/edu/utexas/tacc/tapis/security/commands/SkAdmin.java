@@ -701,6 +701,7 @@ public class SkAdmin
         
         // Create each type of secret separately. Note
         // the jwt public key processor is skipped.
+        _log.debug("Create Secrets");
         _dbCredentialProcessor.create();
         _jwtSigningProcessor.create();
         _servicePwdProcessor.create();

@@ -48,6 +48,7 @@ public class SkAdminSiteAdminPwdProcessor
     @Override
     protected void create(SkAdminSiteAdminPwd secret)
     {
+        _log.debug("Creating Site Admin Secrets (SK)");
         // See if the secret already exists.
         SkSecret skSecret = null;
         try {skSecret = readSecret(secret);} 

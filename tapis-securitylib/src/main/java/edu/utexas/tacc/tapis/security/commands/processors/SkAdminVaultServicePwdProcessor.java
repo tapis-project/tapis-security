@@ -47,6 +47,8 @@ public final class SkAdminVaultServicePwdProcessor
     @Override
     protected void create(SkAdminServicePwd secret)
     {
+        _log.debug("Creating Service Password Secrets (VAULT)");
+
         // See if the secret already exists.
         SkSecret skSecret = null;
         try {skSecret = readSecret(secret);}
