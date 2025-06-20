@@ -6,6 +6,7 @@ import java.util.Set;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -243,6 +244,29 @@ public final class RoleImpl
             }
         }
         return perms;
+    }
+
+    public boolean roleHasPermission(String tenant, SkRoleDescriptor roleDescriptor, String requestedPermissionString,
+                                     boolean immediate) throws TapisImplException, TapisNotFoundException {
+        // TODO: Maybe this is an error actually
+        // if requestedPermission is empty, permission granted
+        if(StringUtils.isBlank(requestedPermissionString)) {
+            return true;
+        }
+        List<String> rolePermissions = getRolePermissions(tenant, roleDescriptor, immediate);
+        if(CollectionUtils.isEmpty(rolePermissions)) {
+            return false;
+        }
+
+        for(String rolePermissionString : rolePermissions) {
+            ExtWildcardPermission rolePermission = new ExtWildcardPermission(rolePermissionString, true);
+            ExtWildcardPermission requestedPermission = new ExtWildcardPermission(requestedPermissionString, true);
+            if(rolePermission.implies(requestedPermission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
     
     /* ---------------------------------------------------------------------- */

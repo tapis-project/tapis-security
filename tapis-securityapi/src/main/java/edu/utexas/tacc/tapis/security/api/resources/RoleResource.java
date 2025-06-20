@@ -27,8 +27,11 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
+import edu.utexas.tacc.tapis.security.api.requestBody.ReqRolePermits;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized;
+import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultAuthorized;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,7 +99,8 @@ public final class RoleResource
             "/edu/utexas/tacc/tapis/security/api/jsonschema/PreviewPathPrefixRequest.json";
     private static final String FILE_SK_REPLACE_PATH_PREFIX_REQUEST = 
             "/edu/utexas/tacc/tapis/security/api/jsonschema/ReplacePathPrefixRequest.json";
-
+    private static final String FILE_SK_ROLE_PERMITS_REQUEST =
+            "/edu/utexas/tacc/tapis/security/api/jsonschema/RolePermitsRequest.json";
     public static final Set<SkRoleType> ALL_ROLES = EnumSet.allOf(SkRoleType.class);
     public static final Set<SkRoleType> ADMIN_ROLES = EnumSet.of(SkRoleType.TENANT_ADMIN, SkRoleType.SITE_ADMIN);
     public static final Set<SkRoleType> USER_ROLES = EnumSet.of(SkRoleType.USER);
@@ -462,6 +466,79 @@ public final class RoleResource
          int cnt = names.names.length;
          return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
              MsgUtils.getMsg("TAPIS_FOUND", "Permissions", cnt + " permissions"), r)).build();
+     }
+
+     @POST
+     @Path("/{roleName}/permits")
+     @Produces(MediaType.APPLICATION_JSON)
+     public Response rolePermits(@PathParam("roleName") String roleName,
+                                 InputStream payloadStream) {
+         // Trace this request.
+         if (_log.isTraceEnabled()) {
+             String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(),
+                     "permits", _request.getRequestURL());
+             _log.trace(msg);
+         }
+
+         // ------------------------- Input Processing -------------------------
+         // Make sure the existing role name is not reserved.
+         if (!SKApiUtils.isValidName(roleName)) {
+             String msg = MsgUtils.getMsg("TAPIS_INVALID_PARAMETER", "updateRoleName", "roleName",
+                     roleName);
+             _log.error(msg);
+             return Response.status(Status.BAD_REQUEST).
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
+         }
+
+         // Parse and validate the json in the request payload, which must exist.
+         ReqRolePermits payload = null;
+         try {payload = getPayload(payloadStream, FILE_SK_ROLE_PERMITS_REQUEST,
+                 ReqRolePermits.class);
+         }
+         catch (Exception e) {
+             String msg = MsgUtils.getMsg("NET_REQUEST_PAYLOAD_ERROR",
+                     "updateRoleName", e.getMessage());
+             _log.error(msg, e);
+             return Response.status(Status.BAD_REQUEST).
+                     entity(TapisRestUtils.createErrorResponse(msg)).build();
+         }
+
+
+         // TODO:  Add auth check (if there is one)
+
+         String tenant = payload.roleTenant;
+         SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, payload.roleType);
+         String requestedPermissionString = payload.permSpec;
+         boolean immediate = payload.immediate;
+
+         boolean authorized = false;
+
+         try {
+             authorized = getRoleImpl().roleHasPermission(tenant, roleDescriptor, requestedPermissionString, immediate);
+         } catch (Exception ex) {
+             String msg = MsgUtils.getMsg("SK_ROLE_CHECK_PERMISSIONS",
+                     roleDescriptor.getRoleType(), roleDescriptor.getRoleName(), tenant, ex.getMessage());
+             return getExceptionResponse(ex, msg);
+         }
+
+         // Set the result payload.
+         ResultAuthorized authResp = new ResultAuthorized();
+         authResp.isAuthorized = authorized;
+         RespAuthorized r = new RespAuthorized(authResp);
+
+         // Set the response message.
+         String resultCode;
+         if (authorized) {
+             resultCode = "TAPIS_AUTHORIZED";
+         } else {
+             resultCode = "TAPIS_NOT_AUTHORIZED";
+         }
+
+         // ---------------------------- Success -------------------------------
+         // Success means we found the role.
+         String respMsg = roleName + " authorized: " + authorized;
+         return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(
+                 MsgUtils.getMsg(resultCode, "Role", respMsg), r)).build();
      }
 
      /* ---------------------------------------------------------------------------- */
