@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.security.api.requestBody;
 
-import edu.utexas.tacc.tapis.security.api.utils.SKApiUtils;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import org.apache.commons.lang3.StringUtils;

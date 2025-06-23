@@ -20,9 +20,6 @@
           },
           "permSpec": {
             "type": "string"
-          },
-          "immediate": {
-            "type": "boolean"
           }
         },
     "required": [
