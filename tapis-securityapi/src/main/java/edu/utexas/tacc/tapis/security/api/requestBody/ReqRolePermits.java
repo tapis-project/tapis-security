@@ -8,7 +8,6 @@ import org.apache.commons.lang3.StringUtils;
 public class ReqRolePermits implements IReqBody {
     public String roleTenant;
     public String permSpec;
-    public boolean immediate;
     public String roleType= SkRoleType.USER.name();
 
     /** Return a user-appropriate error message on failed validation

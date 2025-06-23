@@ -472,6 +472,7 @@ public final class RoleResource
      @Path("/{roleName}/permits")
      @Produces(MediaType.APPLICATION_JSON)
      public Response rolePermits(@PathParam("roleName") String roleName,
+                                 @DefaultValue("false") @QueryParam("immediate") boolean immediate,
                                  InputStream payloadStream) {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -503,13 +504,9 @@ public final class RoleResource
                      entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
 
-
-         // TODO:  Add auth check (if there is one)
-
          String tenant = payload.roleTenant;
          SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, payload.roleType);
          String requestedPermissionString = payload.permSpec;
-         boolean immediate = payload.immediate;
 
          boolean authorized = false;
 
