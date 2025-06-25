@@ -508,6 +508,14 @@ public final class RoleResource
          SkRoleDescriptor roleDescriptor = SkRoleDescriptor.newSkRoleDescriptor(roleName, payload.roleType);
          String requestedPermissionString = payload.permSpec;
 
+         // ------------------------- Check Authz ------------------------------
+         // Authorization passed if a null response is returned.
+         Response resp = SKCheckAuthz.configure(tenant, null).check();
+         if (resp != null) {
+             return resp;
+         }
+
+
          boolean authorized = false;
 
          try {
