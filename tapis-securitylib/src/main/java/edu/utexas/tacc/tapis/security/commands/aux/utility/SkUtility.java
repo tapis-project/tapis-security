@@ -193,6 +193,8 @@ public class SkUtility
     List<String> tenants = new ArrayList<>();
     boolean allSystems = true;
     AuthnMethod authnMethod = null;
+    int totalSystemsProcessed = 0;
+    int totalUsersProcessed = 0;
 
     // Check status of Vault.
     info("Checking status of Vault");
@@ -245,6 +247,7 @@ public class SkUtility
       if (allSystems) systems = getAllSystemsForTenant(tenant);
       else systems = new ArrayList<>(_parms.systemList);
       debug(" ******** Systems Count: " + systems.size() + " ********");
+      totalSystemsProcessed += systems.size();
       // Iterate over systems
       for (String system : systems)
       {
@@ -252,6 +255,7 @@ public class SkUtility
         // Get all users under system
         List<String> users = getUsers(tenant, system);
         debug("******** Users Count: " + users.size() + " ********");
+        totalUsersProcessed += users.size();
         // Iterate over users
         for(String user :users)
         {
@@ -259,6 +263,9 @@ public class SkUtility
           if (_parms.sysExportMeta) sysExportMetadataForTenant(tenant, system, user, authnMethod);
         }
       }
+      info("******** Total Tenants Processed: " + tenants.size() + " ********");
+      info("******** Total Systems Processed: " + totalSystemsProcessed + " ********");
+      info("******** Total Users Processed  : " + totalUsersProcessed + " ********");
     }
   }
 
