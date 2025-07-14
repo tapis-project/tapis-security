@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import com.bettercloud.vault.api.Auth;
 import org.apache.commons.lang3.StringUtils;
 import com.google.gson.JsonObject;
 import edu.utexas.tacc.tapis.security.secrets.SecretPathMapper;
@@ -37,10 +36,16 @@ import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
  *
  * Here is an example of running the utility from the TACC Tapis DEV k8s environment
      export VT="$VAULT_TOKEN"
-     export SP="-vtok $VT -vurl http://vault:8200 -v -sys_export_meta"
+     export SP="-vtok $VT -vurl http://vault:8200 -v -tenant dev -sys_export_meta"
      kubectl run skutility -i --tty --image-pull-policy="Always" \
-                              --pod-running-timeout 5m0s \
+                              --pod-running-timeout 7m0s \
                              --image=tapis/securityutility:dev --restart=Never --rm --env="SKUTILITY_PARMS=$SP"
+ * Example command to output all secret metadata in CSV format.
+ *    export SP="-vtok $VT -vurl http://vault:8200 -o -csv -sys_export_meta"
+ *    kubectl run skutility -i --tty --image-pull-policy="Always" \
+ *                             --pod-running-timeout 7m0s \
+ *                             --image=tapis/securityutility:dev --restart=Never --rm --env="SKUTILITY_PARMS=$SP" \
+ *             > /tmp/tapis_sys_cred_info_init.csv
  *
  * If no actions are specified then only the check of the vault status is performed
  *   and the tenants under path tapis/tenant are retrieved.
@@ -60,7 +65,7 @@ import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
  *
  *  sys_export_meta:
  *    This will output metadata for System secrets. This can be used to initialize the Systems table
- *    that tracks credential metadata. The table was introduced as part of Systems version TODO/TBD 1.?.?
+ *    that tracks credential metadata. The table was introduced as part of Systems version 1.9.0
  *    The metadata will be output for each path, either static or dynamic, i.e., paths in the form:
  *      secret/tapis/tenant/<tenant_id>/system/<system_id>/user/static+<target_user>
  *    or
@@ -404,12 +409,12 @@ public class SkUtility
    *      secret/tapis/tenant/<tenant_id>/system/<system_id>/user/static+<target_user>
    *    or
    *      secret/tapis/tenant/<tenant_id>/system/<system_id>/user/dynamic+<target_user>
-   * Metadata is under TODO ???
-   * and data is under TODO ???
    * Vault paths for Systems secrets always end with <secret_type>/S1
    *   where secret_type is password, sshkey, accesskey or
-   * TODO
    * @param tenant tenant to process
+   * @param system system to process
+   * @param userField field with user data, static/dynamic plus username
+   * @param authnMethod authn method if filtering by specific AuthnMethod
    * @throws Exception on error
    */
   private void sysExportMetadataForTenant(String tenant, String system, String userField, AuthnMethod authnMethod) throws Exception
@@ -419,9 +424,6 @@ public class SkUtility
     boolean isStatic;
     String userName;
 
-    // TODO remove - for now, generate output for only certain systems
-//TODO REMOVE    if (!(system.contains("designsafe") || system.contains("cloud.data"))) return;
-//TODO REMOVE    if (!"designsafe.storage.default".equals(system)) return;
     // If user field begins with static+ or dynamic+ then it is a non-legacy record we process it
     if (StringUtils.startsWith(userField,"static+"))
     {
@@ -446,19 +448,23 @@ public class SkUtility
     SecretMetaInfo secretMetadata = getSecretMetadata(tenant, system, userField, userName, isStatic);
     debug("Found secret metadata: " + secretMetadata);
 
-
-    // Log info record if asked for a specific authnMethod, else return now.
-    if (authnMethod == null) return;
-    boolean logIt =
-      switch (authnMethod)
-      {
-        case PASSWORD -> secretMetadata.hasPassword;
-        case PKI_KEYS -> secretMetadata.hasPkiKeys;
-        case ACCESS_KEY -> secretMetadata.hasAccessKey;
-        case TOKEN -> secretMetadata.hasToken;
-        case TMS_KEYS -> secretMetadata.hasTmsKeys;
-        default -> false;
-      };
+    // If not asked to log only specific authnMethod records, then always log the record
+    boolean logIt;
+    if (authnMethod == null) logIt = true;
+    else
+    {
+      // Only log if record has requested type of secret.
+      logIt =
+            switch (authnMethod)
+            {
+              case PASSWORD -> secretMetadata.hasPassword;
+              case PKI_KEYS -> secretMetadata.hasPkiKeys;
+              case ACCESS_KEY -> secretMetadata.hasAccessKey;
+              case TOKEN -> secretMetadata.hasToken;
+              case TMS_KEYS -> secretMetadata.hasTmsKeys;
+              default -> false;
+            };
+    }
     if (logIt)
     {
       if (_parms.csv_output)
@@ -555,8 +561,6 @@ public class SkUtility
     // Log if found
     debug(String.format("Found secret. KeyType: %s reqUri: %s", SecretPathMapper.KeyType.sshkey, reqUri));
     return true;
-    // TODO For given keytype (password, sshkeys, etc) check that all fields present and valid
-//TODO    return checkSecretDataForKeytype(keytype, dataJsonObj);
   }
 
   // Print out error message and exit
