@@ -800,7 +800,7 @@ public final class SkShareDao
           else {
               int size = list == null ? 0 : list.size();
               var id2 = skshare.getResourceId2() == null ? "null" : skshare.getResourceId2();
-              _log.warn(MsgUtils.getMsg("JOBS_SHARE_LIST_LEN", 1, size,
+              _log.warn(MsgUtils.getMsg("SK_SHARE_LIST_LEN", 1, size,
                                          skshare.getTenant(),
                                          skshare.getGrantor(),
                                          skshare.getGrantee(),
