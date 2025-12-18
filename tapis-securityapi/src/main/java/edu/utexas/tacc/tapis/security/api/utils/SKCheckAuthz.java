@@ -9,8 +9,10 @@ import javax.ws.rs.core.Response.Status;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisImplException;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -489,6 +491,18 @@ public final class SKCheckAuthz
                 case TapisConstants.SERVICE_NAME_JOBS -> isPermitted = true;
                 case TapisConstants.SERVICE_NAME_TOKENS -> isPermitted = true;
                 case TapisConstants.SERVICE_NAME_STREAMS -> isPermitted = true;
+                default -> {
+                    try {
+                        String permission = TapisUtils.getRestrictedServicePermissionSpec(_jwtTenant, TapisConstants.SERVICE_NAME_SECURITY, _jwtUser, "all");
+                        String roleName = TapisUtils.getRestrictedServiceRoleName(_jwtUser);
+
+                        isPermitted = RoleImpl.getInstance().roleHasPermission(_jwtTenant,
+                                SkRoleDescriptor.newSkRoleDescriptor(roleName, SkRoleType.RESTRICTED_SVC),
+                                permission, true);
+                    } catch (TapisException ex) {
+                        _failedChecks.add("isTrustedServiceError: " + ex.getMessage());
+                    }
+                }
             }
         }
 
