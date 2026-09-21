@@ -9,6 +9,17 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 -----------------------
+## 26Q3.0 - 2026-09-21
+
+Incremental improvements, security patches in shared libraries.
+
+### New features:
+- None.
+
+### Bug fixes:
+- None.
+
+-----------------------
 ## 26Q2.0 - 2026-05-11
 
 ### New Features:
