@@ -1,10 +1,8 @@
 package edu.utexas.tacc.tapis.security.api.resources;
 
 import java.io.InputStream;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.annotation.security.PermitAll;
 import javax.servlet.ServletContext;
@@ -31,7 +29,6 @@ import javax.ws.rs.core.UriInfo;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqRolePermits;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
-import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultAuthorized;
 import org.apache.commons.lang3.StringUtils;
@@ -103,12 +100,6 @@ public final class RoleResource
             "/edu/utexas/tacc/tapis/security/api/jsonschema/ReplacePathPrefixRequest.json";
     private static final String FILE_SK_ROLE_PERMITS_REQUEST =
             "/edu/utexas/tacc/tapis/security/api/jsonschema/RolePermitsRequest.json";
-    public static final Set<SkRoleType> ALL_ROLES = EnumSet.allOf(SkRoleType.class);
-    public static final Set<SkRoleType> ADMIN_ROLES = EnumSet.of(SkRoleType.TENANT_ADMIN, SkRoleType.SITE_ADMIN);
-    public static final Set<SkRoleType> USER_ROLES = EnumSet.of(SkRoleType.USER);
-    public static final Set<SkRoleType> NON_ADMIN_ROLES = EnumSet.of(SkRoleType.USER, SkRoleType.USER_DEFAULT, SkRoleType.RESTRICTED_SVC);
-    public static final Set<SkRoleType> NON_SITE_ADMIN_ROLES = EnumSet.of(SkRoleType.USER, SkRoleType.USER_DEFAULT, SkRoleType.RESTRICTED_SVC, SkRoleType.TENANT_ADMIN);
-    public static final Set<SkRoleType> NO_ROLES = Collections.emptySet();
 
     /* **************************************************************************** */
     /*                                    Fields                                    */
@@ -240,7 +231,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null)
-                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), NON_ADMIN_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
+                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_ALL)
                  .check();
          if (resp != null) return resp;
 
@@ -313,7 +304,7 @@ public final class RoleResource
                          .setCheckIsSiteAdmin()
                          .setCheckIsTenantAdmin()
                          .setPreventForeignTenantUpdate()
-                         .setRoleTypeRestrictions(roleDescriptor.getRoleType(), USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                         .setRoleTypeRestrictions(roleDescriptor.getRoleType(), SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_ADMIN)
                          .check();
 
          if (resp != null) {
@@ -381,7 +372,7 @@ public final class RoleResource
                  .addOwnedRole(roleDescriptor)
                  .setCheckIsTenantAdmin()
                  .setCheckIsSiteAdmin()
-                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_ADMIN)
                  .check();
 
          if (resp != null) {
@@ -442,7 +433,7 @@ public final class RoleResource
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null)
-                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), NON_ADMIN_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
+                 .setRoleTypeRestrictions(roleDescriptor.getRoleType(), SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_ALL)
                  .check();
          if (resp != null) return resp;
          
@@ -600,7 +591,7 @@ public final class RoleResource
                              .setCheckIsSiteAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_NON_ADMIN)
                              .check();
          if (resp != null) return resp;
          
@@ -681,7 +672,7 @@ public final class RoleResource
                              .setCheckIsSiteAdmin()
                              .setPreventInvalidOwnerAssignment(newTenant)
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     NO_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_NONE, SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_NON_ADMIN)
                              .check();
          if (resp != null) return resp;
          
@@ -761,7 +752,7 @@ public final class RoleResource
                              .setCheckIsSiteAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_NON_ADMIN)
                              .check();
          if (resp != null) return resp;
          
@@ -829,7 +820,7 @@ public final class RoleResource
                  .setCheckIsSiteAdmin()
                  .addOwnedRole(roleDescriptor)
                  .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                         USER_ROLES, USER_ROLES, ALL_ROLES)
+                         SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_ALL)
                  .check();
          if (resp != null) return resp;
          
@@ -901,7 +892,7 @@ public final class RoleResource
                              .setCheckIsSiteAdmin()
                              .setCheckIsTenantAdmin()
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     USER_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_ALL)
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -1123,7 +1114,7 @@ public final class RoleResource
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null)
                  .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                         NON_ADMIN_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                         SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_NON_ADMIN, SkRoleType.ROLE_TYPE_SET_NON_ADMIN)
                  .check();
          if (resp != null) {
              return resp;
@@ -1209,9 +1200,9 @@ public final class RoleResource
                              .setCheckIsSiteAdmin()
                              .setCheckIsFilesService()
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     NO_ROLES,
+                                     SkRoleType.ROLE_TYPE_SET_NONE,
                                      EnumSet.of(SkRoleType.USER, SkRoleType.USER_DEFAULT),
-                                     NON_ADMIN_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_NON_ADMIN)
                              .check();
          if (resp != null) return resp;
          

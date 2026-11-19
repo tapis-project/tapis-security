@@ -350,7 +350,7 @@ public final class UserResource
                              .setCheckIsSiteAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     RoleResource.USER_ROLES, RoleResource.NON_SITE_ADMIN_ROLES, RoleResource.ALL_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_SITE_ADMIN, SkRoleType.ROLE_TYPE_SET_ALL)
                              .check();
          if (resp != null) return resp;
          
@@ -431,7 +431,7 @@ public final class UserResource
                              .setCheckIsSiteAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     RoleResource.USER_ROLES, RoleResource.NON_SITE_ADMIN_ROLES, RoleResource.ALL_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_SITE_ADMIN, SkRoleType.ROLE_TYPE_SET_ALL)
                              .check();
          if (resp != null) return resp;
          
@@ -782,7 +782,7 @@ public final class UserResource
                              .setCheckIsTenantAdmin()
                              .setCheckIsSiteAdmin()
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     RoleResource.USER_ROLES, RoleResource.NON_SITE_ADMIN_ROLES, RoleResource.ALL_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_SITE_ADMIN, SkRoleType.ROLE_TYPE_SET_ALL)
                              .setCheckServiceIsAllowed()
                              .setCheckMatchesJwtIdentity()
                              .setPreventForeignTenantUpdate()
@@ -859,7 +859,7 @@ public final class UserResource
                              .setCheckIsSiteAdmin()
                              .addOwnedRole(roleDescriptor)
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     RoleResource.USER_ROLES, RoleResource.NON_SITE_ADMIN_ROLES, RoleResource.ALL_ROLES)
+                                     SkRoleType.ROLE_TYPE_SET_USER, SkRoleType.ROLE_TYPE_SET_NON_SITE_ADMIN, SkRoleType.ROLE_TYPE_SET_ALL)
                              .check();
          if (resp != null) return resp;
          

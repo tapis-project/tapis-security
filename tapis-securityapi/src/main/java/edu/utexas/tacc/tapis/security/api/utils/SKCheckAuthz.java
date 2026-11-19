@@ -951,9 +951,8 @@ public final class SKCheckAuthz
                 } else {
                     // now that we know it's the site admin tenant, make sure the user has the
                     // site admin role.
-                    boolean isSiteAdmin = UserImpl.getInstance().hasRole(_jwtTenant, _jwtUser,
-                            new SkRoleDescriptor[]{SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR},
-                            AuthOperation.ANY);
+                    boolean isSiteAdmin = UserImpl.getInstance().isPermitted(_jwtTenant, _jwtUser, new String[] { SkRoleDescriptor.SITE_SUPER_USER_PERM },
+                            SkRoleType.ROLE_TYPE_SET_SITE_ADMIN, AuthOperation.ALL);
                     _jwtUserIsSiteAdmin = Boolean.valueOf(isSiteAdmin);
                 }
             } catch (TapisImplException e) {

@@ -769,13 +769,13 @@ public final class UserImpl
         // Get all the users with the admin role.  Exceptions already logged.
         List<String> admins = getUsersWithRole(tenant, SkRoleDescriptor.TENANT_ADMIN_ROLE_DESCRIPTOR);
         String primarySiteAdminTenantId = TenantManager.getInstance().getPrimarySite().getSiteAdminTenantId();
-        List<String> siteAdmins = getUsersWithRole(primarySiteAdminTenantId, SkRoleDescriptor.SITE_ADMIN_ROLE_DESCRIPTOR);
+        List<String> siteSuperUsers = getUsersWithPermission(primarySiteAdminTenantId, SkRoleType.ROLE_TYPE_SET_SITE_ADMIN, SkRoleDescriptor.SITE_SUPER_USER_PERM);
 
         // Make sure the requestor is a tenant admin or a site admin.  Null checks are performed here.
-        if ((!admins.contains(requestor)) && (!siteAdmins.contains(requestor))) {
+        if ((!admins.contains(requestor)) && (!siteSuperUsers.contains(requestor))) {
             String msg = MsgUtils.getMsg("SK_REQUESTOR_NOT_ADMIN", tenant, requestor);
             _log.error(msg);
-            throw new TapisImplException(msg, Condition.BAD_REQUEST); 
+            throw new TapisImplException(msg, Condition.BAD_REQUEST);
         }
               
         // There's nothing to do if the user is not an admin.

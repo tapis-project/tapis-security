@@ -5,7 +5,9 @@ import org.apache.commons.lang3.StringUtils;
 
 public class SkRoleDescriptor {
     public static final SkRoleDescriptor TENANT_ADMIN_ROLE_DESCRIPTOR = SkRoleDescriptor.newSkRoleDescriptor(SkRoleType.getRoleShortName(SkConstants.ADMIN_ROLE_NAME), SkRoleType.TENANT_ADMIN);
-    public static final SkRoleDescriptor SITE_ADMIN_ROLE_DESCRIPTOR = SkRoleDescriptor.newSkRoleDescriptor(SkRoleType.getRoleShortName(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE), SkRoleType.SITE_ADMIN);
+    public static final SkRoleDescriptor DEFAULT_SITE_ADMIN_ROLE_DESCRIPTOR = SkRoleDescriptor.newSkRoleDescriptor(SkRoleType.getRoleShortName(SkConstants.SK_PRIMARY_SITE_ADMIN_ROLE), SkRoleType.SITE_ADMIN);
+    public static final String SITE_SUPER_USER_PERM = "site-super-user";
+
     private final String roleName;
     private final SkRoleType roleType;
 

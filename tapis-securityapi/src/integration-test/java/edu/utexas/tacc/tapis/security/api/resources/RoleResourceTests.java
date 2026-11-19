@@ -14,14 +14,11 @@ import edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultChangeCount;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
-import java.util.UUID;
 import java.util.function.Predicate;
 
 @Test
@@ -37,8 +34,8 @@ public class RoleResourceTests {
     @AfterTest
     public void cleanup() throws Exception {
         roleDao = new SkRoleDao();
-        RoleResourceTestUtils.cleanupAllTestRoles(new SkRoleDao(), IntegrationTestUtils.TEST_TENANT_1, SkRoleType.ALL_TYPES);
-        RoleResourceTestUtils.cleanupAllTestRoles(new SkRoleDao(), IntegrationTestUtils.TEST_TENANT_2, SkRoleType.ALL_TYPES);
+        RoleResourceTestUtils.cleanupAllTestRoles(new SkRoleDao(), IntegrationTestUtils.TEST_TENANT_1, SkRoleType.ROLE_TYPE_SET_ALL);
+        RoleResourceTestUtils.cleanupAllTestRoles(new SkRoleDao(), IntegrationTestUtils.TEST_TENANT_2, SkRoleType.ROLE_TYPE_SET_ALL);
     }
 
     @Test

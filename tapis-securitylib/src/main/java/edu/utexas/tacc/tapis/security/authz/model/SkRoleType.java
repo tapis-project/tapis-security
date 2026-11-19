@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.security.authz.model;
 
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Set;
 
 public enum SkRoleType {
 
@@ -10,7 +12,12 @@ public enum SkRoleType {
     TENANT_ADMIN,   //  prefix: "$!"
     SITE_ADMIN;     //  prefix: "$~"
 
-    public static final EnumSet<SkRoleType> ALL_TYPES = java.util.EnumSet.allOf(SkRoleType.class);
+    public static final Set<SkRoleType> ROLE_TYPE_SET_NON_SITE_ADMIN = EnumSet.of(USER, USER_DEFAULT, RESTRICTED_SVC, TENANT_ADMIN);
+    public static final Set<SkRoleType> ROLE_TYPE_SET_NON_ADMIN = EnumSet.of(USER, USER_DEFAULT, RESTRICTED_SVC);
+    public static final Set<SkRoleType> ROLE_TYPE_SET_USER = EnumSet.of(USER);
+    public static final Set<SkRoleType> ROLE_TYPE_SET_SITE_ADMIN = EnumSet.of(SITE_ADMIN);     //  prefix: "$~"
+    public static final Set<SkRoleType> ROLE_TYPE_SET_ALL = EnumSet.allOf(SkRoleType.class);
+    public static final Set<SkRoleType> ROLE_TYPE_SET_NONE = Collections.emptySet();
 
     // TODO:  this can go after we are sure it's not needed anywhere
     protected static SkRoleType getRoleTypeFromRoleName(String roleName) {
