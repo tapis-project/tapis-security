@@ -202,7 +202,7 @@ public final class SkRole
         List<String> list = null;
         try {
             SkRoleDao dao = new SkRoleDao();
-            list = dao.getTransitivePermissions(id);
+            list = dao.getTransitivePermissions(id, type);
         } catch (Exception e) {
             _log.error(e.getMessage()); // details already logged
             throw e;

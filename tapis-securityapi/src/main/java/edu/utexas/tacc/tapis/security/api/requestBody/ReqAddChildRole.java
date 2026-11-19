@@ -10,6 +10,7 @@ public class ReqAddChildRole
     public String roleTenant;
     public String parentRoleName;
     public String childRoleName;
+    // NOTE - this only applies to USER roles.  No other type can have a child role.
     
     /** Return a user-appropriate error message on failed validation
      *  and return null if validation succeeds.

@@ -17,6 +17,19 @@
           },
           "orAdmin": {
             "type": "boolean"
+          },
+          "roleTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "USER",
+                "USER_DEFAULT",
+                "TENANT_ADMIN",
+                "SITE_ADMIN",
+                "RESTRICTED_SVC"
+              ]
+            }
           }
         },
     "required": [

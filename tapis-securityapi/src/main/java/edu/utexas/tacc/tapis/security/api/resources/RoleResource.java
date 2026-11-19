@@ -9,6 +9,7 @@ import java.util.Set;
 import javax.annotation.security.PermitAll;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -30,6 +31,7 @@ import javax.ws.rs.core.UriInfo;
 import edu.utexas.tacc.tapis.security.api.requestBody.ReqRolePermits;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespAuthorized;
 import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultAuthorized;
 import org.apache.commons.lang3.StringUtils;
@@ -827,7 +829,7 @@ public final class RoleResource
                  .setCheckIsSiteAdmin()
                  .addOwnedRole(roleDescriptor)
                  .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                         USER_ROLES, USER_ROLES, NON_ADMIN_ROLES)
+                         USER_ROLES, USER_ROLES, ALL_ROLES)
                  .check();
          if (resp != null) return resp;
          
@@ -899,7 +901,7 @@ public final class RoleResource
                              .setCheckIsSiteAdmin()
                              .setCheckIsTenantAdmin()
                              .setRoleTypeRestrictions(roleDescriptor.getRoleType(),
-                                     USER_ROLES, NON_ADMIN_ROLES, NON_ADMIN_ROLES)
+                                     USER_ROLES, NON_ADMIN_ROLES, ALL_ROLES)
                              .addOwnedRole(roleDescriptor)
                              .check();
          if (resp != null) return resp;
@@ -937,6 +939,14 @@ public final class RoleResource
      @Produces(MediaType.APPLICATION_JSON)
      public Response addChildRole(InputStream payloadStream)
      {
+         if(true) {
+             try {
+                 throw new BadRequestException("No longer supported");
+             } catch (Exception e) {
+                 return getExceptionResponse(e,"Adding child roles is no longer supported");
+             }
+         }
+
          // Trace this request.
          if (_log.isTraceEnabled()) {
              String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(), 

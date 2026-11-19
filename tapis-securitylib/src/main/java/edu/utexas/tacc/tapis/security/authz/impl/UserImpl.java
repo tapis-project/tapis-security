@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
@@ -139,7 +140,7 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* getUserPerms:                                                          */
     /* ---------------------------------------------------------------------- */
-    public List<String> getUserPerms(String tenant, String user, String implies,
+    public List<String> getUserPerms(String tenant, String user, Set<SkRoleType> roleTypes, String implies,
                                      String impliedBy) 
      throws TapisImplException
     {
@@ -154,7 +155,7 @@ public final class UserImpl
 
         // Get the names.
         List<String> perms = null;
-        try {perms = dao.getUserPermissions(tenant, user);}
+        try {perms = dao.getUserPermissions(tenant, user, roleTypes);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_USER_GET_PERMISSIONS_ERROR", 
                                              tenant, user, e.getMessage());
@@ -489,7 +490,7 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* getUsersWithPermission:                                                */
     /* ---------------------------------------------------------------------- */
-    public List<String> getUsersWithPermission(String tenant, String permSpec) 
+    public List<String> getUsersWithPermission(String tenant, Set<SkRoleType> roleTypes, String permSpec)
      throws TapisImplException
     {
         // Get the dao.
@@ -503,7 +504,7 @@ public final class UserImpl
 
         // Assign the role to the user.
         List<String> users = null;
-        try {users = dao.getUsersWithPermission(tenant, permSpec);}
+        try {users = dao.getUsersWithPermission(tenant, roleTypes, permSpec);}
             catch (Exception e) {
                 _log.error(e.getMessage());
                 throw new TapisImplException(e.getMessage(), e, Condition.INTERNAL_SERVER_ERROR);
@@ -573,7 +574,7 @@ public final class UserImpl
     /* ---------------------------------------------------------------------- */
     /* getUserPermissions:                                                    */
     /* ---------------------------------------------------------------------- */
-    public List<String> getUserPermissions(String tenant, String user) 
+    public List<String> getUserPermissions(String tenant, String user, Set<SkRoleType> roleTypes)
      throws TapisImplException
     {
         // Get the dao.
@@ -587,7 +588,7 @@ public final class UserImpl
 
         // Get the names.
         List<String> assignedPerms = null;
-        try {assignedPerms = dao.getUserPermissions(tenant, user);}
+        try {assignedPerms = dao.getUserPermissions(tenant, user, roleTypes);}
             catch (Exception e) {
                 String msg = MsgUtils.getMsg("SK_USER_GET_ROLE_NAMES_ERROR", 
                                              tenant, user, e.getMessage());
@@ -602,7 +603,7 @@ public final class UserImpl
     /* isPermitted:                                                           */
     /* ---------------------------------------------------------------------- */
     public boolean isPermitted(String tenant, String user, String[] permSpecs, 
-                               AuthOperation op) 
+                               Set<SkRoleType> roleTypes, AuthOperation op)
      throws TapisImplException
     {
         // Check inputs not checked by called routines.
@@ -616,11 +617,16 @@ public final class UserImpl
             _log.error(msg);
             throw new TapisImplException(msg, Condition.BAD_REQUEST);  
         }
-        
+        if (roleTypes == null || (roleTypes.size() == 0)) {
+            String msg = MsgUtils.getMsg("TAPIS_NULL_PARAMETER", "isPermitted", "permSpecs");
+            _log.error(msg);
+            throw new TapisImplException(msg, Condition.BAD_REQUEST);
+        }
+
         // Get all permissions assigned to user include those assigned transitively.
         // This call can throw an exception.
-        List<String> assignedPerms = getUserPermissions(tenant, user);
-        
+        List<String> assignedPerms = getUserPermissions(tenant, user, roleTypes);
+
         // Maybe it's already obvious that the user does not have permission.
         if (assignedPerms.isEmpty()) return false;
         

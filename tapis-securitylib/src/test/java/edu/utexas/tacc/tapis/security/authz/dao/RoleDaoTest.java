@@ -35,7 +35,7 @@ public class RoleDaoTest {
         Assert.assertEquals(rolesCreated, 1);
 
         SkRole createdRole = new SkRole();
-        createdRole.setName(roleName);
+        createdRole.setName(roleDescriptor.getRoleFullName());
         createdRole.setType(roleType);
         createdRole.setTenant(roleTenant);
         createdRole.setDescription(roleDescription);

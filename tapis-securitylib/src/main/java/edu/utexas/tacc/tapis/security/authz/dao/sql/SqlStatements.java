@@ -259,8 +259,8 @@ public class SqlStatements
 
   // Get the role ids directly (non-transitively) assigned to user.
   public static final String USER_SELECT_ROLE_IDS =
-      "SELECT ur.role_id, r.has_children FROM sk_user_role ur, sk_role r " +
-      "WHERE ur.role_id = r.id and ur.tenant = ? and ur.user_name = ?";
+      "SELECT ur.role_id, r.type, r.has_children FROM sk_user_role ur, sk_role r " +
+      "WHERE ur.role_id = r.id and ur.tenant = ? and ur.user_name = ? and r.type = ANY (?)";
   
   // Get the role ids and the role names directly (non-transitively) assigned to user.
   public static final String USER_SELECT_ROLE_IDS_AND_NAMES =
@@ -281,7 +281,7 @@ public class SqlStatements
       "SELECT DISTINCT u.user_name FROM sk_role r, sk_user_role u, sk_role_permission pm " +
       "WHERE r.tenant = u.tenant AND r.tenant = pm.tenant " +
           "AND r.id = u.role_id AND r.id = pm.role_id " +
-          "AND r.tenant = ? AND pm.permission :op ? " +
+          "AND r.tenant = ? AND r.type = ANY (?) AND pm.permission :op ? " +
           "ORDER BY u.user_name";
 
   /* ---------------------------------------------------------------------- */

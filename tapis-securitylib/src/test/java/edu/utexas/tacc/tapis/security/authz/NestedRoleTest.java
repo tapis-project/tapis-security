@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.security.authz;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
@@ -347,7 +348,7 @@ public class NestedRoleTest
     private void checkUserPermissions() throws TapisException
     {
         SkUserRoleDao dao = new SkUserRoleDao();
-        List<String> perms1 = dao.getUserPermissions(tenant, user1);
+        List<String> perms1 = dao.getUserPermissions(tenant, user1, Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT));
         System.out.println(" **** user1 perms: " + Arrays.toString(perms1.toArray()));
         Assert.assertEquals(perms1.contains("fake:*:read"), true);
         Assert.assertEquals(perms1.contains("fake:a:read"), true);
@@ -355,19 +356,19 @@ public class NestedRoleTest
         Assert.assertEquals(perms1.contains("fake:c:read"), true);
         Assert.assertEquals(perms1.size(), 4);
        
-        List<String> perms2 = dao.getUserPermissions(tenant, user2);
+        List<String> perms2 = dao.getUserPermissions(tenant, user2, Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT));
         System.out.println(" **** user2 perms: " + Arrays.toString(perms2.toArray()));
         Assert.assertEquals(perms2.contains("fake:a:read"), true);
         Assert.assertEquals(perms2.contains("fake:b:read"), true);
         Assert.assertEquals(perms2.contains("fake:c:read"), true);
         Assert.assertEquals(perms2.size(), 3);
         
-        List<String> perms3 = dao.getUserPermissions(tenant, user3);
+        List<String> perms3 = dao.getUserPermissions(tenant, user3, Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT));
         System.out.println(" **** user3 perms: " + Arrays.toString(perms3.toArray()));
         Assert.assertEquals(perms3.contains("fake:b:read"), true);
         Assert.assertEquals(perms3.size(), 1);
         
-        List<String> perms4 = dao.getUserPermissions(tenant, user4);
+        List<String> perms4 = dao.getUserPermissions(tenant, user4, Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT));
         System.out.println(" **** user4 perms: " + Arrays.toString(perms4.toArray()));
         Assert.assertEquals(perms4.contains("fake:c:read"), true);
         Assert.assertEquals(perms4.size(), 1);

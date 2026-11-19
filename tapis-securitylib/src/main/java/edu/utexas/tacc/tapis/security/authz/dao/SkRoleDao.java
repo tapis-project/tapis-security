@@ -14,6 +14,7 @@ import java.util.Set;
 
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisImplException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1107,13 +1108,18 @@ public final class SkRoleDao
    *       see role information from another.
    * 
    * @param roleId the role id whose permissions are requested
+   * @param roleType the type of the role specified by roleId - this is currently not checked as we only
+   *                 allow USER roles to have child roles.  This is really here as a reminder of that.
    * @return a non-null, ordered list of permissions
    * @throws TapisException on error
    */
-  public List<String> getTransitivePermissions(int roleId) throws TapisException
+  public List<String> getTransitivePermissions(int roleId, SkRoleType roleType) throws TapisException
   {
       // Initialize result list.
       ArrayList<String> perms = new ArrayList<>();
+      if(!SkRoleType.USER.equals(roleType)) {
+          throw new TapisImplException("Only USER roles may have nested roles", TapisImplException.Condition.BAD_REQUEST);
+      }
       
       // ------------------------- Call SQL ----------------------------
       Connection conn = null;

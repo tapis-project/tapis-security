@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.security.api.resources;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.annotation.security.PermitAll;
 import javax.servlet.ServletContext;
@@ -254,7 +256,8 @@ public final class UserResource
      public Response getUserPerms(@PathParam("user") String user,
                                   @QueryParam("tenant") String tenant,
                                   @DefaultValue("") @QueryParam("implies") String implies,
-                                  @DefaultValue("") @QueryParam("impliedBy") String impliedBy)
+                                  @DefaultValue("") @QueryParam("impliedBy") String impliedBy,
+                                  @DefaultValue("USER, USER_DEFAULT") @QueryParam("roleTypes") String roleTypesString)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -271,6 +274,12 @@ public final class UserResource
                      entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
 
+         Set<SkRoleType> roleTypes = Arrays.stream(roleTypesString.split(","))
+                 .map(String::trim)
+                 .filter(stringValue -> !stringValue.isEmpty())
+                 .map(stringValue -> SkRoleType.getRoleTypeFromStringIgnoreCase(stringValue))
+                 .collect(Collectors.toSet());
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null).check();
@@ -280,7 +289,7 @@ public final class UserResource
          // Get the names.
          List<String> perms = null;
          try {
-             perms = getUserImpl().getUserPerms(tenant, user, implies, impliedBy);
+             perms = getUserImpl().getUserPerms(tenant, user, roleTypes, implies, impliedBy);
          }
          catch (Exception e) {
              return getExceptionResponse(e, null);
@@ -989,7 +998,7 @@ public final class UserResource
          // ------------------------- Input Processing -------------------------
          // Parse and validate the json in the request payload, which must exist.
          ReqUserIsPermitted payload = null;
-         try {payload = getPayload(payloadStream, FILE_SK_USER_IS_PERMITTED_REQUEST, 
+         try {payload = getPayload(payloadStream, FILE_SK_USER_IS_PERMITTED_REQUEST,
                                    ReqUserIsPermitted.class);
          } 
          catch (Exception e) {
@@ -1006,6 +1015,7 @@ public final class UserResource
          multi.user      = payload.user;
          multi.permSpecs = new String[] {payload.permSpec};
          multi.orAdmin   = payload.orAdmin;
+         multi.roleTypes = payload.roleTypes.stream().map(stringType -> SkRoleType.valueOf(stringType)).collect(Collectors.toSet());
          
          // Call the real method.
          return isPermittedMulti(payloadStream, AuthOperation.ANY, multi);
@@ -1110,7 +1120,8 @@ public final class UserResource
      @Path("/withPermission/{permSpec}")
      @Produces(MediaType.APPLICATION_JSON)
      public Response getUsersWithPermission(@PathParam("permSpec") String permSpec,
-                                            @QueryParam("tenant") String tenant)
+                                            @QueryParam("tenant") String tenant,
+                                            @DefaultValue("USER, USER_DEFAULT") @QueryParam("roleTypes") String roleTypesString)
      {
          // Trace this request.
          if (_log.isTraceEnabled()) {
@@ -1126,7 +1137,13 @@ public final class UserResource
              return Response.status(Status.BAD_REQUEST).
                      entity(TapisRestUtils.createErrorResponse(msg)).build();
          }
-         
+
+         Set<SkRoleType> roleTypes = Arrays.stream(roleTypesString.split(","))
+                 .map(String::trim)
+                 .filter(stringValue -> !stringValue.isEmpty())
+                 .map(stringValue -> SkRoleType.getRoleTypeFromStringIgnoreCase(stringValue))
+                 .collect(Collectors.toSet());
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null).check();
@@ -1135,7 +1152,7 @@ public final class UserResource
          // ------------------------ Request Processing ------------------------
          // Assign the role to the user.
          List<String> users = null;
-         try {users = getUserImpl().getUsersWithPermission(tenant, permSpec);}
+         try {users = getUserImpl().getUsersWithPermission(tenant, roleTypes, permSpec);}
              catch (Exception e) {
                  return getExceptionResponse(e, null);
              }
@@ -1336,7 +1353,8 @@ public final class UserResource
          String   user      = payload.user;
          String[] permSpecs = payload.permSpecs;
          boolean  orAdmin   = payload.orAdmin;
-         
+         Set<SkRoleType> roleTypes   = payload.roleTypes;
+
          // ------------------------- Check Authz ------------------------------
          // Authorization passed if a null response is returned.
          Response resp = SKCheckAuthz.configure(tenant, null).check();
@@ -1344,7 +1362,7 @@ public final class UserResource
          
          // ------------------------ Request Processing ------------------------
          boolean authorized;
-         try {authorized = getUserImpl().isPermitted(tenant, user, permSpecs, op);}
+         try {authorized = getUserImpl().isPermitted(tenant, user, permSpecs, roleTypes, op);}
              catch (Exception e) {
                  String msg = MsgUtils.getMsg("SK_USER_GET_PERMISSIONS_ERROR", 
                                               tenant, user, e.getMessage());

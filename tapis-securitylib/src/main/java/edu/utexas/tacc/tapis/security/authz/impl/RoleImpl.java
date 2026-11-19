@@ -384,31 +384,36 @@ public final class RoleImpl
     // roleTenant, roleName, permSpec, requestor, requestorTenant
     public int addRolePermission(String roleTenant, SkRoleDescriptor roleDescriptor, String permSpec,
                                  String requestor, String requestorTenant) 
-     throws TapisImplException, TapisNotFoundException
-    {
+     throws TapisImplException, TapisNotFoundException {
+        if (roleDescriptor.getRoleType() == SkRoleType.TENANT_ADMIN) {
+            String msg = "Cannot add role permissions for tenant admin roles";
+            _log.info(msg);
+            throw new TapisImplException(msg, Condition.BAD_REQUEST);
+        }
         // Get the dao.
         SkRolePermissionDao dao = null;
-        try {dao = getSkRolePermissionDao();}
-            catch (Exception e) {
-                String msg = MsgUtils.getMsg("DB_DAO_ERROR", "rolePermission");
-                _log.error(msg, e);
-                throw new TapisImplException(msg, e, Condition.INTERNAL_SERVER_ERROR);
-            }
-        
+        try {
+            dao = getSkRolePermissionDao();
+        } catch (Exception e) {
+            String msg = MsgUtils.getMsg("DB_DAO_ERROR", "rolePermission");
+            _log.error(msg, e);
+            throw new TapisImplException(msg, e, Condition.INTERNAL_SERVER_ERROR);
+        }
+
         // Create the role.
         int rows = 0;
-        try {rows = dao.assignPermission(roleTenant, roleDescriptor, permSpec, requestor, requestorTenant);}
-            catch (TapisNotFoundException e) {
-                _log.error(e.getMessage());
-                throw e;
-            } 
-            catch (Exception e) {
-                // We assume a bad request for all other errors.
-                String msg = MsgUtils.getMsg("SK_ADD_PERMISSION_ERROR", requestor,
-                                             roleTenant, permSpec, roleDescriptor.getRoleFullName(), roleTenant);
-                _log.error(msg, e);
-                throw new TapisImplException(msg, e, Condition.BAD_REQUEST); 
-            }
+        try {
+            rows = dao.assignPermission(roleTenant, roleDescriptor, permSpec, requestor, requestorTenant);
+        } catch (TapisNotFoundException e) {
+            _log.error(e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            // We assume a bad request for all other errors.
+            String msg = MsgUtils.getMsg("SK_ADD_PERMISSION_ERROR", requestor,
+                    roleTenant, permSpec, roleDescriptor.getRoleFullName(), roleTenant);
+            _log.error(msg, e);
+            throw new TapisImplException(msg, e, Condition.BAD_REQUEST);
+        }
 
         return rows;
     }

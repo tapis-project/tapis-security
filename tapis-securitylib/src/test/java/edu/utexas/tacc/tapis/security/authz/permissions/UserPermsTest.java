@@ -1,7 +1,9 @@
 package edu.utexas.tacc.tapis.security.authz.permissions;
 
 import java.util.List;
+import java.util.Set;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
@@ -42,32 +44,32 @@ public class UserPermsTest
     public void permsTest() throws TapisImplException, TapisNotFoundException
     {
         // Add a bunch of permissions to user bobby.
-        _userImpl.grantUserPermission("bobby", "dev", "admin", "dev", "stream:dev:read:project1");
-        _userImpl.grantUserPermission("bobby", "dev", "admin", "dev", "stream:dev:read,write:project1");
-        _userImpl.grantUserPermission("bobby", "dev", "admin", "dev", "stream:dev:read,write,exec:project1");
+        _userImpl.grantUserPermission("bobby", "dev", "stream:dev:read:project1", "admin", "dev");
+        _userImpl.grantUserPermission("bobby", "dev", "stream:dev:read,write:project1", "admin", "dev");
+        _userImpl.grantUserPermission("bobby", "dev", "stream:dev:read,write,exec:project1", "admin", "dev");
         
         // List all of bobby's permissions.
-        List<String> perms = _userImpl.getUserPerms("dev", "bobby", null, null);
+        List<String> perms = _userImpl.getUserPerms("dev", "bobby", Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT), null, null);
         System.out.println("All permissions:");
         for (String perm : perms) System.out.println("    " + perm);
         
         // List a subset of bobby's permissions.
-        perms = _userImpl.getUserPerms("dev", "bobby", "stream:dev:*:project1", null);
+        perms = _userImpl.getUserPerms("dev", "bobby", Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT), "stream:dev:*:project1", null);
         System.out.println("\n\"stream:dev:*:project1\" IMPLIES:");
         for (String perm : perms) System.out.println("    " + perm);
         
         // List a subset of bobby's permissions.
-        perms = _userImpl.getUserPerms("dev", "bobby", "stream:dev:write:project1", null);
+        perms = _userImpl.getUserPerms("dev", "bobby", Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT), "stream:dev:write:project1", null);
         System.out.println("\n\"stream:dev:write:project1\" IMPLIES:");
         for (String perm : perms) System.out.println("    " + perm);
         
         // List a subset of bobby's permissions.
-        perms = _userImpl.getUserPerms("dev", "bobby", null, "stream:dev:*:project1");
+        perms = _userImpl.getUserPerms("dev", "bobby", Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT), null, "stream:dev:*:project1");
         System.out.println("\n\"stream:dev:*:project1\" IMPLIED BY:");
         for (String perm : perms) System.out.println("    " + perm);
         
         // List a subset of bobby's permissions.
-        perms = _userImpl.getUserPerms("dev", "bobby", null, "stream:dev:write:project1");
+        perms = _userImpl.getUserPerms("dev", "bobby", Set.of(SkRoleType.USER, SkRoleType.USER_DEFAULT), null, "stream:dev:write:project1");
         System.out.println("\n\"stream:dev:write:project1\" IMPLIED BY:");
         for (String perm : perms) System.out.println("    " + perm);
 

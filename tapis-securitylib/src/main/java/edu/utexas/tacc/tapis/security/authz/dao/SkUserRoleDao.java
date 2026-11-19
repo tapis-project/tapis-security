@@ -1,13 +1,17 @@
 package edu.utexas.tacc.tapis.security.authz.dao;
 
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.security.authz.model.SkRole;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleDescriptor;
 import edu.utexas.tacc.tapis.security.authz.model.SkRoleType;
 import org.apache.commons.lang3.StringUtils;
@@ -24,6 +28,7 @@ import edu.utexas.tacc.tapis.shared.exceptions.TapisJDBCException;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisNotFoundException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
+
 
 /** Lightweight DAO that uses the caller's datasource to connect to the 
  * database.  If this subproject becomes its own service, then it will
@@ -446,11 +451,11 @@ public final class SkUserRoleDao
    * @return a non-null, ordered list of all permission values assigned to user
    * @throws TapisException on error
    */
-  public List<String> getUserPermissions(String tenant, String user) throws TapisException
+  public List<String> getUserPermissions(String tenant, String user, Set<SkRoleType> roleTypes) throws TapisException
   {
       // Get the role ids of roles explicitly assigned to the user, along
 	  // with their has_children flags.  Input checking done here.
-      List<Pair<Integer,Boolean>> roleIds = getUserRoleIds(tenant, user);
+      List<Triple<Integer, SkRoleType, Boolean>> roleIds = getUserRoleIds(tenant, user, roleTypes);
 
       // Final result list.
       ArrayList<String>  permSpecs = new ArrayList<>();
@@ -464,13 +469,15 @@ public final class SkUserRoleDao
       TreeSet<String> roleSet = new TreeSet<String>();
       SkRoleDao dao = new SkRoleDao();
       final boolean ordered = false; // the treeset does the ordering
-      for (var pair : roleIds) {
+      for (var roleId : roleIds) {
     	  // For efficiency, only call the transitive permission retrieval
     	  // method if the role has children.  Otherwise, call the simple,
     	  // non-recursive retrieval method.
     	  List<String> list;
-    	  if (pair.getRight()) list = dao.getTransitivePermissions(pair.getLeft());
-    	    else list = dao.getImmediatePermissions(tenant, pair.getLeft(), ordered);
+          // Only user roles can have children
+    	  if (roleId.getRight() && SkRoleType.USER.equals(roleId.getMiddle())) list =
+                  dao.getTransitivePermissions(roleId.getLeft(), roleId.getMiddle());
+    	    else list = dao.getImmediatePermissions(tenant, roleId.getLeft(), ordered);
     	  if (!list.isEmpty()) roleSet.addAll(list);
       }
       
@@ -577,7 +584,7 @@ public final class SkUserRoleDao
    * @return a non-null list of all roles with has_children flage assigned directly to user
    * @throws TapisException on error
    */
-  public List<Pair<Integer,Boolean>> getUserRoleIds(String tenant, String user) 
+  public List<Triple<Integer, SkRoleType, Boolean>> getUserRoleIds(String tenant, String user, Set<SkRoleType> roleTypes)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -594,7 +601,7 @@ public final class SkUserRoleDao
       }
       
       // Initialize intermediate result.
-      ArrayList<Pair<Integer,Boolean>> roleIds = new ArrayList<>();
+      ArrayList<Triple<Integer, SkRoleType, Boolean>> roleRecords = new ArrayList<>();
 
       // ------------------------- Call SQL ----------------------------
       Connection conn = null;
@@ -610,11 +617,12 @@ public final class SkUserRoleDao
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
           pstmt.setString(2, user);
-                      
+          pstmt.setArray(3, getTypeNamesArrayFromTypeSet(conn, roleTypes));
+
           // Issue the call the result set.
           ResultSet rs = pstmt.executeQuery();
           while (rs.next()) {
-        	  roleIds.add(Pair.of(rs.getInt(1), rs.getBoolean(2)));
+        	  roleRecords.add(Triple.of(rs.getInt(1), SkRoleType.valueOf(rs.getString(2)), rs.getBoolean(3)));
           }
           
           // Close the result and statement.
@@ -646,7 +654,7 @@ public final class SkUserRoleDao
             }
       }
       
-      return roleIds;
+      return roleRecords;
   }
   
   /* ---------------------------------------------------------------------- */
@@ -781,7 +789,7 @@ public final class SkUserRoleDao
    * @return a non-null, sorted list of all users assigned the role
    * @throws TapisException on error
    */
-  public List<String> getUsersWithPermission(String tenant, String permSpec) 
+  public List<String> getUsersWithPermission(String tenant, Set<SkRoleType> roleTypes, String permSpec)
    throws TapisException
   {
       // ------------------------- Check Input -------------------------
@@ -823,8 +831,9 @@ public final class SkUserRoleDao
           // Prepare the statement with the filled in placeholders.
           PreparedStatement pstmt = conn.prepareStatement(sql);
           pstmt.setString(1, tenant);
-          pstmt.setString(2, permSpec);
-                      
+          pstmt.setArray(2, getTypeNamesArrayFromTypeSet(conn, roleTypes));
+          pstmt.setString(3, permSpec);
+
           // Issue the call and process the result set.
           ResultSet rs = pstmt.executeQuery();
           while (rs.next()) users.add(rs.getString(1));
@@ -1113,5 +1122,14 @@ public final class SkUserRoleDao
       
       // Return result list.
       return list;
+  }
+
+  private String[] getTypeNamesFromTypeSet(Set<SkRoleType> roleTypes) {
+      return roleTypes.stream().map(roleType -> {
+          return roleType.name();
+      }).toArray(String[]::new);
+  }
+  private Array getTypeNamesArrayFromTypeSet(Connection connection, Set<SkRoleType> types) throws SQLException {
+      return connection.createArrayOf("varchar", getTypeNamesFromTypeSet(types));
   }
 }
