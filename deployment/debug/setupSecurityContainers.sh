@@ -256,7 +256,9 @@ function doPrintRoleInfo() {
   getRoleAndSecretIds
 }
 
-SCRIPT_DIR=$(dirname $0)
+SCRIPT_DIR=~/$(realpath --relative-to="$HOME" $(dirname $0))
+#echo $SCRIPT_DIR
+#exit 1
 SERVICE_CODE="security"
 CONFIG_TEMPLATE=${SCRIPT_DIR}/security.conf
 CONFIG_FILE=${SCRIPT_DIR}/security.conf.current

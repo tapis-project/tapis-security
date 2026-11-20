@@ -9,6 +9,7 @@ import java.util.Set;
 import javax.annotation.security.PermitAll;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -937,6 +938,14 @@ public final class RoleResource
      @Produces(MediaType.APPLICATION_JSON)
      public Response addChildRole(InputStream payloadStream)
      {
+         if(true) {
+             try {
+                 throw new BadRequestException("No longer supported");
+             } catch (Exception e) {
+                 return getExceptionResponse(e,"Adding child roles is no longer supported");
+             }
+         }
+
          // Trace this request.
          if (_log.isTraceEnabled()) {
              String msg = MsgUtils.getMsg("TAPIS_TRACE_REQUEST", getClass().getSimpleName(), 
